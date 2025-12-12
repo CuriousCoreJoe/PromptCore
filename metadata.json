@@ -1,0 +1,5 @@
+{
+  "name": "PromptCore",
+  "description": "A universal AI workspace featuring multi-modal chat, code refinement, and media generation tools.",
+  "requestFramePermissions": []
+}
