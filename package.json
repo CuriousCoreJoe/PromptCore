@@ -15,7 +15,9 @@
     "react-markdown": "^10.1.0",
     "clsx": "^2.1.1",
     "react-dom": "^19.2.3",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "@supabase/supabase-js": "^2.89.0",
+    "inngest": "^3.48.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

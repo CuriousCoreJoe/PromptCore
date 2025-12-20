@@ -1,3 +1,4 @@
+
 export enum AppMode {
   EVERYDAY = 'Everyday',
   VIBE_CODE = 'Vibe Code',
@@ -13,17 +14,7 @@ export interface Message {
   content: string;
   timestamp: number;
   mode?: AppMode;
-  attachments?: string[]; // URLs or base64
-}
-
-export interface ChatSession {
-  id: string;
-  userId: string;
-  title: string;
-  messages: Message[];
-  createdAt: number;
-  updatedAt: number;
-  mode: AppMode;
+  attachments?: string[]; 
 }
 
 export interface UserProfile {
@@ -33,23 +24,27 @@ export interface UserProfile {
   createdAt: number;
 }
 
+// Added Document interface to resolve "Module '"../types"' has no exported member 'Document'" error in Dashboard.tsx
 export interface Document {
   id: string;
   userId: string;
   title: string;
-  sourceType: 'youtube' | 'pdf' | 'url';
+  sourceType: 'pdf' | 'youtube';
   sourceUrl?: string;
   content: string;
-  // Embedding is handled backend-side usually, but we keep metadata here
-  metadata?: Record<string, any>;
   createdAt: number;
 }
 
-// Factory Types
+// New Consumer-First Factory Types
 export interface BatchItem {
   id: string;
-  content: string;
-  category?: string; // The "injected variable" (e.g., "Creative", "Technical")
+  title: string;
+  category: string;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
+  description: string;
+  prompt_content: string;
+  usage_guide: string;
+  style_var: string;
 }
 
 export interface FactoryBatch {
@@ -57,5 +52,5 @@ export interface FactoryBatch {
   status: 'pending' | 'generating' | 'completed';
   items: BatchItem[];
   topic: string;
-  angle: string; // The specific focus of this batch
+  angle: string; 
 }
