@@ -9,15 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.2.3",
     "@google/genai": "^1.33.0",
-    "lucide-react": "^0.560.0",
-    "react-markdown": "^10.1.0",
-    "clsx": "^2.1.1",
-    "react-dom": "^19.2.3",
-    "tailwind-merge": "^3.4.0",
+    "@stripe/stripe-js": "^8.6.0",
     "@supabase/supabase-js": "^2.89.0",
-    "inngest": "^3.48.1"
+    "clsx": "^2.1.1",
+    "inngest": "^3.48.1",
+    "lucide-react": "^0.560.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-markdown": "^10.1.0",
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

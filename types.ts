@@ -6,7 +6,7 @@ export enum AppMode {
   TALK_TO_SOURCE = 'Talk to Source',
 }
 
-export type AppView = 'workspace' | 'factory' | 'dashboard' | 'upgrade';
+export type AppView = 'workspace' | 'factory' | 'dashboard' | 'upgrade' | 'legal';
 
 export interface Message {
   id: string;
@@ -14,7 +14,7 @@ export interface Message {
   content: string;
   timestamp: number;
   mode?: AppMode;
-  attachments?: string[]; 
+  attachments?: string[];
 }
 
 export interface UserProfile {
@@ -52,5 +52,5 @@ export interface FactoryBatch {
   status: 'pending' | 'generating' | 'completed';
   items: BatchItem[];
   topic: string;
-  angle: string; 
+  angle: string;
 }
