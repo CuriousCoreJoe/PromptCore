@@ -83,12 +83,26 @@ export const Auth: React.FC = () => {
 
                                 if (signUpError) {
                                     console.error('Dev sign-up failed:', signUpError.message);
-                                    alert('Dev sign-up failed. Check console.');
+                                    alert(`Dev sign-up failed: ${signUpError.message}`);
                                 } else {
-                                    // Depending on Supabase settings, this might require email confirmation.
-                                    // If "Enable Email Confirmations" is OFF, they are logged in.
-                                    // If ON, this will hang.
-                                    alert('Dev user created! If auto-login didn\'t work, please check if email confirmation is enabled in Supabase.');
+                                    // If auto-confirm is OFF in Supabase, the user is created but "unconfirmed".
+                                    // The login below will fail if unconfirmed.
+
+                                    // Retry Login immediately
+                                    const { error: retryError } = await supabase.auth.signInWithPassword({
+                                        email,
+                                        password
+                                    });
+
+                                    if (retryError) {
+                                        if (retryError.message.includes('Email not confirmed')) {
+                                            alert('Dev User Created! \n\nIMPORTANT: You must go to your Supabase Dashboard -> Authentication -> Users and manually click "Confirm" on dev@promptcore.com, OR disable "Confirm Email" in Auth Settings.');
+                                        } else {
+                                            alert(`Dev user created, but login failed: ${retryError.message}`);
+                                        }
+                                    } else {
+                                        window.location.reload();
+                                    }
                                 }
                             } else {
                                 console.error('Dev login error:', signInError.message);
