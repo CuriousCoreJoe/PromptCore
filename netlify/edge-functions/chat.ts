@@ -1,20 +1,32 @@
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { GoogleGenAI } from "npm:@google/genai";
+// @ts-ignore
+import { GoogleGenAI } from "https://esm.sh/@google/generative-ai@0.21.0";
+// @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+// @ts-ignore
+import type { Context } from "https://edge.netlify.com";
 
+// @ts-ignore
+declare const Deno: any;
+
+// @ts-ignore
 const apiKey = Deno.env.get("GEMINI_API_KEY")!;
 const genAI = new GoogleGenAI(apiKey);
 
 const supabase = createClient(
+    // @ts-ignore
     Deno.env.get("SUPABASE_URL")!,
+    // @ts-ignore
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
-serve(async (req) => {
-    const { messages, input, mode, userId } = await req.json();
+export default async (req: Request, context: Context) => {
+    if (req.method !== "POST") {
+        return new Response("Method Not Allowed", { status: 405 });
+    }
 
     try {
+        const { messages, input, userId } = await req.json();
+
         // 1. Check Credits
         const { data: profile } = await supabase
             .from("profiles")
@@ -47,7 +59,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ text: responseText }), {
             headers: { "Content-Type": "application/json" },
         });
-    } catch (err) {
+    } catch (err: any) {
         return new Response(JSON.stringify({ error: err.message }), { status: 500 });
     }
-});
+};

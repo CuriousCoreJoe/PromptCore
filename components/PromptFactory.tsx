@@ -74,16 +74,23 @@ export const PromptFactory: React.FC = () => {
         return;
       }
 
-      // Invoke the Trigger Function
-      const { data, error } = await supabase.functions.invoke('trigger', {
-        body: {
+      // Invoke the Netlify Trigger Function
+      const response = await fetch('/api/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           niche: topic,
           count: count,
           userId: user.id
-        }
+        })
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Trigger error');
+      }
+
+      const data = await response.json();
 
       setCurrentPackId(data.packId);
       setProgressStatus('⏳ Queued in Inngest...');

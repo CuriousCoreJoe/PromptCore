@@ -37,11 +37,10 @@ export const UpgradePage: React.FC<UpgradePageProps> = ({ focusSection }) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return alert("Please sign in to continue.");
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/checkout`, {
+      const response = await fetch(`/api/checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({ priceId, userId: session.user.id, type })
       });

@@ -1,15 +1,24 @@
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { Inngest } from "https://esm.sh/inngest@3.26.0";
+// @ts-ignore
+import { Inngest } from "https://esm.sh/inngest@3.26.0?target=deno";
+// @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+// @ts-ignore
+import type { Context } from "https://edge.netlify.com";
 
+// @ts-ignore
+declare const Deno: any;
+
+// @ts-ignore
 const inngest = new Inngest({ id: "promptcore-app", eventKey: Deno.env.get("INNGEST_EVENT_KEY")! });
+
 const supabase = createClient(
+    // @ts-ignore
     Deno.env.get("SUPABASE_URL")!,
+    // @ts-ignore
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
-serve(async (req) => {
+export default async (req: Request, context: Context) => {
     if (req.method !== "POST") {
         return new Response("Method not allowed", { status: 405 });
     }
@@ -17,7 +26,7 @@ serve(async (req) => {
     try {
         const { niche, count, userId } = await req.json();
 
-        // 1. Create the Pack record immediately so we have an ID
+        // 1. Create the Pack record immediately
         const { data: pack, error: dbError } = await supabase
             .from("packs")
             .insert({
@@ -46,8 +55,8 @@ serve(async (req) => {
             headers: { "Content-Type": "application/json" },
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
-});
+};

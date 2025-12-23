@@ -154,16 +154,27 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('chat', {
-        body: {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           messages,
           input: userMsg.content,
           mode: currentMode,
           userId: session.user.id
-        }
+        })
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Chat error');
+      }
+
+      const data = await response.json();
+
+
 
       const modelMsg: Message = {
         id: Date.now().toString(),

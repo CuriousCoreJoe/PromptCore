@@ -1,22 +1,34 @@
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-ignore
 import Stripe from "https://esm.sh/stripe@13.10.0?target=deno";
+// @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+// @ts-ignore
+import type { Context } from "https://edge.netlify.com";
 
+// @ts-ignore
+declare const Deno: any;
+
+// @ts-ignore
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
     apiVersion: "2023-10-16",
     httpClient: Stripe.createFetchHttpClient(),
 });
 
 const supabase = createClient(
+    // @ts-ignore
     Deno.env.get("SUPABASE_URL")!,
+    // @ts-ignore
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
-serve(async (req) => {
-    const { priceId, userId, type } = await req.json();
+export default async (req: Request, context: Context) => {
+    if (req.method !== "POST") {
+        return new Response("Method Not Allowed", { status: 405 });
+    }
 
     try {
+        const { priceId, userId, type } = await req.json();
+
         // 1. Get or Create Customer
         const { data: profile } = await supabase
             .from("profiles")
@@ -46,7 +58,6 @@ serve(async (req) => {
             metadata: {
                 userId,
                 type,
-                // If it's a credit pack, we can store the amount here to update in webhook
                 credits: type === 'credits' ? getCreditsFromPrice(priceId) : 0
             },
         };
@@ -56,13 +67,12 @@ serve(async (req) => {
         return new Response(JSON.stringify({ url: session.url }), {
             headers: { "Content-Type": "application/json" },
         });
-    } catch (err) {
+    } catch (err: any) {
         return new Response(JSON.stringify({ error: err.message }), { status: 500 });
     }
-});
+};
 
 function getCreditsFromPrice(priceId: string) {
-    // Mapping price IDs to credit counts
     const map: any = {
         'price_starter_pack': 500,
         'price_creator_pack': 1500,
