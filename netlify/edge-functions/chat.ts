@@ -1,5 +1,5 @@
 // @ts-ignore
-import { GoogleGenAI } from "https://esm.sh/@google/generative-ai@0.1.3";
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.21.0";
 // @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 // @ts-ignore
@@ -26,7 +26,7 @@ export default async (req: Request, context: Context) => {
 
         // @ts-ignore
         const apiKey = Deno.env.get("GEMINI_API_KEY")!;
-        const genAI = new GoogleGenAI(apiKey);
+        const genAI = new GoogleGenerativeAI(apiKey);
 
         // 1. Check Credits
         const { data: profile } = await supabase
