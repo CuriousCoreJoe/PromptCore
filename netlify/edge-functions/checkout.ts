@@ -8,19 +8,6 @@ import type { Context } from "https://edge.netlify.com";
 // @ts-ignore
 declare const Deno: any;
 
-// @ts-ignore
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
-    apiVersion: "2023-10-16",
-    httpClient: Stripe.createFetchHttpClient(),
-});
-
-const supabase = createClient(
-    // @ts-ignore
-    Deno.env.get("SUPABASE_URL")!,
-    // @ts-ignore
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-);
-
 export default async (req: Request, context: Context) => {
     if (req.method !== "POST") {
         return new Response("Method Not Allowed", { status: 405 });
@@ -28,6 +15,20 @@ export default async (req: Request, context: Context) => {
 
     try {
         const { priceId, userId, type } = await req.json();
+
+        // Initialize inside handler
+        const supabase = createClient(
+            // @ts-ignore
+            Deno.env.get("SUPABASE_URL")!,
+            // @ts-ignore
+            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+
+        // @ts-ignore
+        const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
+            apiVersion: "2023-10-16",
+            httpClient: Stripe.createFetchHttpClient(),
+        });
 
         // 1. Get or Create Customer
         const { data: profile } = await supabase

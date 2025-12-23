@@ -8,16 +8,6 @@ import type { Context } from "https://edge.netlify.com";
 // @ts-ignore
 declare const Deno: any;
 
-// @ts-ignore
-const inngest = new Inngest({ id: "promptcore-app", eventKey: Deno.env.get("INNGEST_EVENT_KEY")! });
-
-const supabase = createClient(
-    // @ts-ignore
-    Deno.env.get("SUPABASE_URL")!,
-    // @ts-ignore
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-);
-
 export default async (req: Request, context: Context) => {
     if (req.method !== "POST") {
         return new Response("Method not allowed", { status: 405 });
@@ -25,6 +15,16 @@ export default async (req: Request, context: Context) => {
 
     try {
         const { niche, count, userId } = await req.json();
+
+        // Initialize inside handler
+        const inngest = new Inngest({ id: "promptcore-app", eventKey: Deno.env.get("INNGEST_EVENT_KEY")! });
+
+        const supabase = createClient(
+            // @ts-ignore
+            Deno.env.get("SUPABASE_URL")!,
+            // @ts-ignore
+            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
 
         // 1. Create the Pack record immediately
         const { data: pack, error: dbError } = await supabase

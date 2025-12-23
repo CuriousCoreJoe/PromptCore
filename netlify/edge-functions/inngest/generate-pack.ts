@@ -3,17 +3,10 @@ declare const Deno: any;
 // @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 // @ts-ignore
-import { GoogleGenAI, SchemaType } from "https://esm.sh/@google/generative-ai@0.21.0";
+import { GoogleGenAI, SchemaType } from "https://esm.sh/@google/generative-ai@0.1.3";
 import { inngest } from "./client.ts";
 
-const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-);
-
-const apiKey = Deno.env.get("GEMINI_API_KEY") || "";
-const ai = new GoogleGenAI({ apiKey });
-
+// CONSTANTS must be outside to be available
 const DIFFICULTY_LEVELS = ["Beginner", "Intermediate", "Advanced"];
 const STYLES = ["Strict & Organized", "Creative & Loose", "Step-by-Step Tutor", "Socratic Method"];
 
@@ -42,8 +35,20 @@ export const generatePack = inngest.createFunction(
     async ({ event, step }: { event: any, step: any }) => {
         const { niche, count, userId, packId } = event.data;
 
+        // Initialize Clients INSIDE the step/handler
+        const supabase = createClient(
+            // @ts-ignore
+            Deno.env.get("SUPABASE_URL")!,
+            // @ts-ignore
+            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+
+        // @ts-ignore
+        const apiKey = Deno.env.get("GEMINI_API_KEY") || "";
+        const ai = new GoogleGenAI(apiKey);
+
         const chunks = Array.from({ length: Math.ceil(count / 5) }, (_, i) => i);
-        const results = [];
+        const results: any[] = [];
 
         // Notify start
         await step.run("start-pack", async () => {

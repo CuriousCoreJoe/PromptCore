@@ -1,5 +1,5 @@
 // @ts-ignore
-import { GoogleGenAI } from "https://esm.sh/@google/generative-ai@0.21.0";
+import { GoogleGenAI } from "https://esm.sh/@google/generative-ai@0.1.3";
 // @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 // @ts-ignore
@@ -8,17 +8,6 @@ import type { Context } from "https://edge.netlify.com";
 // @ts-ignore
 declare const Deno: any;
 
-// @ts-ignore
-const apiKey = Deno.env.get("GEMINI_API_KEY")!;
-const genAI = new GoogleGenAI(apiKey);
-
-const supabase = createClient(
-    // @ts-ignore
-    Deno.env.get("SUPABASE_URL")!,
-    // @ts-ignore
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-);
-
 export default async (req: Request, context: Context) => {
     if (req.method !== "POST") {
         return new Response("Method Not Allowed", { status: 405 });
@@ -26,6 +15,18 @@ export default async (req: Request, context: Context) => {
 
     try {
         const { messages, input, userId } = await req.json();
+
+        // Initialize inside handler to avoid build-time crashes if env vars missing
+        const supabase = createClient(
+            // @ts-ignore
+            Deno.env.get("SUPABASE_URL")!,
+            // @ts-ignore
+            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+
+        // @ts-ignore
+        const apiKey = Deno.env.get("GEMINI_API_KEY")!;
+        const genAI = new GoogleGenAI(apiKey);
 
         // 1. Check Credits
         const { data: profile } = await supabase
