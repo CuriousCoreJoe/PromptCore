@@ -3,7 +3,7 @@ declare const Deno: any;
 // @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 // @ts-ignore
-import { GoogleGenAI, SchemaType } from "https://esm.sh/@google/generative-ai@0.1.3";
+import { GoogleGenerativeAI, SchemaType } from "https://esm.sh/@google/generative-ai@0.21.0";
 import { inngest } from "./client.ts";
 
 // CONSTANTS must be outside to be available
@@ -45,7 +45,7 @@ export const generatePack = inngest.createFunction(
 
         // @ts-ignore
         const apiKey = Deno.env.get("GEMINI_API_KEY") || "";
-        const ai = new GoogleGenAI(apiKey);
+        const ai = new GoogleGenerativeAI(apiKey);
 
         const chunks = Array.from({ length: Math.ceil(count / 5) }, (_, i) => i);
         const results: any[] = [];
