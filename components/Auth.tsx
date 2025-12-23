@@ -8,6 +8,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export const Auth: React.FC = () => {
     const [showLegal, setShowLegal] = useState(false);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     const handleGoogleLogin = async () => {
         const { error } = await supabase.auth.signInWithOAuth({
@@ -54,8 +55,17 @@ export const Auth: React.FC = () => {
                         <div className="h-px bg-dark-800 flex-1"></div>
                     </div>
 
+
+                    {/* Error Display */}
+                    {errorMsg && (
+                        <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 text-xs text-red-200 text-left">
+                            <strong>Error:</strong> {errorMsg}
+                        </div>
+                    )}
+
                     <button
                         onClick={async () => {
+                            setErrorMsg(null);
                             const email = 'dev@promptcore.com';
                             const password = 'dev-password-123';
 
@@ -65,7 +75,7 @@ export const Auth: React.FC = () => {
                                 password
                             });
 
-                            if (!signInError) return;
+                            if (!signInError) return; // Success, App.tsx will redirect
 
                             // 2. If User Not Found, Sign Up
                             if (signInError.message.includes('Invalid login credentials')) {
@@ -82,12 +92,9 @@ export const Auth: React.FC = () => {
                                 });
 
                                 if (signUpError) {
-                                    console.error('Dev sign-up failed:', signUpError.message);
-                                    alert(`Dev sign-up failed: ${signUpError.message}`);
+                                    // Handle "User already registered" edge case or other errors
+                                    setErrorMsg(`Sign-up failed: ${signUpError.message}`);
                                 } else {
-                                    // If auto-confirm is OFF in Supabase, the user is created but "unconfirmed".
-                                    // The login below will fail if unconfirmed.
-
                                     // Retry Login immediately
                                     const { error: retryError } = await supabase.auth.signInWithPassword({
                                         email,
@@ -96,16 +103,17 @@ export const Auth: React.FC = () => {
 
                                     if (retryError) {
                                         if (retryError.message.includes('Email not confirmed')) {
-                                            alert('Dev User Created! \n\nIMPORTANT: You must go to your Supabase Dashboard -> Authentication -> Users and manually click "Confirm" on dev@promptcore.com, OR disable "Confirm Email" in Auth Settings.');
+                                            setErrorMsg('User created but email not confirmed. Go to Supabase Auth -> Users -> Confirm this email.');
                                         } else {
-                                            alert(`Dev user created, but login failed: ${retryError.message}`);
+                                            setErrorMsg(`Login retry failed: ${retryError.message}`);
                                         }
                                     } else {
                                         window.location.reload();
                                     }
                                 }
                             } else {
-                                console.error('Dev login error:', signInError.message);
+                                // Other Login Errors (e.g. Email not confirmed)
+                                setErrorMsg(`Login failed: ${signInError.message}`);
                             }
                         }}
                         className="w-full py-2 text-xs text-brand-500 hover:text-brand-400 font-medium transition-colors border border-dark-800 hover:border-brand-500/30 rounded-lg"
