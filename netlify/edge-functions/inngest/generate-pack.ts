@@ -3,7 +3,7 @@ declare const Deno: any;
 // @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 // @ts-ignore
-import { GoogleGenAI, SchemaType } from "https://esm.sh/@google/genai@0.1.1";
+import { GoogleGenAI, SchemaType } from "https://esm.sh/@google/generative-ai@0.21.0";
 import { inngest } from "./client.ts";
 
 const supabase = createClient(
