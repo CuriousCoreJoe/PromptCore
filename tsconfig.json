@@ -28,6 +28,7 @@
     "noEmit": true
   },
   "exclude": [
-    "functions"
+    "functions",
+    "netlify"
   ]
 }

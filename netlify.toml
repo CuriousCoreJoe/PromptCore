@@ -6,3 +6,8 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+
+[[edge_functions]]
+function = "inngest"
+path = "/api/inngest"
