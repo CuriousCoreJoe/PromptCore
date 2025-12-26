@@ -132,90 +132,105 @@ export const PromptFactory: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Pack Size</label>
-                <select
+              <label className="block text-sm font-medium text-gray-400 mb-1 flex justify-between">
+                <span>Pack Size</span>
+                <span className="text-brand-400 font-mono">{count} Prompts</span>
+              </label>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min="5"
+                  max="200"
+                  step="5"
                   value={count}
                   onChange={(e) => setCount(Number(e.target.value))}
-                  className="w-full bg-dark-950 border border-dark-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-brand-500 outline-none"
-                >
-                  <option value={5}>5 Prompts (Demo)</option>
-                  <option value={10}>10 Prompts</option>
-                  <option value={20}>20 Prompts (Full Pack)</option>
-                </select>
+                  className="w-full h-2 bg-dark-800 rounded-lg appearance-none cursor-pointer accent-brand-500"
+                />
               </div>
-
-              <button
-                onClick={handleStartFactory}
-                disabled={isProcessing || !topic.trim()}
-                className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all ${isProcessing || !topic.trim()
-                  ? 'bg-dark-800 text-gray-500 cursor-not-allowed'
-                  : 'bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-900/40'
-                  }`}
-              >
-                {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <Play size={20} />}
-                {isProcessing ? 'Processing in Background...' : 'Generate Pack'}
-              </button>
+              <div className="mt-2 text-xs text-gray-500 flex justify-between">
+                <span>5 (Demo)</span>
+                <span>200 (Max)</span>
+              </div>
+              <div className="mt-3 bg-dark-950 p-3 rounded border border-dark-800 text-xs flex justify-between items-center">
+                <span className="text-gray-400">Estimated Cost:</span>
+                <span className="text-white font-mono flex items-center gap-1">
+                  {count <= 50 ? count : (50 + (count - 50) * 1.5)} Credits
+                  <Info size={12} className="text-gray-500" />
+                </span>
+              </div>
             </div>
+
+            <button
+              onClick={handleStartFactory}
+              disabled={isProcessing || !topic.trim()}
+              className={`w-full py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all ${isProcessing || !topic.trim()
+                ? 'bg-dark-800 text-gray-500 cursor-not-allowed'
+                : 'bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-900/40'
+                }`}
+            >
+              {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <Play size={20} />}
+              {isProcessing ? 'Processing in Background...' : 'Generate Pack'}
+            </button>
           </div>
-
-          {(generatedItems.length > 0 || isProcessing) && (
-            <div className="bg-dark-900 border border-dark-800 p-6 rounded-xl">
-              <h3 className="text-sm font-semibold text-gray-300 mb-3 flex justify-between">
-                <span>Inngest Status</span>
-                <span className="text-brand-400">{generatedItems.length} / {count}</span>
-              </h3>
-              <div className="mt-4 pt-4 border-t border-dark-800 text-xs text-brand-300 font-mono">
-                {progressStatus}
-              </div>
-            </div>
-          )}
         </div>
 
-        <div className="lg:col-span-2 flex flex-col h-[600px] lg:h-auto bg-dark-900 border border-dark-800 rounded-xl overflow-hidden shadow-lg">
-          <div className="flex items-center justify-between p-4 border-b border-dark-800 bg-dark-950/50">
-            <h2 className="font-semibold text-white">Pack Preview</h2>
-            <div className="flex gap-2">
-              <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-300 bg-dark-800 hover:bg-dark-700 rounded transition-colors">
-                <Copy size={14} /> Copy All
-              </button>
+        {(generatedItems.length > 0 || isProcessing) && (
+          <div className="bg-dark-900 border border-dark-800 p-6 rounded-xl">
+            <h3 className="text-sm font-semibold text-gray-300 mb-3 flex justify-between">
+              <span>Inngest Status</span>
+              <span className="text-brand-400">{generatedItems.length} / {count}</span>
+            </h3>
+            <div className="mt-4 pt-4 border-t border-dark-800 text-xs text-brand-300 font-mono">
+              {progressStatus}
             </div>
           </div>
+        )}
+      </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            {generatedItems.length === 0 && !isProcessing && (
-              <div className="h-full flex flex-col items-center justify-center text-gray-600">
-                <Layers size={48} className="mb-4 opacity-20" />
-                <p>Production Line Idle.</p>
-                <p className="text-sm">Configure your consumer niche to begin generating.</p>
-              </div>
-            )}
-
-            {generatedItems.map((item, idx) => (
-              <div key={idx} className="bg-dark-950 border border-dark-700/50 p-5 rounded-xl space-y-3 hover:border-brand-500/30 transition-all group animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex justify-between items-start">
-                  <h4 className="font-bold text-white text-lg group-hover:text-brand-400 transition-colors">{item.title}</h4>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${item.difficulty === 'Advanced' ? 'bg-red-900/30 text-red-400' :
-                      item.difficulty === 'Intermediate' ? 'bg-yellow-900/30 text-yellow-400' :
-                        'bg-green-900/30 text-green-400'
-                      }`}>
-                      {item.difficulty}
-                    </span>
-                    <span className="bg-dark-800 text-gray-400 px-2 py-0.5 rounded text-[10px] font-mono">
-                      {item.style_var}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-400 italic">"{item.description}"</p>
-                <div className="bg-dark-900 p-3 rounded-lg border border-dark-800 font-mono text-xs text-brand-300 whitespace-pre-wrap">
-                  {item.prompt_content}
-                </div>
-              </div>
-            ))}
+      <div className="lg:col-span-2 flex flex-col h-[600px] lg:h-auto bg-dark-900 border border-dark-800 rounded-xl overflow-hidden shadow-lg">
+        <div className="flex items-center justify-between p-4 border-b border-dark-800 bg-dark-950/50">
+          <h2 className="font-semibold text-white">Pack Preview</h2>
+          <div className="flex gap-2">
+            <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-300 bg-dark-800 hover:bg-dark-700 rounded transition-colors">
+              <Copy size={14} /> Copy All
+            </button>
           </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          {generatedItems.length === 0 && !isProcessing && (
+            <div className="h-full flex flex-col items-center justify-center text-gray-600">
+              <Layers size={48} className="mb-4 opacity-20" />
+              <p>Production Line Idle.</p>
+              <p className="text-sm">Configure your consumer niche to begin generating.</p>
+            </div>
+          )}
+
+          {generatedItems.map((item, idx) => (
+            <div key={idx} className="bg-dark-950 border border-dark-700/50 p-5 rounded-xl space-y-3 hover:border-brand-500/30 transition-all group animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex justify-between items-start">
+                <h4 className="font-bold text-white text-lg group-hover:text-brand-400 transition-colors">{item.title}</h4>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${item.difficulty === 'Advanced' ? 'bg-red-900/30 text-red-400' :
+                    item.difficulty === 'Intermediate' ? 'bg-yellow-900/30 text-yellow-400' :
+                      'bg-green-900/30 text-green-400'
+                    }`}>
+                    {item.difficulty}
+                  </span>
+                  <span className="bg-dark-800 text-gray-400 px-2 py-0.5 rounded text-[10px] font-mono">
+                    {item.style_var}
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm text-gray-400 italic">"{item.description}"</p>
+              <div className="bg-dark-900 p-3 rounded-lg border border-dark-800 font-mono text-xs text-brand-300 whitespace-pre-wrap">
+                {item.prompt_content}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
+    </div >
   );
 };

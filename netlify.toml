@@ -1,32 +1,37 @@
-[build.environment]
-  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY"
-
 [build]
   command = "bun run build"
   publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY"
+
+[[redirects]]
+  from = "/api/inngest"
+  to = "/.netlify/functions/inngest"
+  status = 200
+
+[[redirects]]
+  from = "/api/chat"
+  to = "/.netlify/functions/chat"
+  status = 200
+
+[[redirects]]
+  from = "/api/checkout"
+  to = "/.netlify/functions/checkout"
+  status = 200
+
+[[redirects]]
+  from = "/api/webhook"
+  to = "/.netlify/functions/webhook"
+  status = 200
+
+[[redirects]]
+  from = "/api/trigger"
+  to = "/.netlify/functions/trigger"
+  status = 200
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-
-[[edge_functions]]
-function = "inngest"
-path = "/api/inngest"
-
-[[edge_functions]]
-function = "chat"
-path = "/api/chat"
-
-[[edge_functions]]
-function = "checkout"
-path = "/api/checkout"
-
-[[edge_functions]]
-function = "webhook"
-path = "/api/webhook"
-
-[[edge_functions]]
-function = "trigger"
-path = "/api/trigger"

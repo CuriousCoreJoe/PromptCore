@@ -1,34 +1,25 @@
-// @ts-ignore
-import Stripe from "https://esm.sh/stripe@13.10.0?target=deno";
-// @ts-ignore
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
-// @ts-ignore
-import type { Context } from "https://edge.netlify.com";
+import { Handler } from "@netlify/functions";
+import Stripe from "stripe";
+import { createClient } from "@supabase/supabase-js";
 
-// @ts-ignore
-declare const Deno: any;
-
-export default async (req: Request, context: Context) => {
-    if (req.method !== "POST") {
-        return new Response("Method Not Allowed", { status: 405 });
+const handler: Handler = async (event, context) => {
+    if (event.httpMethod !== "POST") {
+        return { statusCode: 405, body: "Method Not Allowed" };
     }
 
     try {
-        const { priceId, userId, type } = await req.json();
+        const { priceId, userId, type } = JSON.parse(event.body || "{}");
 
-        // Initialize inside handler
-        const supabase = createClient(
-            // @ts-ignore
-            Deno.env.get("SUPABASE_URL")!,
-            // @ts-ignore
-            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        );
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const stripeKey = process.env.STRIPE_SECRET_KEY;
 
-        // @ts-ignore
-        const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
-            apiVersion: "2023-10-16",
-            httpClient: Stripe.createFetchHttpClient(),
-        });
+        if (!supabaseUrl || !supabaseKey || !stripeKey) {
+            return { statusCode: 500, body: JSON.stringify({ error: "Configuration Error" }) };
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" as any });
 
         // 1. Get or Create Customer
         const { data: profile } = await supabase
@@ -54,8 +45,8 @@ export default async (req: Request, context: Context) => {
             customer: customerId,
             line_items: [{ price: priceId, quantity: 1 }],
             mode: type === 'subscription' ? 'subscription' : 'payment',
-            success_url: `${req.headers.get("origin")}/?success=true`,
-            cancel_url: `${req.headers.get("origin")}/?canceled=true`,
+            success_url: `${event.headers.origin}/?success=true`,
+            cancel_url: `${event.headers.origin}/?canceled=true`,
             metadata: {
                 userId,
                 type,
@@ -65,19 +56,24 @@ export default async (req: Request, context: Context) => {
 
         const session = await stripe.checkout.sessions.create(sessionConfig);
 
-        return new Response(JSON.stringify({ url: session.url }), {
+        return {
+            statusCode: 200,
             headers: { "Content-Type": "application/json" },
-        });
+            body: JSON.stringify({ url: session.url }),
+        };
     } catch (err: any) {
-        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+        console.error("Checkout Error:", err);
+        return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
     }
 };
 
 function getCreditsFromPrice(priceId: string) {
     const map: any = {
-        'price_starter_pack': 500,
+        'price_starter_pack': 750,
         'price_creator_pack': 1500,
         'price_agency_pack': 5000
     };
     return map[priceId] || 0;
 }
+
+export { handler };

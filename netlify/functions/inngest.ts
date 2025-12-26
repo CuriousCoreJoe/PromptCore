@@ -1,12 +1,12 @@
-// @ts-ignore
-declare const Deno: any;
-// @ts-ignore
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
-// @ts-ignore
-import { GoogleGenerativeAI, SchemaType } from "https://esm.sh/@google/generative-ai@0.21.0";
-import { inngest } from "./client.ts";
+import { Inngest } from "inngest";
+import { serve } from "inngest/lambda";
+import { createClient } from "@supabase/supabase-js";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
-// CONSTANTS must be outside to be available
+// 1. Setup Inngest Client
+const inngest = new Inngest({ id: "promptcore-app" });
+
+// 2. Constants
 const DIFFICULTY_LEVELS = ["Beginner", "Intermediate", "Advanced"];
 const STYLES = ["Strict & Organized", "Creative & Loose", "Step-by-Step Tutor", "Socratic Method"];
 
@@ -29,28 +29,28 @@ QUALITY RULES:
 - If the difficulty is "Advanced", use technical jargon appropriate for the niche.
 `;
 
-export const generatePack = inngest.createFunction(
+// 3. Define Function
+const generatePack = inngest.createFunction(
     { id: "generate-consumer-pack" },
     { event: "app/pack.requested" },
-    async ({ event, step }: { event: any, step: any }) => {
+    async ({ event, step }) => {
         const { niche, count, userId, packId } = event.data;
 
-        // Initialize Clients INSIDE the step/handler
-        const supabase = createClient(
-            // @ts-ignore
-            Deno.env.get("SUPABASE_URL")!,
-            // @ts-ignore
-            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        );
+        // Init clients inside handler
+        const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const geminiKey = process.env.GEMINI_API_KEY;
 
-        // @ts-ignore
-        const apiKey = Deno.env.get("GEMINI_API_KEY") || "";
-        const ai = new GoogleGenerativeAI(apiKey);
+        if (!supabaseUrl || !supabaseKey || !geminiKey) {
+            throw new Error("Missing Env Vars in Inngest Function");
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const ai = new GoogleGenerativeAI(geminiKey);
 
         const chunks = Array.from({ length: Math.ceil(count / 5) }, (_, i) => i);
         const results: any[] = [];
 
-        // Notify start
         await step.run("start-pack", async () => {
             const { error } = await supabase
                 .from("packs")
@@ -128,3 +128,9 @@ export const generatePack = inngest.createFunction(
         return { count: results.length };
     }
 );
+
+// 4. Export Handler
+export const handler = serve({
+    client: inngest,
+    functions: [generatePack],
+});
