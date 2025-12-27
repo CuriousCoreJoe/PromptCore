@@ -185,52 +185,52 @@ export const PromptFactory: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
 
-      <div className="lg:col-span-2 flex flex-col h-[600px] lg:h-auto bg-dark-900 border border-dark-800 rounded-xl overflow-hidden shadow-lg">
-        <div className="flex items-center justify-between p-4 border-b border-dark-800 bg-dark-950/50">
-          <h2 className="font-semibold text-white">Pack Preview</h2>
-          <div className="flex gap-2">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-300 bg-dark-800 hover:bg-dark-700 rounded transition-colors">
-              <Copy size={14} /> Copy All
-            </button>
-          </div>
-        </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          {generatedItems.length === 0 && !isProcessing && (
-            <div className="h-full flex flex-col items-center justify-center text-gray-600">
-              <Layers size={48} className="mb-4 opacity-20" />
-              <p>Production Line Idle.</p>
-              <p className="text-sm">Configure your consumer niche to begin generating.</p>
+        <div className="lg:col-span-2 flex flex-col h-[600px] lg:h-auto bg-dark-900 border border-dark-800 rounded-xl overflow-hidden shadow-lg">
+          <div className="flex items-center justify-between p-4 border-b border-dark-800 bg-dark-950/50">
+            <h2 className="font-semibold text-white">Pack Preview</h2>
+            <div className="flex gap-2">
+              <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-300 bg-dark-800 hover:bg-dark-700 rounded transition-colors">
+                <Copy size={14} /> Copy All
+              </button>
             </div>
-          )}
+          </div>
 
-          {generatedItems.map((item, idx) => (
-            <div key={idx} className="bg-dark-950 border border-dark-700/50 p-5 rounded-xl space-y-3 hover:border-brand-500/30 transition-all group animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex justify-between items-start">
-                <h4 className="font-bold text-white text-lg group-hover:text-brand-400 transition-colors">{item.title}</h4>
-                <div className="flex items-center gap-2">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${item.difficulty === 'Advanced' ? 'bg-red-900/30 text-red-400' :
-                    item.difficulty === 'Intermediate' ? 'bg-yellow-900/30 text-yellow-400' :
-                      'bg-green-900/30 text-green-400'
-                    }`}>
-                    {item.difficulty}
-                  </span>
-                  <span className="bg-dark-800 text-gray-400 px-2 py-0.5 rounded text-[10px] font-mono">
-                    {item.style_var}
-                  </span>
+          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            {generatedItems.length === 0 && !isProcessing && (
+              <div className="h-full flex flex-col items-center justify-center text-gray-600">
+                <Layers size={48} className="mb-4 opacity-20" />
+                <p>Production Line Idle.</p>
+                <p className="text-sm">Configure your consumer niche to begin generating.</p>
+              </div>
+            )}
+
+            {generatedItems.map((item, idx) => (
+              <div key={idx} className="bg-dark-950 border border-dark-700/50 p-5 rounded-xl space-y-3 hover:border-brand-500/30 transition-all group animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex justify-between items-start">
+                  <h4 className="font-bold text-white text-lg group-hover:text-brand-400 transition-colors">{item.title}</h4>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${item.difficulty === 'Advanced' ? 'bg-red-900/30 text-red-400' :
+                      item.difficulty === 'Intermediate' ? 'bg-yellow-900/30 text-yellow-400' :
+                        'bg-green-900/30 text-green-400'
+                      }`}>
+                      {item.difficulty}
+                    </span>
+                    <span className="bg-dark-800 text-gray-400 px-2 py-0.5 rounded text-[10px] font-mono">
+                      {item.style_var}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-400 italic">"{item.description}"</p>
+                <div className="bg-dark-900 p-3 rounded-lg border border-dark-800 font-mono text-xs text-brand-300 whitespace-pre-wrap">
+                  {item.prompt_content}
                 </div>
               </div>
-              <p className="text-sm text-gray-400 italic">"{item.description}"</p>
-              <div className="bg-dark-900 p-3 rounded-lg border border-dark-800 font-mono text-xs text-brand-300 whitespace-pre-wrap">
-                {item.prompt_content}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
-    </div >
   );
 };
