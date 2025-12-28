@@ -4,7 +4,14 @@ import { createClient } from "@supabase/supabase-js";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
 // 1. Setup Inngest Client
-const inngest = new Inngest({ id: "promptcore-app" });
+if (!process.env.INNGEST_SIGNING_KEY) {
+    console.warn("INNGEST_SIGNING_KEY is missing from environment. Sync will fail.");
+}
+
+const inngest = new Inngest({
+    id: "promptcore-app",
+    signingKey: process.env.INNGEST_SIGNING_KEY
+});
 
 // 2. Constants
 const DIFFICULTY_LEVELS = ["Beginner", "Intermediate", "Advanced"];

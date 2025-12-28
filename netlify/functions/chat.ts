@@ -23,11 +23,17 @@ const handler: Handler = async (event, context) => {
         const genAI = new GoogleGenerativeAI(geminiKey);
 
         // 1. Check Credits & Handle Daily Bonus
-        const { data: profile } = await supabase
+        // 1. Check Credits & Handle Daily Bonus
+        const { data: profile, error: profileError } = await supabase
             .from("profiles")
             .select("credits, last_daily_bonus, lifetime_prompts")
             .eq("id", userId)
-            .single();
+            .maybeSingle();
+
+        if (profileError) {
+            console.error("Profile Fetch Error:", profileError);
+            throw new Error(`Database Error: ${profileError.message}`);
+        }
 
         let currentCredits = profile?.credits || 0;
         const lastBonus = new Date(profile?.last_daily_bonus || 0);

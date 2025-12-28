@@ -22,11 +22,16 @@ const handler: Handler = async (event, context) => {
         const inngest = new Inngest({ id: "promptcore-app", eventKey: inngestKey });
 
         // 1. Check Credits & Calculate Cost
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
             .from("profiles")
-            .select("credits, last_daily_bonus, lifetime_prompts")
+            .select("credits, last_daily_bonus, lifetime_prompts, subscription_status")
             .eq("id", userId)
-            .single();
+            .maybeSingle(); // Use maybeSingle to avoid error on missing row
+
+        if (profileError) {
+            console.error("Profile Fetch Error:", profileError);
+            throw new Error(`Database Error: ${profileError.message}`);
+        }
 
         let currentCredits = profile?.credits || 0;
         const lastBonus = new Date(profile?.last_daily_bonus || 0);
@@ -36,18 +41,24 @@ const handler: Handler = async (event, context) => {
         // Daily Refresh
         if ((now.getTime() - lastBonus.getTime() > oneDay) && currentCredits < 100) {
             currentCredits = 100;
+            // Fire and forget update for speed, or await if critical
             await supabase.from("profiles").update({
                 credits: 100,
                 last_daily_bonus: now.toISOString()
             }).eq("id", userId);
         }
 
-        const isDev = (await supabase.auth.admin.getUserById(userId)).data.user?.email === 'dev@promptcore.com';
+        // Dev Bypass
+        const { data: devUser } = await supabase.auth.admin.getUserById(userId);
+        const isDev = devUser?.user?.email === 'dev@promptcore.com';
+
         const lifetime = profile?.lifetime_prompts || 0;
+        const isPro = profile?.subscription_status === 'pro';
 
         // Cost Calculation
-        // Rule 1: Catch -> If lifetime >= 500, Base Cost is 2. Else 1.
-        const baseCost = lifetime >= 500 ? 2 : 1;
+        // Rule 1: Catch -> If Free AND lifetime >= 500, Base Cost is 2. Else 1.
+        // Pro users are EXEMPT from the catch (always 1).
+        const baseCost = (lifetime >= 500 && !isPro) ? 2 : 1;
 
         // Rule 2: Tiered Logic -> First 50 @ Base, Excess @ 1.5x Base
         let totalCost = 0;
@@ -78,17 +89,25 @@ const handler: Handler = async (event, context) => {
             .select()
             .single();
 
-        if (dbError) throw dbError;
+        if (dbError) {
+            console.error("Pack Insert Error:", dbError);
+            throw new Error(`Failed to create pack: ${dbError.message}`);
+        }
 
         // 3. Deduct Credits & Update Lifetime (if not dev)
         if (!isDev) {
-            await supabase
+            const { error: updateError } = await supabase
                 .from("profiles")
                 .update({
                     credits: currentCredits - totalCost,
                     lifetime_prompts: lifetime + count
                 })
                 .eq("id", userId);
+
+            if (updateError) {
+                console.error("Credit Deduction Error:", updateError);
+                // We don't rollback the pack for now, but good to know
+            }
         }
 
         // 4. Send event to Inngest
