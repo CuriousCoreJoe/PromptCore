@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+console.log("🚀 PromptCore Frontend Version: 1.0.2");
 import { Sidebar } from './components/Sidebar';
 import { ModeSelector } from './components/ModeSelector';
 import { MessageBubble } from './components/MessageBubble';

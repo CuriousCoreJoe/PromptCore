@@ -49,7 +49,16 @@ const generatePack = inngest.createFunction(
         const geminiKey = process.env.GEMINI_API_KEY;
 
         if (!supabaseUrl || !supabaseKey || !geminiKey) {
-            throw new Error("Missing Env Vars in Inngest Function");
+            console.error("Missing Env Vars in Inngest Function:", {
+                supabaseUrl: !!supabaseUrl,
+                supabaseKey: !!supabaseKey,
+                geminiKey: !!geminiKey
+            });
+            throw new Error(`Missing Env Vars: ${[
+                !supabaseUrl && "SUPABASE_URL",
+                !supabaseKey && "SUPABASE_SERVICE_ROLE_KEY",
+                !geminiKey && "GEMINI_API_KEY"
+            ].filter(Boolean).join(", ")}`);
         }
 
         const supabase = createClient(supabaseUrl, supabaseKey);

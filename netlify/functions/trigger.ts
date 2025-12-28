@@ -15,7 +15,22 @@ const handler: Handler = async (event, context) => {
         const inngestKey = process.env.INNGEST_EVENT_KEY;
 
         if (!supabaseUrl || !supabaseKey || !inngestKey) {
-            return { statusCode: 500, body: JSON.stringify({ error: "Configuration Error" }) };
+            console.error("Missing Env Vars in trigger.ts:", {
+                supabaseUrl: !!supabaseUrl,
+                supabaseKey: !!supabaseKey,
+                inngestKey: !!inngestKey
+            });
+            return {
+                statusCode: 500,
+                body: JSON.stringify({
+                    error: "Configuration Error",
+                    missing: [
+                        !supabaseUrl && "SUPABASE_URL/VITE_SUPABASE_URL",
+                        !supabaseKey && "SUPABASE_SERVICE_ROLE_KEY",
+                        !inngestKey && "INNGEST_EVENT_KEY"
+                    ].filter(Boolean)
+                })
+            };
         }
 
         const supabase = createClient(supabaseUrl, supabaseKey);
