@@ -26,7 +26,7 @@ const handler: Handler = async (event, context) => {
             .from("profiles")
             .select("stripe_customer_id")
             .eq("id", userId)
-            .single();
+            .maybeSingle();
 
         let customerId = profile?.stripe_customer_id;
 
