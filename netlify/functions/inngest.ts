@@ -3,6 +3,13 @@ import { serve } from "inngest/lambda";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
+// Force production mode for Inngest SDK
+if (!process.env.NODE_ENV || process.env.NODE_ENV === 'undefined') {
+    process.env.NODE_ENV = 'production';
+}
+process.env.INNGEST_ENV = 'production';
+process.env.INNGEST_DEV = 'false';
+
 // 1. Setup Inngest Client
 if (!process.env.INNGEST_SIGNING_KEY) {
     console.warn("INNGEST_SIGNING_KEY is missing from environment. Sync will fail.");
@@ -10,14 +17,13 @@ if (!process.env.INNGEST_SIGNING_KEY) {
 
 const inngest = new Inngest({
     id: "promptcore-app",
-    signingKey: process.env.INNGEST_SIGNING_KEY,
-    env: "production" // Force production mode to ensure response signing
+    signingKey: process.env.INNGEST_SIGNING_KEY
 });
 
 // Safe logging for debugging
 const rawKey = process.env.INNGEST_SIGNING_KEY || '';
 const maskedKey = rawKey ? `${rawKey.substring(0, 8)}...` : 'MISSING';
-console.log(`🛠️ Inngest Environment: ${process.env.NODE_ENV}`);
+console.log(`🛠️ Force-Set Inngest Environment: ${process.env.NODE_ENV}`);
 console.log(`🔑 INNGEST_SIGNING_KEY: ${maskedKey}`);
 
 // 2. Constants
@@ -156,4 +162,5 @@ const generatePack = inngest.createFunction(
 export const handler = serve({
     client: inngest,
     functions: [generatePack],
+    signingKey: process.env.INNGEST_SIGNING_KEY
 });
