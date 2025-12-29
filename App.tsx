@@ -47,6 +47,10 @@ const App: React.FC = () => {
   const [toast, setToast] = useState({ visible: false, message: '', actionLabel: '', action: () => { } });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const handleCloseToast = React.useCallback(() => {
+    setToast(prev => ({ ...prev, visible: false }));
+  }, []);
+
   // Auth & Profile Listener
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -199,9 +203,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleCloseToast = React.useCallback(() => {
-    setToast(prev => ({ ...prev, visible: false }));
-  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
