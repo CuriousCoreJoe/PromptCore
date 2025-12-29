@@ -37,11 +37,12 @@ const handler: Handler = async (event, context) => {
         const inngest = new Inngest({ id: "promptcore-app", eventKey: inngestKey });
 
         // 1. Check Credits & Calculate Cost
-        const { data: profile, error: profileError } = await supabase
+        const { data: profiles, error: profileError } = await supabase
             .from("profiles")
             .select("credits, last_daily_bonus, lifetime_prompts, subscription_status")
-            .eq("id", userId)
-            .maybeSingle(); // Use maybeSingle to avoid error on missing row
+            .eq("id", userId);
+
+        const profile = profiles && profiles.length > 0 ? profiles[0] : null;
 
         if (profileError) {
             console.error("Profile Fetch Error:", profileError);

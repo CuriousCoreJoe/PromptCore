@@ -22,11 +22,12 @@ const handler: Handler = async (event, context) => {
         const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" as any });
 
         // 1. Get or Create Customer
-        const { data: profile } = await supabase
+        const { data: profiles } = await supabase
             .from("profiles")
             .select("stripe_customer_id")
-            .eq("id", userId)
-            .maybeSingle();
+            .eq("id", userId);
+
+        const profile = profiles && profiles.length > 0 ? profiles[0] : null;
 
         let customerId = profile?.stripe_customer_id;
 

@@ -10,7 +10,7 @@ if (!process.env.INNGEST_SIGNING_KEY) {
 
 const inngest = new Inngest({
     id: "promptcore-app",
-    signingKey: process.env.INNGEST_SIGNING_KEY
+    signingKey: process.env.INNGEST_SIGNING_KEY || undefined
 });
 
 // 2. Constants

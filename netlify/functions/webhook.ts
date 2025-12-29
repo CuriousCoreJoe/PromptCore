@@ -36,7 +36,8 @@ const handler: Handler = async (event, context) => {
 
         if (type === 'credits') {
             const creditsToAdd = parseInt(session.metadata.credits);
-            const { data: profile } = await supabase.from("profiles").select("credits").eq("id", userId).maybeSingle();
+            const { data: profiles } = await supabase.from("profiles").select("credits").eq("id", userId);
+            const profile = profiles && profiles.length > 0 ? profiles[0] : null;
             await supabase
                 .from("profiles")
                 .update({ credits: (profile?.credits || 0) + creditsToAdd })

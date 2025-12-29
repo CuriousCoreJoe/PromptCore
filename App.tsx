@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-console.log("🚀 PromptCore Frontend Version: 1.0.3");
+console.log("🚀 PromptCore Frontend Version: 1.0.4 - NUCLEAR FETCH");
 import { Sidebar } from './components/Sidebar';
 import { ModeSelector } from './components/ModeSelector';
 import { MessageBubble } from './components/MessageBubble';
@@ -89,12 +89,11 @@ const App: React.FC = () => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', session.user.id)
-      .maybeSingle();
+      .eq('id', session.user.id);
 
-    if (data) {
-      setProfile(data);
-      setCredits(data.credits);
+    if (data && data.length > 0) {
+      setProfile(data[0]);
+      setCredits(data[0].credits);
     }
   };
 
