@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+console.log("🚀 PromptCore Frontend Version: 1.0.3");
+console.log("🔗 Supabase URL Configured:", import.meta.env.VITE_SUPABASE_URL ? "YES" : "NO");
 import { Layers, Play, CheckCircle, Loader2, Copy, Download, Star, Info, AlertCircle } from 'lucide-react';
 import { FactoryBatch, BatchItem } from '../types';
 import { createClient } from '@supabase/supabase-js';
@@ -87,7 +89,10 @@ export const PromptFactory: React.FC = () => {
 
       if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.error || 'Trigger error');
+        const errorMessage = errData.missing
+          ? `Configuration Error: Missing ${errData.missing.join(", ")}`
+          : (errData.error || 'Trigger error');
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
