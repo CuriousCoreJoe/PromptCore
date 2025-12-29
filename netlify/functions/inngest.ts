@@ -10,9 +10,15 @@ if (!process.env.INNGEST_SIGNING_KEY) {
 
 const inngest = new Inngest({
     id: "promptcore-app",
-    signingKey: process.env.INNGEST_SIGNING_KEY || undefined
+    signingKey: process.env.INNGEST_SIGNING_KEY,
+    env: "production" // Force production mode to ensure response signing
 });
-console.log("🔑 INNGEST_SIGNING_KEY Configured:", process.env.INNGEST_SIGNING_KEY ? "YES (Masked)" : "NO - Sync will fail");
+
+// Safe logging for debugging
+const rawKey = process.env.INNGEST_SIGNING_KEY || '';
+const maskedKey = rawKey ? `${rawKey.substring(0, 8)}...` : 'MISSING';
+console.log(`🛠️ Inngest Environment: ${process.env.NODE_ENV}`);
+console.log(`🔑 INNGEST_SIGNING_KEY: ${maskedKey}`);
 
 // 2. Constants
 const DIFFICULTY_LEVELS = ["Beginner", "Intermediate", "Advanced"];
