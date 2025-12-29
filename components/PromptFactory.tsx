@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-console.log("🚀 PromptCore Frontend Version: 1.0.3");
+console.log("🚀 PromptCore Frontend Version: 1.0.4 - NUCLEAR FETCH (Factory)");
 console.log("🔗 Supabase URL Configured:", import.meta.env.VITE_SUPABASE_URL ? "YES" : "NO");
+console.log("🔑 Supabase KEY Configured:", import.meta.env.VITE_SUPABASE_ANON_KEY ? "YES (Masked)" : "NO - CRITICAL ERROR");
 import { Layers, Play, CheckCircle, Loader2, Copy, Download, Star, Info, AlertCircle } from 'lucide-react';
 import { FactoryBatch, BatchItem } from '../types';
 import { createClient } from '@supabase/supabase-js';
