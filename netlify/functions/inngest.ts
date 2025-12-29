@@ -12,6 +12,7 @@ const inngest = new Inngest({
     id: "promptcore-app",
     signingKey: process.env.INNGEST_SIGNING_KEY || undefined
 });
+console.log("🔑 INNGEST_SIGNING_KEY Configured:", process.env.INNGEST_SIGNING_KEY ? "YES (Masked)" : "NO - Sync will fail");
 
 // 2. Constants
 const DIFFICULTY_LEVELS = ["Beginner", "Intermediate", "Advanced"];

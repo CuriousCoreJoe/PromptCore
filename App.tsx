@@ -85,7 +85,7 @@ const App: React.FC = () => {
 
   const fetchProfile = async () => {
     if (!session?.user) return;
-    console.log("🕵️‍♂️ Fetching profile with .maybeSingle()...");
+    console.log("☢️ Fetching profile with ARRAY SELECT (Nuclear)...");
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
