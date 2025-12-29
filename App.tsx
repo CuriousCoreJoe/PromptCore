@@ -199,6 +199,10 @@ const App: React.FC = () => {
     }
   };
 
+  const handleCloseToast = React.useCallback(() => {
+    setToast(prev => ({ ...prev, visible: false }));
+  }, []);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -373,7 +377,7 @@ const App: React.FC = () => {
       <Toast
         message={toast.message}
         isVisible={toast.visible}
-        onClose={() => setToast({ ...toast, visible: false })}
+        onClose={handleCloseToast}
         actionLabel={toast.actionLabel}
         onAction={toast.action}
       />

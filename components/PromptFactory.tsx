@@ -21,10 +21,10 @@ export const PromptFactory: React.FC = () => {
 
   // Realtime Subscription
   useEffect(() => {
-    if (!currentPackId) return;
+    if (!currentPackId || !supabase) return;
 
     const channel = supabase
-      .channel('schema-db-changes')
+      .channel(`pack-${currentPackId}`)
       .on(
         'postgres_changes',
         {
@@ -36,7 +36,6 @@ export const PromptFactory: React.FC = () => {
         (payload) => {
           console.log('New prompt generated:', payload.new);
           setGeneratedItems(prev => [...prev, payload.new]);
-          setProgressStatus(`Generating... (${generatedItems.length + 1}/${count})`);
         }
       )
       .on(
@@ -59,7 +58,7 @@ export const PromptFactory: React.FC = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentPackId, count, generatedItems.length]); // Dependencies for updates
+  }, [currentPackId]); // ONLY depend on currentPackId to prevent loops
 
   const handleStartFactory = async () => {
     if (!topic.trim()) return;
@@ -187,7 +186,7 @@ export const PromptFactory: React.FC = () => {
               <span className="text-brand-400">{generatedItems.length} / {count}</span>
             </h3>
             <div className="mt-4 pt-4 border-t border-dark-800 text-xs text-brand-300 font-mono">
-              {progressStatus}
+              {isProcessing ? `Generating... (${generatedItems.length}/${count})` : progressStatus}
             </div>
           </div>
         )}
