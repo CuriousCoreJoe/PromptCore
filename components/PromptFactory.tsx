@@ -19,10 +19,11 @@ export const PromptFactory: React.FC = () => {
   const [currentPackId, setCurrentPackId] = useState<string | null>(null);
   const [progressStatus, setProgressStatus] = useState<string>('');
 
-  // Realtime Subscription
+  // Realtime Subscription & Polling Fallback
   useEffect(() => {
     if (!currentPackId || !supabase) return;
 
+    // 1. Setup Realtime Listener
     const channel = supabase
       .channel(`pack-${currentPackId}`)
       .on(
@@ -34,8 +35,11 @@ export const PromptFactory: React.FC = () => {
           filter: `pack_id=eq.${currentPackId}`
         },
         (payload) => {
-          console.log('New prompt generated:', payload.new);
-          setGeneratedItems(prev => [...prev, payload.new]);
+          // Check for duplicates before adding
+          setGeneratedItems(prev => {
+            if (prev.some(item => item.id === payload.new.id)) return prev;
+            return [...prev, payload.new];
+          });
         }
       )
       .on(
@@ -55,10 +59,37 @@ export const PromptFactory: React.FC = () => {
       )
       .subscribe();
 
+    // 2. Setup Polling (Robustness Fallback)
+    const poller = setInterval(async () => {
+      if (!isProcessing) return;
+
+      const { data } = await supabase
+        .from('generated_prompts')
+        .select('*')
+        .eq('pack_id', currentPackId);
+
+      if (data) {
+        setGeneratedItems(data);
+      }
+
+      // Also check pack status
+      const { data: packData } = await supabase
+        .from('packs')
+        .select('status')
+        .eq('id', currentPackId)
+        .single();
+
+      if (packData?.status === 'completed') {
+        setIsProcessing(false);
+        setProgressStatus('✅ Generation Complete!');
+      }
+    }, 3000); // Poll every 3 seconds
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(poller);
     };
-  }, [currentPackId]); // ONLY depend on currentPackId to prevent loops
+  }, [currentPackId, isProcessing]);
 
   const handleStartFactory = async () => {
     if (!topic.trim()) return;
