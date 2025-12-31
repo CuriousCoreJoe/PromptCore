@@ -3,7 +3,15 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AppMode, Message, BatchItem } from "../types";
 
 // Always use const ai = new GoogleGenAI({apiKey: process.env.API_KEY}); for initialization
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const geminiKey = (
+    import.meta.env?.VITE_GEMINI_API_KEY ||
+    import.meta.env?.VITE_API_KEY ||
+    process.env.GEMINI_API_KEY ||
+    process.env.API_KEY ||
+    ""
+).trim();
+
+const ai = new GoogleGenAI({ apiKey: geminiKey });
 
 // Ported from Python Script: "CONSUMER-FIRST" Brain
 const MASTER_FACTORY_SYSTEM_PROMPT = `
@@ -30,32 +38,32 @@ QUALITY RULES:
 `;
 
 const SYSTEM_INSTRUCTIONS: Record<AppMode, string> = {
-  [AppMode.EVERYDAY]: `You are PromptCore's Everyday Assistant. Optimize for clarity, helpfulness, and concise answers. Be friendly but professional.`,
-  [AppMode.VIBE_CODE]: `You are PromptCore's Vibe Code Assistant. Expert Full-Stack Engineer.React/Tailwind focus.`,
-  [AppMode.MEDIA_GEN]: `You are PromptCore's Media Gen Assistant. Help generate prompts for Midjourney/Suno. Part 1: Direction. Part 2: Prompt Code Block.`,
-  [AppMode.TALK_TO_SOURCE]: `You are PromptCore's Source Analyst. Answer based on documents provided.`
+    [AppMode.EVERYDAY]: `You are PromptCore's Everyday Assistant. Optimize for clarity, helpfulness, and concise answers. Be friendly but professional.`,
+    [AppMode.VIBE_CODE]: `You are PromptCore's Vibe Code Assistant. Expert Full-Stack Engineer.React/Tailwind focus.`,
+    [AppMode.MEDIA_GEN]: `You are PromptCore's Media Gen Assistant. Help generate prompts for Midjourney/Suno. Part 1: Direction. Part 2: Prompt Code Block.`,
+    [AppMode.TALK_TO_SOURCE]: `You are PromptCore's Source Analyst. Answer based on documents provided.`
 };
 
 export const sendMessageToGemini = async (
-  history: Message[],
-  currentMessage: string,
-  mode: AppMode
+    history: Message[],
+    currentMessage: string,
+    mode: AppMode
 ): Promise<string> => {
-  try {
-    const chat = ai.chats.create({
-        model: 'gemini-3-flash-preview',
-        config: { systemInstruction: SYSTEM_INSTRUCTIONS[mode] },
-        history: history.filter(m => m.role !== 'system').map(m => ({
-            role: m.role,
-            parts: [{ text: m.content }],
-        }))
-    });
-    const result = await chat.sendMessage({ message: currentMessage });
-    return result.text || "No response generated.";
-  } catch (error) {
-    console.error(error);
-    return "Sorry, I encountered an error.";
-  }
+    try {
+        const chat = ai.chats.create({
+            model: 'gemini-3-flash-preview',
+            config: { systemInstruction: SYSTEM_INSTRUCTIONS[mode] },
+            history: history.filter(m => m.role !== 'system').map(m => ({
+                role: m.role,
+                parts: [{ text: m.content }],
+            }))
+        });
+        const result = await chat.sendMessage({ message: currentMessage });
+        return result.text || "No response generated.";
+    } catch (error) {
+        console.error(error);
+        return "Sorry, I encountered an error.";
+    }
 };
 
 // --- Consumer Factory Services (Ported Logic) ---

@@ -12,12 +12,19 @@ const handler: Handler = async (event, context) => {
 
         const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-        const geminiKey = process.env.GEMINI_API_KEY;
+        const geminiKey = (process.env.GEMINI_API_KEY || process.env.API_KEY || "").trim();
 
         if (!supabaseUrl || !supabaseKey || !geminiKey) {
-            console.error("Missing env vars");
+            console.error("Missing env vars", {
+                supabaseUrl: !!supabaseUrl,
+                supabaseKey: !!supabaseKey,
+                geminiKey: !!geminiKey
+            });
             return { statusCode: 500, body: JSON.stringify({ error: "Configuration Error" }) };
         }
+
+        console.log(`🔑 GEMINI_API_KEY Length: ${geminiKey.length}`);
+        console.log(`🔑 GEMINI_API_KEY Mask: ${geminiKey.substring(0, 4)}...${geminiKey.substring(geminiKey.length - 4)}`);
 
         const supabase = createClient(supabaseUrl, supabaseKey);
         const genAI = new GoogleGenerativeAI(geminiKey);
