@@ -80,9 +80,7 @@ const generatePack = inngest.createFunction(
         const supabase = createClient(supabaseUrl, supabaseKey);
         const ai = new GoogleGenerativeAI(geminiKey);
 
-        const chunks = Array.from({ length: Math.ceil(count / 5) }, (_, i) => i);
-        const results: any[] = [];
-
+        // Initial update to 'processing'
         await step.run("start-pack", async () => {
             const { error } = await supabase
                 .from("packs")
@@ -91,48 +89,44 @@ const generatePack = inngest.createFunction(
             if (error) throw error;
         });
 
-        for (const chunkIndex of chunks) {
-            const batchResults = await step.run(`generate-batch-${chunkIndex}`, async () => {
-                const batch = [];
-                const itemsToGen = Math.min(5, count - (chunkIndex * 5));
+        const results: any[] = [];
+        const totalToGenerate = count;
 
-                for (let i = 0; i < itemsToGen; i++) {
-                    const diff = DIFFICULTY_LEVELS[Math.floor(Math.random() * DIFFICULTY_LEVELS.length)];
-                    const style = STYLES[Math.floor(Math.random() * STYLES.length)];
+        for (let i = 0; i < totalToGenerate; i++) {
+            const item = await step.run(`generate-item-${i}`, async () => {
+                const diff = DIFFICULTY_LEVELS[Math.floor(Math.random() * DIFFICULTY_LEVELS.length)];
+                const style = STYLES[Math.floor(Math.random() * STYLES.length)];
 
-                    const model = ai.getGenerativeModel({
-                        model: "gemini-2.5-pro",
-                        systemInstruction: MASTER_SYSTEM_PROMPT,
-                        generationConfig: {
-                            responseMimeType: "application/json",
-                            responseSchema: {
-                                type: SchemaType.OBJECT,
-                                properties: {
-                                    title: { type: SchemaType.STRING },
-                                    category: { type: SchemaType.STRING },
-                                    difficulty: { type: SchemaType.STRING },
-                                    description: { type: SchemaType.STRING },
-                                    prompt_content: { type: SchemaType.STRING },
-                                    usage_guide: { type: SchemaType.STRING },
-                                },
-                                required: ["title", "category", "difficulty", "description", "prompt_content", "usage_guide"]
-                            }
+                const model = ai.getGenerativeModel({
+                    model: "gemini-2.5-pro",
+                    systemInstruction: MASTER_SYSTEM_PROMPT,
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: SchemaType.OBJECT,
+                            properties: {
+                                title: { type: SchemaType.STRING },
+                                category: { type: SchemaType.STRING },
+                                difficulty: { type: SchemaType.STRING },
+                                description: { type: SchemaType.STRING },
+                                prompt_content: { type: SchemaType.STRING },
+                                usage_guide: { type: SchemaType.STRING },
+                            },
+                            required: ["title", "category", "difficulty", "description", "prompt_content", "usage_guide"]
                         }
-                    });
+                    }
+                });
 
-                    const result = await model.generateContent(
-                        `Generate one unique prompt for the niche '${niche}'. Target Audience: ${diff}. Tone/Style: ${style}.`
-                    );
+                const result = await model.generateContent(
+                    `Generate one unique prompt for the niche '${niche}'. Item #${i + 1} of ${totalToGenerate}. Target Audience: ${diff}. Tone/Style: ${style}.`
+                );
 
-                    const text = result.response.text();
-                    const data = JSON.parse(text || '{}');
-                    batch.push({ ...data, style_var: style });
-                }
-                return batch;
+                const data = JSON.parse(result.response.text() || '{}');
+                return { ...data, style_var: style };
             });
 
-            await step.run(`save-batch-${chunkIndex}`, async () => {
-                const rows = batchResults.map((item: any) => ({
+            await step.run(`save-item-${i}`, async () => {
+                const { error } = await supabase.from("generated_prompts").insert({
                     pack_id: packId,
                     title: item.title,
                     category: item.category,
@@ -141,13 +135,11 @@ const generatePack = inngest.createFunction(
                     prompt_content: item.prompt_content,
                     usage_guide: item.usage_guide,
                     style_var: item.style_var
-                }));
-
-                const { error } = await supabase.from("generated_prompts").insert(rows);
+                });
                 if (error) throw error;
             });
 
-            results.push(...batchResults);
+            results.push(item);
         }
 
         await step.run("finalize-pack", async () => {
