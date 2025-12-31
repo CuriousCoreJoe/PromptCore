@@ -29,7 +29,25 @@ const handler: Handler = async (event, context) => {
         const supabase = createClient(supabaseUrl, supabaseKey);
         const genAI = new GoogleGenerativeAI(geminiKey);
 
-        // 1. Check Credits & Handle Daily Bonus
+        // 1. Pre-flight Check: Verify Key can access the model
+        try {
+            const tempModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            // This is a NO-OP call just to see if the SDK rejects the key immediately
+            await tempModel.countTokens("Pre-flight check");
+            console.log("✅ Gemini Pre-flight Success");
+        } catch (preError: any) {
+            console.error("❌ Gemini Pre-flight FAILED:", preError.message);
+            return {
+                statusCode: 403,
+                body: JSON.stringify({
+                    error: "Gemini API Access Denied",
+                    details: preError.message,
+                    hint: "Ensure 'Generative Language API' is ENABLED in Google Cloud Console."
+                })
+            };
+        }
+
+        // 2. Check Credits & Handle Daily Bonus
         // 1. Check Credits & Handle Daily Bonus
         const { data: profiles, error: profileError } = await supabase
             .from("profiles")

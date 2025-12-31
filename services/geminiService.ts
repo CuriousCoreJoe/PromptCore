@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { AppMode, Message, BatchItem } from "../types";
 
 // Always use const ai = new GoogleGenAI({apiKey: process.env.API_KEY}); for initialization
@@ -11,7 +11,7 @@ const geminiKey = (
     ""
 ).trim();
 
-const ai = new GoogleGenAI({ apiKey: geminiKey });
+const ai = new GoogleGenerativeAI(geminiKey);
 
 // Ported from Python Script: "CONSUMER-FIRST" Brain
 const MASTER_FACTORY_SYSTEM_PROMPT = `
@@ -50,16 +50,20 @@ export const sendMessageToGemini = async (
     mode: AppMode
 ): Promise<string> => {
     try {
-        const chat = ai.chats.create({
-            model: 'gemini-3-flash-preview',
-            config: { systemInstruction: SYSTEM_INSTRUCTIONS[mode] },
+        const model = ai.getGenerativeModel({
+            model: 'gemini-1.5-flash',
+            systemInstruction: SYSTEM_INSTRUCTIONS[mode]
+        });
+
+        const chat = model.startChat({
             history: history.filter(m => m.role !== 'system').map(m => ({
-                role: m.role,
+                role: m.role as "user" | "model",
                 parts: [{ text: m.content }],
             }))
         });
-        const result = await chat.sendMessage({ message: currentMessage });
-        return result.text || "No response generated.";
+
+        const result = await chat.sendMessage(currentMessage);
+        return result.response.text();
     } catch (error) {
         console.error(error);
         return "Sorry, I encountered an error.";
@@ -73,15 +77,19 @@ export const STYLES = ["Strict & Organized", "Creative & Loose", "Step-by-Step T
 
 export const generateFactoryAngles = async (topic: string, count: number): Promise<string[]> => {
     try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Identify ${Math.ceil(count / 5)} distinct "angles" for the niche "${topic}". (e.g., "Parenting", "Career", "Hobbies"). Return JSON array of strings.`,
-            config: {
+        const model = ai.getGenerativeModel({
+            model: 'gemini-1.5-flash',
+            generationConfig: {
                 responseMimeType: "application/json",
-                responseSchema: { type: Type.ARRAY, items: { type: Type.STRING } }
+                responseSchema: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
             }
         });
-        return JSON.parse(response.text || '[]');
+
+        const result = await model.generateContent(
+            `Identify ${Math.ceil(count / 5)} distinct "angles" for the niche "${topic}". (e.g., "Parenting", "Career", "Hobbies"). Return JSON array of strings.`
+        );
+
+        return JSON.parse(result.response.text());
     } catch (e) {
         return ["Overview", "Deep Dive", "Tips & Tricks"];
     }
@@ -95,28 +103,31 @@ export const generateBatchItems = async (topic: string, angle: string, count: nu
         const style = STYLES[Math.floor(Math.random() * STYLES.length)];
 
         try {
-            const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
-                contents: `Generate one unique prompt for the niche '${topic}'. Specific Angle: ${angle}. Target Audience: ${diff}. Tone/Style: ${style}.`,
-                config: {
-                    systemInstruction: MASTER_FACTORY_SYSTEM_PROMPT,
+            const model = ai.getGenerativeModel({
+                model: 'gemini-1.5-flash',
+                systemInstruction: MASTER_FACTORY_SYSTEM_PROMPT,
+                generationConfig: {
                     responseMimeType: "application/json",
                     responseSchema: {
-                        type: Type.OBJECT,
+                        type: SchemaType.OBJECT,
                         properties: {
-                            title: { type: Type.STRING },
-                            category: { type: Type.STRING },
-                            difficulty: { type: Type.STRING },
-                            description: { type: Type.STRING },
-                            prompt_content: { type: Type.STRING },
-                            usage_guide: { type: Type.STRING },
+                            title: { type: SchemaType.STRING },
+                            category: { type: SchemaType.STRING },
+                            difficulty: { type: SchemaType.STRING },
+                            description: { type: SchemaType.STRING },
+                            prompt_content: { type: SchemaType.STRING },
+                            usage_guide: { type: SchemaType.STRING },
                         },
                         required: ["title", "category", "difficulty", "description", "prompt_content", "usage_guide"]
                     }
                 }
             });
 
-            const data = JSON.parse(response.text || '{}');
+            const result = await model.generateContent(
+                `Generate one unique prompt for the niche '${topic}'. Specific Angle: ${angle}. Target Audience: ${diff}. Tone/Style: ${style}.`
+            );
+
+            const data = JSON.parse(result.response.text());
             items.push({
                 id: Math.random().toString(36).substr(2, 9),
                 title: data.title || 'Untitled Prompt',

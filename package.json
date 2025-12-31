@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^1.33.0",
     "@google/generative-ai": "^0.24.1",
     "@netlify/functions": "^5.1.2",
     "@stripe/stripe-js": "^8.6.0",
