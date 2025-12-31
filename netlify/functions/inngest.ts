@@ -94,6 +94,21 @@ const generatePack = inngest.createFunction(
 
         for (let i = 0; i < totalToGenerate; i++) {
             const item = await step.run(`generate-item-${i}`, async () => {
+                const isMock = process.env.MOCK_AI === 'true';
+
+                if (isMock) {
+                    console.log(`🤖 MOCK_AI Active (Item #${i + 1})`);
+                    return {
+                        title: `Mock Prompt #${i + 1}`,
+                        category: "Mocking",
+                        difficulty: "Beginner",
+                        description: "This is a fast mock for local testing.",
+                        prompt_content: `MOCK PROMPT: How to ${niche} - Step ${i + 1}`,
+                        usage_guide: "No guide for mock data.",
+                        style_var: "Mock"
+                    };
+                }
+
                 const diff = DIFFICULTY_LEVELS[Math.floor(Math.random() * DIFFICULTY_LEVELS.length)];
                 const style = STYLES[Math.floor(Math.random() * STYLES.length)];
 

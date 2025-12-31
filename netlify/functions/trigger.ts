@@ -64,9 +64,10 @@ const handler: Handler = async (event, context) => {
             }).eq("id", userId);
         }
 
-        // Dev Bypass
+        // Dev Bypass (Email-based or Local Environment)
         const { data: devUser } = await supabase.auth.admin.getUserById(userId);
-        const isDev = devUser?.user?.email === 'dev@promptcore.com';
+        const isLocalDev = process.env.NETLIFY_DEV === 'true';
+        const isDev = devUser?.user?.email === 'dev@promptcore.com' || isLocalDev;
 
         const lifetime = profile?.lifetime_prompts || 0;
         const isPro = profile?.subscription_status === 'pro';
