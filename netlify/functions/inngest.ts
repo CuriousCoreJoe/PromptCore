@@ -101,7 +101,7 @@ const generatePack = inngest.createFunction(
                     const style = STYLES[Math.floor(Math.random() * STYLES.length)];
 
                     const model = ai.getGenerativeModel({
-                        model: "gemini-3-pro",
+                        model: "gemini-2.5-pro",
                         systemInstruction: MASTER_SYSTEM_PROMPT,
                         generationConfig: {
                             responseMimeType: "application/json",

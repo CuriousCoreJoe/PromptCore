@@ -40,7 +40,7 @@ const handler: Handler = async (event, context) => {
     if (rawGemini) {
         try {
             // Updated to list models instead of hitting a potentially invalid one
-            const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${rawGemini.trim()}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro?key=${rawGemini.trim()}`;
             const response = await fetch(url);
             const data = await response.json();
 
