@@ -34,13 +34,33 @@ const handler: Handler = async (event, context) => {
         };
     });
 
+    // 3. Raw Connectivity Check (Bypass SDK)
+    let apiCheck = { status: "SKIPPED", code: 0, body: "" };
+
+    if (rawGemini) {
+        try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash?key=${rawGemini.trim()}`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            apiCheck = {
+                status: response.ok ? "SUCCESS" : "FAILED",
+                code: response.status,
+                body: JSON.stringify(data).substring(0, 500) // Truncate for safety
+            };
+        } catch (err: any) {
+            apiCheck = { status: "ERROR", code: 500, body: err.message };
+        }
+    }
+
     return {
         statusCode: 200,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             message: "Environment Variable Debug Report",
             environment: process.env.NODE_ENV,
-            keys: report
+            keys: report,
+            apiCheck
         }, null, 2)
     };
 };
