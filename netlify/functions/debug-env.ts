@@ -34,19 +34,20 @@ const handler: Handler = async (event, context) => {
         };
     });
 
-    // 3. Raw Connectivity Check (Bypass SDK)
+    // 3. Raw Connectivity Check & Model List (Bypass SDK)
     let apiCheck = { status: "SKIPPED", code: 0, body: "" };
 
     if (rawGemini) {
         try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash?key=${rawGemini.trim()}`;
+            // Updated to list models instead of hitting a potentially invalid one
+            const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${rawGemini.trim()}`;
             const response = await fetch(url);
             const data = await response.json();
 
             apiCheck = {
                 status: response.ok ? "SUCCESS" : "FAILED",
                 code: response.status,
-                body: JSON.stringify(data).substring(0, 500) // Truncate for safety
+                body: JSON.stringify(data).substring(0, 5000) // Increased for model list
             };
         } catch (err: any) {
             apiCheck = { status: "ERROR", code: 500, body: err.message };
