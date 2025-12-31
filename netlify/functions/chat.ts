@@ -31,7 +31,7 @@ const handler: Handler = async (event, context) => {
 
         // 1. Pre-flight Check: Verify Key can access the model
         try {
-            const tempModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const tempModel = genAI.getGenerativeModel({ model: "gemini-3-flash" });
             // This is a NO-OP call just to see if the SDK rejects the key immediately
             await tempModel.countTokens("Pre-flight check");
             console.log("✅ Gemini Pre-flight Success");
@@ -82,7 +82,7 @@ const handler: Handler = async (event, context) => {
         }
 
         // 2. Call Gemini
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3-flash" });
         const chat = model.startChat({
             history: messages.map((m: any) => ({
                 role: m.role === 'model' ? 'model' : 'user',

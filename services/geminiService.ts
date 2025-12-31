@@ -51,7 +51,7 @@ export const sendMessageToGemini = async (
 ): Promise<string> => {
     try {
         const model = ai.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-3-pro',
             systemInstruction: SYSTEM_INSTRUCTIONS[mode]
         });
 
@@ -104,7 +104,7 @@ export const generateBatchItems = async (topic: string, angle: string, count: nu
 
         try {
             const model = ai.getGenerativeModel({
-                model: 'gemini-1.5-flash',
+                model: 'gemini-3-flash',
                 systemInstruction: MASTER_FACTORY_SYSTEM_PROMPT,
                 generationConfig: {
                     responseMimeType: "application/json",

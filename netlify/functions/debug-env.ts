@@ -39,7 +39,7 @@ const handler: Handler = async (event, context) => {
 
     if (rawGemini) {
         try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash?key=${rawGemini.trim()}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash?key=${rawGemini.trim()}`;
             const response = await fetch(url);
             const data = await response.json();
 
