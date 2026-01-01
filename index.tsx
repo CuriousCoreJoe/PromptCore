@@ -1,4 +1,5 @@
 // Global Error Handler for "Blank Screen" Debugging
+console.log("📍 index.tsx: Script execution started!");
 window.onerror = function (message, source, lineno, colno, error) {
   const errorDiv = document.createElement('div');
   errorDiv.style.position = 'fixed';

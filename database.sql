@@ -13,13 +13,13 @@ CREATE TABLE packs (
 ALTER TABLE packs ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view their own packs" ON packs
-  FOR SELECT USING (auth.uid() = user_id);
+  FOR SELECT USING ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert their own packs" ON packs
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
 
 CREATE POLICY "Users can update their own packs" ON packs
-  FOR UPDATE USING (auth.uid() = user_id);
+  FOR UPDATE USING ((select auth.uid()) = user_id);
 
 -- Create generated_prompts table
 CREATE TABLE generated_prompts (
@@ -43,7 +43,7 @@ CREATE POLICY "Users can view prompts from their packs" ON generated_prompts
     EXISTS (
       SELECT 1 FROM packs
       WHERE packs.id = generated_prompts.pack_id
-      AND packs.user_id = auth.uid()
+      AND packs.user_id = (select auth.uid())
     )
   );
 
@@ -62,10 +62,10 @@ CREATE TABLE profiles (
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view their own profile" ON profiles
-  FOR SELECT USING (auth.uid() = id);
+  FOR SELECT USING ((select auth.uid()) = id);
 
 CREATE POLICY "Users can update their own profile" ON profiles
-  FOR UPDATE USING (auth.uid() = id);
+  FOR UPDATE USING ((select auth.uid()) = id);
 
 -- Function to handle profile creation on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()

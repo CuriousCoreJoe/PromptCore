@@ -75,7 +75,14 @@ const handler: Handler = async (event, context) => {
             }).eq("id", userId);
         }
 
-        const isDev = (await supabase.auth.admin.getUserById(userId)).data.user?.email === 'dev@promptcore.com';
+        // Dev Bypass (Email-based or Local Environment)
+        const isLocalDev = process.env.NETLIFY_DEV === 'true';
+        let isDev = isLocalDev;
+
+        if (!isDev) {
+            const { data: devUser } = await supabase.auth.admin.getUserById(userId);
+            isDev = devUser?.user?.email === 'dev@promptcore.com';
+        }
 
         if (!isDev && currentCredits <= 0) {
             return { statusCode: 402, body: JSON.stringify({ error: "Insufficient credits" }) };
