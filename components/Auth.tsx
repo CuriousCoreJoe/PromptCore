@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import { Legal } from './Legal';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+interface AuthProps {
+    onAuthSuccess?: () => void;
+}
 
-export const Auth: React.FC = () => {
+export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
     const [showLegal, setShowLegal] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 

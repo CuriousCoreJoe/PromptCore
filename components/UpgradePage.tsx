@@ -1,16 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Check, Zap, Coins, Shield, Star, Rocket, Loader2 } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from '../lib/supabase';
 
 interface UpgradePageProps {
-  focusSection?: 'subscriptions' | 'credits';
+  initialFocus?: 'subscriptions' | 'credits';
+  onBack?: () => void;
+  userId?: string;
+  credits?: number;
 }
 
-export const UpgradePage: React.FC<UpgradePageProps> = ({ focusSection }) => {
+export const UpgradePage: React.FC<UpgradePageProps> = ({ initialFocus, onBack, userId, credits }) => {
   const subsRef = useRef<HTMLDivElement>(null);
   const creditsRef = useRef<HTMLDivElement>(null);
   const [highlightCredits, setHighlightCredits] = useState(false);
@@ -18,18 +17,18 @@ export const UpgradePage: React.FC<UpgradePageProps> = ({ focusSection }) => {
 
   useEffect(() => {
     const scrollTimer = setTimeout(() => {
-      if (focusSection === 'credits' && creditsRef.current) {
+      if (initialFocus === 'credits' && creditsRef.current) {
         creditsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
         setHighlightCredits(true);
         const glowTimer = setTimeout(() => setHighlightCredits(false), 2500);
         return () => clearTimeout(glowTimer);
-      } else if (focusSection === 'subscriptions' && subsRef.current) {
+      } else if (initialFocus === 'subscriptions' && subsRef.current) {
         subsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
         setHighlightCredits(false);
       }
     }, 100);
     return () => clearTimeout(scrollTimer);
-  }, [focusSection]);
+  }, [initialFocus]);
 
   const handleCheckout = async (priceId: string, type: 'subscription' | 'credits') => {
     try {
@@ -58,7 +57,15 @@ export const UpgradePage: React.FC<UpgradePageProps> = ({ focusSection }) => {
 
   return (
     <div className="flex-1 h-full flex flex-col bg-dark-950 text-gray-100 p-4 md:p-8 overflow-y-auto scroll-smooth">
-      <div className="max-w-6xl mx-auto w-full space-y-12 pb-12">
+      <div className="max-w-6xl mx-auto w-full space-y-12 pb-12 relative">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="absolute -top-4 left-0 p-2 text-gray-500 hover:text-white transition-colors"
+          >
+            ← Back to Chat
+          </button>
+        )}
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-white tracking-tight">Unlock Full Potential</h1>
           <p className="text-xl text-gray-400 max-w-2xl mx-auto">

@@ -1,17 +1,13 @@
 import React, { useState, useEffect } from 'react';
-console.log("🚀 PromptCore Frontend Version: 1.0.4 - NUCLEAR FETCH (Factory)");
-console.log("🔗 Supabase URL Configured:", import.meta.env.VITE_SUPABASE_URL ? "YES" : "NO");
-console.log("🔑 Supabase KEY Configured:", import.meta.env.VITE_SUPABASE_ANON_KEY ? "YES (Masked)" : "NO - CRITICAL ERROR");
 import { Layers, Play, CheckCircle, Loader2, Copy, Download, Star, Info, AlertCircle } from 'lucide-react';
 import { FactoryBatch, BatchItem } from '../types';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 
-// Initialize Supabase Client (handling potentially missing env vars)
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
+interface PromptFactoryProps {
+  credits?: number;
+}
 
-export const PromptFactory: React.FC = () => {
+export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits }) => {
   const [topic, setTopic] = useState('');
   const [count, setCount] = useState(5);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -99,7 +95,6 @@ export const PromptFactory: React.FC = () => {
     setProgressStatus('🚀 Initializing Worker...');
 
     try {
-      // Get current user (simple check, in real app use auth context)
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         alert("Please login first");
@@ -107,7 +102,6 @@ export const PromptFactory: React.FC = () => {
         return;
       }
 
-      // Invoke the Netlify Trigger Function
       const response = await fetch('/api/trigger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -221,7 +215,6 @@ export const PromptFactory: React.FC = () => {
             </div>
           </div>
         )}
-
 
         <div className="lg:col-span-2 flex flex-col h-[600px] lg:h-auto bg-dark-900 border border-dark-800 rounded-xl overflow-hidden shadow-lg">
           <div className="flex items-center justify-between p-4 border-b border-dark-800 bg-dark-950/50">

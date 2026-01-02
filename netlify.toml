@@ -37,8 +37,3 @@
   from = "/api/trigger"
   to = "/.netlify/functions/trigger"
   status = 200
-
-[[redirects]]
-  from = "/api/debug-env"
-  to = "/.netlify/functions/debug-env"
-  status = 200

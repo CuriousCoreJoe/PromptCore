@@ -6,7 +6,15 @@ export enum AppMode {
   TALK_TO_SOURCE = 'Talk to Source',
 }
 
-export type AppView = 'workspace' | 'factory' | 'dashboard' | 'upgrade' | 'legal';
+export interface ChatSession {
+  id: string;
+  title: string;
+  mode: AppMode;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AppView = 'workspace' | 'factory' | 'dashboard' | 'upgrade' | 'legal' | 'settings';
 
 export interface Message {
   id: string;
@@ -21,6 +29,7 @@ export interface UserProfile {
   id: string;
   credits: number;
   subscriptionTier: 'free' | 'pro' | 'ultimate';
+  wizardMode: 'iterative' | 'batch';
   createdAt: number;
 }
 

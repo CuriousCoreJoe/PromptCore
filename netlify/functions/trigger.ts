@@ -13,6 +13,7 @@ const handler: Handler = async (event, context) => {
         const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const inngestKey = process.env.INNGEST_EVENT_KEY;
+        const geminiKey = (process.env.LOCAL_GEMINI_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY || "").trim();
 
         if (!supabaseUrl || !supabaseKey || !inngestKey) {
             console.error("Missing Env Vars in trigger.ts:", {
