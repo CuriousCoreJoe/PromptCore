@@ -85,7 +85,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                     }));
                     // Add system message at top if needed, or just replace
                     setMessages([{ id: '0', role: 'system', content: '', timestamp: 0, mode: currentMode }, ...mappedMessages]);
-                    setWizardStage('IDLE'); // Reset wizard for existing chats
+                    // Only reset wizard for existing chats if not currently in a transition
+                    setWizardStage(prev => prev === 'IDLE' ? 'IDLE' : prev);
                 }
             };
             loadHistory();
@@ -106,7 +107,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 .eq('user_id', session.user.id)
                 .eq('mode', currentMode)
                 .order('updated_at', { ascending: false })
-                .limit(5);
+                .limit(3);
 
             if (data) setRecentChats(data as unknown as ChatSession[]);
         };
@@ -327,12 +328,16 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         <div className="flex flex-col h-full relative bg-[#131314] text-gray-100 font-sans">
 
             {/* Gemini Header */}
-            <header className="h-[64px] flex-shrink-0 flex items-center justify-between px-6 z-20">
-                <div className="flex items-center gap-2">
+            <header className="h-[64px] flex-shrink-0 flex items-center px-6 z-20">
+                <div className="flex-1 flex items-center">
+                    {/* Left side spacer/reserve */}
+                </div>
+
+                <div className="flex-shrink-0">
                     <ModeSelector currentMode={currentMode} onSelectMode={onSelectMode} />
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex-1 flex items-center justify-end gap-4">
                     <div
                         onClick={onUpgrade}
                         className="flex items-center gap-3 bg-[#1E1F20] hover:bg-[#2A2B2C] border border-dark-800 rounded-full pl-3 pr-4 py-1.5 transition-all cursor-pointer group"
@@ -343,7 +348,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                         </span>
                     </div>
 
-                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold ring-2 ring-dark-800 hover:ring-blue-500/50 transition-all cursor-pointer">
+                    <div className="w-8 h-8 rounded-full bg-dark-800 flex items-center justify-center text-xs font-bold ring-2 ring-dark-700 hover:ring-brand-500/50 transition-all cursor-pointer">
                         {session?.user?.email?.charAt(0).toUpperCase() || 'U'}
                     </div>
                 </div>
@@ -354,20 +359,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 <div className="max-w-4xl mx-auto space-y-6">
 
                     {messages.length === 1 && wizardStage === 'IDLE' && (
-                        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center max-w-2xl mx-auto py-12">
-                            {/* Avatar Header */}
-                            <div className={cn(
-                                "w-20 h-20 rounded-full flex items-center justify-center text-white text-3xl font-bold mb-8 shadow-2xl ring-4 ring-dark-800/50",
-                                MODE_CONFIGS[currentMode].color
-                            )}>
-                                {MODE_CONFIGS[currentMode].initial}
-                            </div>
+                        <div className="flex-1 flex flex-col items-center justify-center text-center max-w-2xl mx-auto pt-20 pb-12">
 
                             {/* Title & Description */}
-                            <h1 className="text-5xl font-bold text-white mb-4 tracking-tight">
+                            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
                                 {MODE_CONFIGS[currentMode].title}
                             </h1>
-                            <p className="text-xl text-gray-400 mb-16 leading-relaxed max-w-xl">
+                            <p className="text-sm text-gray-400 mb-6 leading-relaxed max-w-lg">
                                 {MODE_CONFIGS[currentMode].desc}
                             </p>
 
@@ -406,12 +404,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                     <button
                                         key={opt.id}
                                         onClick={() => handleGoalSelect(opt)}
-                                        className="flex flex-col items-start gap-2 p-4 bg-dark-900/50 hover:bg-dark-800 border border-dark-800 hover:border-blue-500/30 rounded-2xl transition-all text-left group"
+                                        className="flex flex-col items-start gap-2 p-3 bg-dark-900/50 hover:bg-dark-800 border border-dark-800 hover:border-blue-500/30 rounded-[20px] transition-all text-left group"
                                     >
-                                        <span className="text-blue-400 group-hover:text-blue-300 transition-colors bg-blue-500/10 p-2 rounded-lg">
+                                        <span className="text-blue-400 group-hover:text-blue-300 transition-colors bg-blue-500/10 p-1.5 rounded-lg">
                                             {opt.icon}
                                         </span>
-                                        <span className="font-medium text-gray-200 text-sm">{opt.label}</span>
+                                        <span className="font-medium text-gray-200 text-xs">{opt.label}</span>
                                     </button>
                                 ))}
                             </div>
@@ -435,7 +433,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             <div className="flex-shrink-0 p-6 bg-[#131314]">
                 <div className="max-w-4xl mx-auto">
                     <div className={cn(
-                        "flex items-end bg-[#1E1F20] rounded-[28px] transition-all duration-200 border border-transparent focus-within:border-dark-700 shadow-2xl overflow-hidden pr-2 py-2",
+                        "flex items-center bg-[#1E1F20] rounded-[28px] transition-all duration-200 border border-transparent focus-within:border-dark-700 shadow-2xl overflow-hidden pr-2 py-2",
                         "focus-within:bg-[#1E1F20]"
                     )}>
                         <textarea
@@ -453,7 +451,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                         />
 
                         {/* Send Button */}
-                        <div className="flex-shrink-0 mb-1">
+                        <div className="flex-shrink-0">
                             <button
                                 onClick={() => {
                                     if (wizardStage === 'IDLE') handleInitialSubmit();

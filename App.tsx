@@ -14,6 +14,7 @@ import { AppMode, AppView, Message, UserProfile } from './types';
 import { sendMessageToGemini } from './services/geminiService';
 import { Send, Paperclip, Mic, Youtube, Coins } from 'lucide-react';
 import { Workspace } from './components/Workspace';
+import { HistoryPage } from './components/HistoryPage';
 import { Session } from '@supabase/supabase-js';
 import { Auth } from './components/Auth';
 import { supabase } from './lib/supabase';
@@ -126,6 +127,41 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeleteChat = async (chatId: string) => {
+    const { error } = await supabase
+      .from('chats')
+      .delete()
+      .eq('id', chatId);
+
+    if (!error) {
+      if (activeChatId === chatId) {
+        setActiveChatId(null);
+      }
+      setToast({
+        visible: true,
+        message: 'Chat deleted successfully',
+        actionLabel: '',
+        action: () => { }
+      });
+    }
+  };
+
+  const handleRenameChat = async (chatId: string, newTitle: string) => {
+    const { error } = await supabase
+      .from('chats')
+      .update({ title: newTitle })
+      .eq('id', chatId);
+
+    if (!error) {
+      setToast({
+        visible: true,
+        message: 'Chat renamed successfully',
+        actionLabel: '',
+        action: () => { }
+      });
+    }
+  };
+
   if (!session) {
     return <Auth onAuthSuccess={() => { }} />;
   }
@@ -137,6 +173,19 @@ const App: React.FC = () => {
 
     if (currentView === 'dashboard') {
       return <Dashboard credits={credits} isDev={isDev} />;
+    }
+
+    if (currentView === 'history') {
+      return (
+        <HistoryPage
+          onBack={() => setCurrentView('workspace')}
+          onLoadChat={(chatId) => {
+            setActiveChatId(chatId);
+            setCurrentView('workspace');
+          }}
+          userProfile={profile}
+        />
+      );
     }
 
     if (currentView === 'settings') {
@@ -196,6 +245,14 @@ const App: React.FC = () => {
         isDev={isDev}
         isCollapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        activeChatId={activeChatId}
+        onLoadChat={(chatId) => {
+          setActiveChatId(chatId);
+          // If on mobile/small screen, maybe close sidebar?
+        }}
+        userId={session.user.id}
+        onDeleteChat={handleDeleteChat}
+        onRenameChat={handleRenameChat}
       />
 
       <main className="flex-1 flex flex-col min-w-0 relative h-full transition-all duration-300">

@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { clsx } from 'clsx';
-import { LayoutDashboard, MessageSquare, Layers, Settings, Zap, User, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import { AppView } from '../types';
+import { LayoutDashboard, MessageSquare, Layers, Settings, Zap, User, ChevronRight, PanelLeftClose, PanelLeftOpen, Clock, Trash2, Pencil, Check, X } from 'lucide-react';
+import { AppView, ChatSession } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface SidebarProps {
@@ -11,9 +11,50 @@ interface SidebarProps {
   isDev: boolean;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  activeChatId?: string | null;
+  onLoadChat?: (chatId: string) => void;
+  userId?: string;
+  onDeleteChat?: (chatId: string) => void;
+  onRenameChat?: (chatId: string, newTitle: string) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, profile, isDev, isCollapsed, onToggleCollapse }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, profile, isDev, isCollapsed, onToggleCollapse, activeChatId, onLoadChat, userId, onDeleteChat, onRenameChat }) => {
+  const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
+
+  useEffect(() => {
+    const fetchId = userId || profile?.id;
+    if (fetchId) {
+      const fetchRecent = async () => {
+        const { data } = await supabase
+          .from('chats')
+          .select('*')
+          .eq('user_id', fetchId)
+          .order('updated_at', { ascending: false })
+          .limit(10);
+
+        if (data) setRecentChats(data as unknown as ChatSession[]);
+      };
+
+      fetchRecent();
+
+      const channel = supabase
+        .channel('sidebar-history')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'chats',
+          filter: `user_id=eq.${fetchId}`
+        }, () => {
+          fetchRecent();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [profile?.id, userId, activeChatId]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.reload();
@@ -71,17 +112,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, profi
           onClick={() => onNavigate('settings')}
           isCollapsed={isCollapsed}
         />
+        <NavItem
+          icon={<Clock size={20} />}
+          label="History"
+          active={currentView === 'history'}
+          onClick={() => onNavigate('history')}
+          isCollapsed={isCollapsed}
+        />
 
         {!isCollapsed && (
           <div className="pt-6 pb-2">
             <div className="h-px bg-dark-800 mx-2 mb-4"></div>
             <p className="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-              History
+              Recents
             </p>
-            {/* Mock History Items */}
-            <HistoryItem label="React App Logic" />
-            <HistoryItem label="Marketing Copy Batch" />
-            <HistoryItem label="Video Transcript Analysis" />
+            <div className="space-y-0.5">
+              {recentChats.map(chat => (
+                <HistoryItem
+                  key={chat.id}
+                  label={chat.title || 'Untitled Chat'}
+                  isActive={activeChatId === chat.id}
+                  onClick={() => {
+                    if (onLoadChat) onLoadChat(chat.id);
+                    onNavigate('workspace');
+                  }}
+                  onDelete={() => onDeleteChat?.(chat.id)}
+                  onRename={(newTitle) => onRenameChat?.(chat.id, newTitle)}
+                />
+              ))}
+            </div>
           </div>
         )}
       </nav>
@@ -168,8 +227,96 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, active, onClick, isColla
   </button>
 );
 
-const HistoryItem: React.FC<{ label: string }> = ({ label }) => (
-  <button className="w-full text-left px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-dark-800 rounded truncate transition-colors hidden md:block">
-    {label}
-  </button>
-);
+const HistoryItem: React.FC<{
+  label: string,
+  isActive?: boolean,
+  onClick?: () => void,
+  onDelete?: () => void,
+  onRename?: (title: string) => void
+}> = ({ label, isActive, onClick, onDelete, onRename }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(label);
+
+  useEffect(() => {
+    setEditValue(label);
+  }, [label]);
+
+  const handleRename = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isEditing) {
+      if (editValue.trim() && editValue !== label) {
+        onRename?.(editValue.trim());
+      }
+      setIsEditing(false);
+    } else {
+      setIsEditing(true);
+    }
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this chat?')) {
+      onDelete?.();
+    }
+  };
+
+  return (
+    <div className="group relative">
+      {isEditing ? (
+        <div className="flex items-center gap-1 px-2 py-1.5 w-full">
+          <input
+            autoFocus
+            className="flex-1 bg-dark-800 text-white text-sm rounded px-1 outline-none ring-1 ring-brand-500 min-w-0"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (editValue.trim() && editValue !== label) onRename?.(editValue.trim());
+                setIsEditing(false);
+              }
+              if (e.key === 'Escape') {
+                setEditValue(label);
+                setIsEditing(false);
+              }
+            }}
+          />
+          <button onClick={handleRename} className="p-1 text-green-500 hover:bg-green-500/10 rounded flex-shrink-0">
+            <Check size={14} />
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); setIsEditing(false); setEditValue(label); }} className="p-1 text-red-500 hover:bg-red-500/10 rounded flex-shrink-0">
+            <X size={14} />
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={onClick}
+          className={clsx(
+            "w-full text-left px-2 py-1.5 text-sm rounded truncate transition-colors pr-12",
+            isActive ? "text-brand-400 bg-brand-500/10 font-medium" : "text-gray-400 hover:text-white hover:bg-dark-800"
+          )}
+        >
+          {label}
+        </button>
+      )}
+
+      {!isEditing && (
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-dark-900/80 backdrop-blur-sm rounded pl-1">
+          <button
+            onClick={handleRename}
+            className="p-1 text-gray-400 hover:text-white hover:bg-dark-700 rounded transition-colors"
+            title="Rename"
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            onClick={handleDelete}
+            className="p-1 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
+            title="Delete"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};

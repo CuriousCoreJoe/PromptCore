@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Message } from '../types';
+import { Message, AppMode } from '../types';
 import { Sparkles, User, Copy, Check, ThumbsUp, ThumbsDown, Pencil, RotateCcw } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -103,34 +103,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onOptionS
   return (
     <div className={`flex w-full mb-8 gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
 
-      {/* Avatar Column */}
-      <div className="flex-shrink-0 mt-1">
-        {isUser ? (
-          <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
-            <span className="text-xs font-medium text-white">J</span>
-          </div>
-        ) : (
-          <div className="w-8 h-8 rounded-full flex items-center justify-center">
-            <Sparkles size={20} className="text-blue-400" />
-          </div>
-        )}
-      </div>
 
       {/* Content Column */}
       <div className={clsx(
         "flex flex-col max-w-4xl relative",
         isUser ? 'items-end' : 'items-start w-full'
       )}>
-        {/* Top Right "Copy Prompt" Button (Prominent) */}
-        {isFinalPrompt && (
-          <button
-            onClick={handleCopy}
-            className="absolute -top-3 -right-2 flex items-center gap-2 px-3 py-1.5 bg-brand-500 text-white rounded-lg text-[11px] font-bold transition-all shadow-xl z-20 hover:bg-brand-400 hover:scale-105 active:scale-95"
-          >
-            {copied ? <Check size={14} /> : <Copy size={14} />}
-            {copied ? 'COPIED' : 'COPY PROMPT'}
-          </button>
-        )}
+        {/* Removed floating COPY PROMPT button as per user request */}
 
         {isUser && (
           <div className="text-base text-gray-200 whitespace-pre-wrap">{message.content}</div>

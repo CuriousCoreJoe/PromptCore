@@ -14,7 +14,7 @@ export interface ChatSession {
   updated_at: string;
 }
 
-export type AppView = 'workspace' | 'factory' | 'dashboard' | 'upgrade' | 'legal' | 'settings';
+export type AppView = 'workspace' | 'factory' | 'dashboard' | 'upgrade' | 'legal' | 'settings' | 'history';
 
 export interface Message {
   id: string;
@@ -31,6 +31,10 @@ export interface UserProfile {
   subscriptionTier: 'free' | 'pro' | 'ultimate';
   wizardMode: 'iterative' | 'batch';
   createdAt: number;
+  email?: string;
+  full_name?: string;
+  avatar_url?: string;
+  subscription_status?: string;
 }
 
 // Added Document interface to resolve "Module '"../types"' has no exported member 'Document'" error in Dashboard.tsx
