@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { clsx } from 'clsx';
-import { LayoutDashboard, MessageSquare, Layers, Settings, Zap, User, ChevronRight, PanelLeftClose, PanelLeftOpen, Clock, Trash2, Pencil, Check, X } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Layers, Settings, Zap, User, ChevronRight, PanelLeftClose, PanelLeftOpen, Clock, Trash2, Pencil, Check, X, Plus } from 'lucide-react';
 import { AppView, ChatSession } from '../types';
 import { supabase } from '../lib/supabase';
 
@@ -83,7 +83,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, profi
       </div>
 
       {/* Nav Items */}
-      <nav className="flex-1 py-6 px-2 md:px-4 space-y-2 overflow-y-auto">
+      <nav className="flex-1 py-4 px-2 md:px-4 space-y-2 overflow-y-auto">
+        <button
+          onClick={() => onNavigate('workspace')}
+          className={clsx(
+            "w-full flex items-center gap-3 px-3 py-3 mb-6 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-brand-600/20 active:scale-[0.98] group",
+            isCollapsed ? "justify-center px-0 h-10 w-10 mx-auto" : "justify-start"
+          )}
+          title={isCollapsed ? "New Chat" : ""}
+        >
+          <Plus size={20} className="flex-shrink-0" />
+          {!isCollapsed && <span>New Chat</span>}
+        </button>
+
         <NavItem
           icon={<MessageSquare size={20} />}
           label="Workspace"

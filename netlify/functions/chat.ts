@@ -3,8 +3,19 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
 
 const handler: Handler = async (event, context) => {
+    const headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Content-Type": "application/json"
+    };
+
+    if (event.httpMethod === "OPTIONS") {
+        return { statusCode: 200, headers, body: "OK" };
+    }
+
     if (event.httpMethod !== "POST") {
-        return { statusCode: 405, body: "Method Not Allowed" };
+        return { statusCode: 405, headers, body: JSON.stringify({ error: "Method Not Allowed" }) };
     }
 
     try {
@@ -17,6 +28,7 @@ const handler: Handler = async (event, context) => {
         if (!supabaseUrl || !supabaseKey || !geminiKey) {
             return {
                 statusCode: 500,
+                headers,
                 body: JSON.stringify({ error: "Configuration Error" })
             };
         }
@@ -62,7 +74,7 @@ const handler: Handler = async (event, context) => {
         }
 
         if (!isDev && currentCredits <= 0) {
-            return { statusCode: 402, body: JSON.stringify({ error: "Insufficient credits" }) };
+            return { statusCode: 402, headers, body: JSON.stringify({ error: "Insufficient credits" }) };
         }
 
         // 2. Call Gemini
@@ -126,12 +138,12 @@ PROTOCOL:
 
         return {
             statusCode: 200,
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify({ text: responseText }),
         };
     } catch (err: any) {
         console.error("Chat Error:", err);
-        return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+        return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
     }
 };
 

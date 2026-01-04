@@ -234,7 +234,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 })
             });
 
-            if (!response.ok) throw new Error('Chat error');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error("Evaluation Error Details:", errorData);
+                throw new Error(errorData.error || `Chat error: ${response.status} ${response.statusText}`);
+            }
             const data = await response.json();
 
             setMessages(prev => [...prev, {

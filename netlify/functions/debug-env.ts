@@ -1,6 +1,17 @@
 import { Handler } from "@netlify/functions";
 
 const handler: Handler = async (event, context) => {
+    const headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Content-Type": "application/json"
+    };
+
+    if (event.httpMethod === "OPTIONS") {
+        return { statusCode: 200, headers, body: "OK" };
+    }
+
     // 1. Read Raw Values (No Trim yet)
     const rawGemini = process.env.GEMINI_API_KEY;
     const rawApi = process.env.API_KEY;
@@ -56,7 +67,7 @@ const handler: Handler = async (event, context) => {
 
     return {
         statusCode: 200,
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
             message: "Environment Variable Debug Report",
             environment: process.env.NODE_ENV,
