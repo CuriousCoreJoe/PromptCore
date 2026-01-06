@@ -24,6 +24,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/execute"
+  to = "/.netlify/functions/execute"
+  status = 200
+
+[[redirects]]
   from = "/api/checkout"
   to = "/.netlify/functions/checkout"
   status = 200

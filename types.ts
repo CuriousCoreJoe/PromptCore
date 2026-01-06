@@ -23,13 +23,17 @@ export interface Message {
   timestamp: number;
   mode?: AppMode;
   attachments?: string[];
+  msgType?: 'meta_helper' | 'execution_result';
 }
+
+export type AIModel = 'gpt-5' | 'gemini-3-pro' | 'claude-sonnet-4.5' | 'gemini-3-flash';
 
 export interface UserProfile {
   id: string;
   credits: number;
   subscriptionTier: 'free' | 'pro' | 'ultimate';
   wizardMode: 'iterative' | 'batch';
+  defaultModel: AIModel;
   createdAt: number;
   email?: string;
   full_name?: string;

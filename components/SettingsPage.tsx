@@ -7,10 +7,12 @@ import {
     Monitor,
     Cpu,
     Sparkles,
-    Command
+    Command,
+    Brain
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { AIModel } from '../types';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
     return twMerge(clsx(inputs));
@@ -19,14 +21,26 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 interface SettingsPageProps {
     wizardMode: 'iterative' | 'batch';
     onToggleWizardMode: () => void;
+    defaultModel: AIModel;
+    onModelChange: (model: AIModel) => void;
+    isDev?: boolean;
     onBack: () => void;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
     wizardMode,
     onToggleWizardMode,
+    defaultModel,
+    onModelChange,
+    isDev = false,
     onBack
 }) => {
+    const modelDisplayNames: Record<AIModel, string> = {
+        'gpt-5': 'ChatGPT 5',
+        'gemini-3-pro': 'Gemini 3 Pro',
+        'claude-sonnet-4.5': 'Claude Sonnet 4.5',
+        'gemini-3-flash': 'Gemini 3 Flash'
+    };
     return (
         <div className="flex-1 h-full flex flex-col bg-dark-950 text-gray-100 p-4 md:p-8 overflow-y-auto">
             <div className="max-w-4xl mx-auto w-full space-y-8 pb-12">
@@ -129,20 +143,72 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </div>
                     </section>
 
-                    {/* Interface */}
+                    {/* AI Model Selection */}
                     <section className="space-y-4">
                         <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                            <Monitor size={14} className="text-blue-500" /> System
+                            <Brain size={14} className="text-purple-500" /> Default AI Model
                         </h2>
 
-                        <div className="bg-dark-900 border border-dark-800 rounded-2xl p-6 flex flex-col gap-4">
-                            <div className="flex items-center justify-between">
-                                <p className="text-sm text-gray-300 italic font-light tracking-wide">
-                                    "You are currently using the flagship Gemini 2.5 Pro architecture."
-                                </p>
-                                <span className="text-[10px] font-bold bg-dark-800 text-gray-400 px-2 py-0.5 rounded uppercase tracking-widest">
-                                    Proprietary
-                                </span>
+                        <div className="bg-dark-900 border border-dark-800 rounded-2xl divide-y divide-dark-800">
+                            <div className="p-6 flex items-center justify-between transition-colors hover:bg-dark-900/50">
+                                <div className="space-y-1 pr-8">
+                                    <div className="flex items-center gap-2">
+                                        <Monitor size={16} className="text-purple-400" />
+                                        <p className="font-semibold text-gray-100">Primary Language Model</p>
+                                    </div>
+                                    <p className="text-sm text-gray-400 leading-relaxed max-w-lg">
+                                        Select your default AI model for prompt generation. Each model has unique strengths.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col gap-2 bg-dark-950 p-1 rounded-xl border border-dark-800 self-start mt-2 md:mt-0">
+                                    <button
+                                        onClick={() => onModelChange('gpt-5')}
+                                        className={cn(
+                                            "px-4 py-2 rounded-lg text-xs font-bold transition-all tracking-tight whitespace-nowrap",
+                                            defaultModel === 'gpt-5'
+                                                ? "bg-green-600 text-white shadow-lg"
+                                                : "text-gray-500 hover:text-gray-300"
+                                        )}
+                                    >
+                                        ChatGPT 5
+                                    </button>
+                                    <button
+                                        onClick={() => onModelChange('gemini-3-pro')}
+                                        className={cn(
+                                            "px-4 py-2 rounded-lg text-xs font-bold transition-all tracking-tight whitespace-nowrap",
+                                            defaultModel === 'gemini-3-pro'
+                                                ? "bg-blue-600 text-white shadow-lg"
+                                                : "text-gray-500 hover:text-gray-300"
+                                        )}
+                                    >
+                                        Gemini 3 Pro
+                                    </button>
+                                    <button
+                                        onClick={() => onModelChange('claude-sonnet-4.5')}
+                                        className={cn(
+                                            "px-4 py-2 rounded-lg text-xs font-bold transition-all tracking-tight whitespace-nowrap",
+                                            defaultModel === 'claude-sonnet-4.5'
+                                                ? "bg-purple-600 text-white shadow-lg"
+                                                : "text-gray-500 hover:text-gray-300"
+                                        )}
+                                    >
+                                        Sonnet 4.5
+                                    </button>
+                                    {isDev && (
+                                        <button
+                                            onClick={() => onModelChange('gemini-3-flash')}
+                                            className={cn(
+                                                "px-4 py-2 rounded-lg text-xs font-bold transition-all tracking-tight whitespace-nowrap",
+                                                defaultModel === 'gemini-3-flash'
+                                                    ? "bg-amber-600 text-white shadow-lg"
+                                                    : "text-gray-500 hover:text-gray-300"
+                                            )}
+                                        >
+                                            🔧 Gemini Flash
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </section>

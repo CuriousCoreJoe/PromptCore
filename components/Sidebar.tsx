@@ -16,9 +16,11 @@ interface SidebarProps {
   userId?: string;
   onDeleteChat?: (chatId: string) => void;
   onRenameChat?: (chatId: string, newTitle: string) => void;
+  onNewChat?: () => void;
+  refreshKey?: number;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, profile, isDev, isCollapsed, onToggleCollapse, activeChatId, onLoadChat, userId, onDeleteChat, onRenameChat }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, profile, isDev, isCollapsed, onToggleCollapse, activeChatId, onLoadChat, userId, onDeleteChat, onRenameChat, onNewChat, refreshKey }) => {
   const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
 
   useEffect(() => {
@@ -37,23 +39,48 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, profi
 
       fetchRecent();
 
+      // Create unique channel name to avoid conflicts
+      const channelName = `sidebar-history-${fetchId}-${Date.now()}`;
       const channel = supabase
-        .channel('sidebar-history')
+        .channel(channelName)
         .on('postgres_changes', {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'chats',
           filter: `user_id=eq.${fetchId}`
-        }, () => {
+        }, (payload) => {
+          console.log('Chat inserted:', payload);
           fetchRecent();
         })
-        .subscribe();
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chats',
+          filter: `user_id=eq.${fetchId}`
+        }, (payload) => {
+          console.log('Chat updated:', payload);
+          fetchRecent();
+        })
+        .on('postgres_changes', {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'chats'
+        }, (payload) => {
+          console.log('Chat deleted:', payload);
+          // Immediately remove from local state for instant feedback
+          setRecentChats(prev => prev.filter(chat => chat.id !== (payload.old as any)?.id));
+          // Also refetch to ensure consistency
+          fetchRecent();
+        })
+        .subscribe((status) => {
+          console.log('Sidebar subscription status:', status);
+        });
 
       return () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [profile?.id, userId, activeChatId]);
+  }, [profile?.id, userId, refreshKey]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -85,7 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, profi
       {/* Nav Items */}
       <nav className="flex-1 py-4 px-2 md:px-4 space-y-2 overflow-y-auto">
         <button
-          onClick={() => onNavigate('workspace')}
+          onClick={() => onNewChat ? onNewChat() : onNavigate('workspace')}
           className={clsx(
             "w-full flex items-center gap-3 px-3 py-3 mb-6 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-brand-600/20 active:scale-[0.98] group",
             isCollapsed ? "justify-center px-0 h-10 w-10 mx-auto" : "justify-start"

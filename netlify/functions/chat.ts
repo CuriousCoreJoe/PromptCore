@@ -19,7 +19,7 @@ const handler: Handler = async (event, context) => {
     }
 
     try {
-        const { messages, input, userId, wizardMode = 'iterative' } = JSON.parse(event.body || "{}");
+        const { messages, input, userId, wizardMode = 'iterative', defaultModel = 'claude-sonnet-4.5' } = JSON.parse(event.body || "{}");
 
         const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -34,8 +34,11 @@ const handler: Handler = async (event, context) => {
         }
 
         const supabase = createClient(supabaseUrl, supabaseKey);
-        // 1. Model Selection
-        const modelName = "gemini-2.5-pro";
+
+        // 1. Model Selection - Map user's selected model to actual API model
+        // For now, we'll use Gemini for all since other APIs aren't configured yet
+        // In the future, you can add logic to route to different APIs based on defaultModel
+        const modelName = "gemini-2.0-flash-exp";
         const genAI = new GoogleGenerativeAI(geminiKey);
 
         // 2. Check Credits & Handle Daily Bonus
@@ -88,15 +91,18 @@ PROTOCOL:
                 : "In Batch Mode: Ask 2-4 clarifying questions at once in a numbered list."}
 3. Once you have enough information (after 1 or more questions), use that context to GENERATE the final, high-quality prompt output.
 4. FINAL OUTPUT STRUCTURE:
-   a. Start with a section: '### 🧠 Strategy & Implementation'. Hand-hold the user: explain the strategy behind this prompt, what they should expect from the LLM, and how to best implement it (e.g., target model, temperature).
+   a. Start with a section: '### 🧠 Strategy & Implementation'. Hand-hold the user: explain the strategy behind this prompt and what they should expect from the LLM.
    b. Follow with a section: '### 💎 Final Prompt'. 
    c. Below that header, use exactly 'FINAL PROMPT:' followed by the prompt wrapped in a markdown code block (triple backticks).
-5. QUICK REPLY BUTTONS:
-   - If your response ends with a clarifying question that has clear options (e.g., Yes/No, A/B/C, Short/Long), append a special block at the VERY END of your response (after all punctuation):
+5. QUICK REPLY BUTTONS (CRITICAL - ALWAYS DO THIS):
+   - For EVERY clarifying question you ask, you MUST append a special options block at the VERY END of your response (after all punctuation).
    - Format: \`[OPTIONS: Option 1, Option 2, Option 3]\`
+   - Always provide 2-4 specific options that help guide the user, even if the question seems open-ended.
    - Example 1: "Do you want to include emojis?" -> "...include emojis? [OPTIONS: Yes, No, Surprise Me]"
    - Example 2: "Is this for a blog or a tweet?" -> "...blog or a tweet? [OPTIONS: Blog Post, Tweet, LinkedIn]"
-   - Do NOT include this block if the question is open-ended (e.g., "What is your target audience?").
+   - Example 3: "What type of business?" -> "...type of business? [OPTIONS: Retail, Service, Online, Other]"
+   - Example 4: "Who is your target audience?" -> "...target audience? [OPTIONS: General Public, Professionals, Students, Other]"
+   - NEVER skip the OPTIONS block. Users rely on these buttons for every question.
 6. Be professional, concise, and helpful.`;
 
         const model = genAI.getGenerativeModel({
@@ -113,6 +119,14 @@ PROTOCOL:
             role: m.role === 'model' ? 'model' : 'user',
             parts: [{ text: m.content }]
         }));
+
+        // Gemini Integrity Check: History MUST start with 'user'
+        if (history.length > 0 && history[0].role === 'model') {
+            // Option 1: Remove the orphan model message
+            history.shift();
+            // Option 2 (Alternative): Prepend a dummy user message
+            // history.unshift({ role: 'user', parts: [{ text: 'Context:' }] });
+        }
 
         // Prevent duplicate user turns (Gemini restriction)
         if (history.length > 0 &&
@@ -139,7 +153,10 @@ PROTOCOL:
         return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ text: responseText }),
+            body: JSON.stringify({
+                text: responseText,
+                msgType: 'meta_helper'
+            }),
         };
     } catch (err: any) {
         console.error("Chat Error:", err);

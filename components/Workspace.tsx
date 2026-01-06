@@ -17,6 +17,7 @@ interface WorkspaceProps {
     onShowToast: (msg: string, actionLabel?: string, action?: () => void) => void;
     onUpgrade: () => void;
     wizardMode: 'iterative' | 'batch';
+    defaultModel?: string;
     onSelectMode: (mode: AppMode) => void;
     activeChatId: string | null;
     onLoadChat: (chatId: string) => void;
@@ -32,22 +33,24 @@ interface GoalOption {
 }
 
 const GOAL_OPTIONS: GoalOption[] = [
+    { id: 'enhance', label: 'Enhance', icon: <Sparkles size={16} />, promptSuffix: "Enhance this with more details, clarity, and impact." },
     { id: 'explain', label: 'Explain this', icon: <FileText size={16} />, promptSuffix: "Explain this concept clearly and visually." },
     { id: 'shorten', label: 'Shorten', icon: <Minimize2 size={16} />, promptSuffix: "Shorten this text significantly while keeping key info." },
-    { id: 'elaborate', label: 'Elaborate', icon: <Maximize2 size={16} />, promptSuffix: "Elaborate on this, adding details and examples." },
     { id: 'formal', label: 'More Formal', icon: <Briefcase size={16} />, promptSuffix: "Rewrite this to be professional and formal." },
     { id: 'casual', label: 'More Casual', icon: <Coffee size={16} />, promptSuffix: "Rewrite this to be casual and friendly." },
     { id: 'bulletize', label: 'Bulletize', icon: <List size={16} />, promptSuffix: "Convert this into a bulleted list." },
 ];
 
+
 import { ModeSelector } from './ModeSelector';
 
-export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, credits, onShowToast, onUpgrade, wizardMode, onSelectMode, activeChatId, onLoadChat }) => {
+export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, credits, onShowToast, onUpgrade, wizardMode, defaultModel, onSelectMode, activeChatId, onLoadChat }) => {
     const [messages, setMessages] = useState<Message[]>([
         { id: '0', role: 'system', content: '', timestamp: Date.now(), mode: AppMode.EVERYDAY }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isRunningExecution, setIsRunningExecution] = useState(false);
     const [wizardStage, setWizardStage] = useState<WizardStage>('IDLE');
     const [draftPrompt, setDraftPrompt] = useState('');
     const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
@@ -62,7 +65,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
     };
 
     useEffect(() => {
-        scrollToBottom();
+        if (messages.length > 0) {
+            scrollToBottom();
+        }
     }, [messages, wizardStage]);
 
     // Load Chat History
@@ -97,7 +102,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         }
     }, [activeChatId]);
 
-    // Fetch Recent Chats for Welcome Screen
+    // Fetch Recent Chats for Welcome Screen with real-time updates
     useEffect(() => {
         const fetchRecent = async () => {
             if (!session?.user) return;
@@ -112,6 +117,27 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             if (data) setRecentChats(data as unknown as ChatSession[]);
         };
         fetchRecent();
+
+        // Subscribe to real-time changes for hot updates
+        if (session?.user) {
+            const channelName = `workspace-recents-${session.user.id}-${currentMode}`;
+            const channel = supabase
+                .channel(channelName)
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'chats',
+                    filter: `user_id=eq.${session.user.id}`
+                }, (payload) => {
+                    // Refetch on any change
+                    fetchRecent();
+                })
+                .subscribe();
+
+            return () => {
+                supabase.removeChannel(channel);
+            };
+        }
     }, [currentMode, session]);
 
     useEffect(() => {
@@ -230,7 +256,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                     input: isHiddenInstruction ? content : content,
                     mode: currentMode,
                     userId: session.user.id,
-                    wizardMode
+                    wizardMode,
+                    defaultModel: defaultModel || 'claude-sonnet-4.5'
                 })
             });
 
@@ -246,7 +273,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 role: 'model',
                 content: data.text,
                 timestamp: Date.now(),
-                mode: currentMode
+                mode: currentMode,
+                msgType: data.msgType || 'meta_helper'
             }]);
 
             // Save Model Response
@@ -290,11 +318,186 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
     const handleOptionSelect = (option: string) => {
         if (isLoading) return;
         const processedOption = option.replace(/^\d+\.\s*/, ''); // Remove numbering if present
-        setInput('');
-        const newMsg: Message = { id: Date.now().toString(), role: 'user', content: processedOption, timestamp: Date.now(), mode: currentMode };
-        setMessages(prev => [...prev, newMsg]);
-        saveMessage(newMsg);
-        processMessage(processedOption);
+
+        // If we answer a clarifying question via quick action, handle it as an answer
+        if (wizardStage === 'CLARIFYING') {
+            setInput(processedOption);
+            // We need to wait a tick or call a modified handler because handleClarificationAnswer uses 'input' state
+            // But since setState is async, we can just call the logic directly:
+            const newMsg: Message = {
+                id: Date.now().toString(),
+                role: 'user',
+                content: processedOption,
+                timestamp: Date.now(),
+                mode: currentMode
+            };
+            setMessages(prev => [...prev, newMsg]);
+            saveMessage(newMsg);
+
+            if (wizardMode === 'batch') setWizardStage('GENERATING');
+
+            processMessage(processedOption);
+        } else {
+            // Fallback for normal inputs
+            setInput('');
+            const newMsg: Message = { id: Date.now().toString(), role: 'user', content: processedOption, timestamp: Date.now(), mode: currentMode };
+            setMessages(prev => [...prev, newMsg]);
+            saveMessage(newMsg);
+            processMessage(processedOption);
+        }
+    };
+
+    // ... (rest of component)
+
+    // Only show Quick Actions Grid for the INITIAL prompt (Liquid Actions)
+    const showQuickActions = wizardStage === 'GOAL_SELECTION' && messages.length < 3;
+
+
+    // Dual-Lane Action Handlers
+    const handleRunPrompt = async (messageId: string, content: string) => {
+        // Prevent double clicks - if already running, do nothing
+        if (isRunningExecution) {
+            return;
+        }
+
+        // Extract the actual prompt from the message content
+        let promptToRun = content;
+
+        // Extract content from code block if present
+        if (content.includes('```')) {
+            const codeBlockMatch = content.match(/```(?:[\w]*\n)?([\s\S]*?)```/);
+            if (codeBlockMatch) {
+                promptToRun = codeBlockMatch[1].trim();
+            }
+        } else if (content.includes('FINAL PROMPT:')) {
+            // Fallback: Extract content after "FINAL PROMPT:"
+            promptToRun = content.split('FINAL PROMPT:')[1]?.trim() || content;
+        }
+
+        setIsRunningExecution(true);
+
+        try {
+            // Get execution history (only execution_result messages)
+            const executionHistory = messages
+                .filter(m => m.msgType === 'execution_result')
+                .map(m => ({ role: m.role, content: m.content }));
+
+            const response = await fetch('/api/execute', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: promptToRun,
+                    userId: session.user.id,
+                    conversationHistory: executionHistory,
+                    model: defaultModel // Pass the user's selected model
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Execution failed');
+            }
+
+            const data = await response.json();
+
+            const executionMsg: Message = {
+                id: Date.now().toString(),
+                role: 'model',
+                content: data.text,
+                timestamp: Date.now(),
+                mode: currentMode,
+                msgType: 'execution_result'
+            };
+
+            setMessages(prev => [...prev, executionMsg]);
+
+            // Save to DB
+            if (activeChatId) {
+                await supabase.from('messages').insert({
+                    chat_id: activeChatId,
+                    role: 'model',
+                    content: data.text
+                });
+            }
+
+            onShowToast(`✓ Executed with ${data.model || 'external LLM'}`);
+        } catch (err: any) {
+            console.error('Execution error:', err);
+            onShowToast('Execution failed. Check configuration.', 'Upgrade', onUpgrade);
+        } finally {
+            setIsRunningExecution(false);
+        }
+    };
+
+    const handleShorten = async (messageId: string) => {
+        const message = messages.find(m => m.id === messageId);
+        if (!message) return;
+
+        const instruction = `Take this output and make it significantly shorter while keeping the core message:\n\n${message.content}`;
+        await processMessage(instruction);
+    };
+
+    const handleElaborate = async (messageId: string) => {
+        const message = messages.find(m => m.id === messageId);
+        if (!message) return;
+
+        const instruction = `Take this output and elaborate on it with more details, examples, and context:\n\n${message.content}`;
+        await processMessage(instruction);
+    };
+
+    const handleFormalize = async (messageId: string) => {
+        const message = messages.find(m => m.id === messageId);
+        if (!message) return;
+
+        const instruction = `Rewrite this output to be more professional and formal:\n\n${message.content}`;
+        await processMessage(instruction);
+    };
+
+    const handleCopyResult = (content: string) => {
+        navigator.clipboard.writeText(content);
+        onShowToast('✓ Copied to clipboard');
+    };
+
+    const handleSaveResult = async (content: string) => {
+        // TODO: Implement save to library functionality
+        onShowToast('✓ Saved to library (feature coming soon)');
+    };
+
+    const handleRetry = async (messageId: string) => {
+        const message = messages.find(m => m.id === messageId);
+        if (!message) return;
+
+        // Find the prompt that was used for this execution
+        const messageIndex = messages.findIndex(m => m.id === messageId);
+        const previousMessages = messages.slice(0, messageIndex);
+        const lastMetaHelper = previousMessages.reverse().find(m => m.msgType === 'meta_helper' && m.content.includes('FINAL PROMPT:'));
+
+        if (lastMetaHelper) {
+            await handleRunPrompt(lastMetaHelper.id, lastMetaHelper.content);
+        } else {
+            onShowToast('Cannot find original prompt to retry');
+        }
+    };
+
+    const handleRegenerate = async (messageId: string) => {
+        const index = messages.findIndex(m => m.id === messageId);
+        if (index === -1) return;
+        const message = messages[index];
+        if (message.role === 'model') {
+            const prevUserMsg = messages[index - 1];
+            if (prevUserMsg && prevUserMsg.role === 'user') {
+                onShowToast('Regenerating response...');
+                await processMessage(prevUserMsg.content);
+            }
+        }
+    };
+
+    const handleRate = (messageId: string, isPositive: boolean) => {
+        onShowToast(isPositive ? 'Thanks for the feedback! 👍' : 'Thanks! We will improve. 👎');
+    };
+
+    const handleEdit = (messageId: string) => {
+        onShowToast('Edit feature coming soon! ✏️');
     };
 
     const MODE_CONFIGS = {
@@ -395,10 +598,25 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                     )}
 
                     {messages.filter(m => m.id !== '0' && !m.id.startsWith('hidden-')).map((msg) => (
-                        <MessageBubble key={msg.id} message={msg} onOptionSelect={handleOptionSelect} />
+                        <MessageBubble
+                            key={msg.id}
+                            message={msg}
+                            onOptionSelect={handleOptionSelect}
+                            onRunPrompt={handleRunPrompt}
+                            onShorten={handleShorten}
+                            onElaborate={handleElaborate}
+                            onFormalize={handleFormalize}
+                            onCopyResult={handleCopyResult}
+                            onSaveResult={handleSaveResult}
+                            onRetry={handleRetry}
+                            onRegenerate={handleRegenerate}
+                            onRate={handleRate}
+                            onEdit={handleEdit}
+                            isRunning={isRunningExecution}
+                        />
                     ))}
 
-                    {wizardStage === 'GOAL_SELECTION' && (
+                    {showQuickActions && (
                         <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                             <div className="flex flex-col gap-2 mb-2">
                                 <span className="text-sm text-gray-400 ml-1">Refine your request:</span>

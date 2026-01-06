@@ -19,15 +19,32 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, us
         fetchChats();
 
         if (userProfile?.id) {
+            const channelName = `history-page-${userProfile.id}-${Date.now()}`;
             const channel = supabase
-                .channel('history-page-realtime')
+                .channel(channelName)
                 .on('postgres_changes', {
-                    event: '*',
+                    event: 'INSERT',
                     schema: 'public',
                     table: 'chats',
                     filter: `user_id=eq.${userProfile.id}`
                 }, () => {
-                    fetchChats(); // Refetch on any change
+                    fetchChats();
+                })
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'chats',
+                    filter: `user_id=eq.${userProfile.id}`
+                }, () => {
+                    fetchChats();
+                })
+                .on('postgres_changes', {
+                    event: 'DELETE',
+                    schema: 'public',
+                    table: 'chats'
+                }, (payload) => {
+                    // Immediately update local state for instant feedback
+                    setChats(prev => prev.filter(chat => chat.id !== (payload.old as any)?.id));
                 })
                 .subscribe();
 

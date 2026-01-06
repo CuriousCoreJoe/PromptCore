@@ -10,7 +10,7 @@ import { Dashboard } from './components/Dashboard';
 import { UpgradePage } from './components/UpgradePage';
 import { Legal } from './components/Legal';
 import { SettingsPage } from './components/SettingsPage';
-import { AppMode, AppView, Message, UserProfile } from './types';
+import { AppMode, AppView, Message, UserProfile, AIModel } from './types';
 import { sendMessageToGemini } from './services/geminiService';
 import { Send, Paperclip, Mic, Youtube, Coins } from 'lucide-react';
 import { Workspace } from './components/Workspace';
@@ -33,6 +33,7 @@ const App: React.FC = () => {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [credits, setCredits] = useState(0);
   const [wizardMode, setWizardMode] = useState<'iterative' | 'batch'>('iterative');
+  const [defaultModel, setDefaultModel] = useState<AIModel>('claude-sonnet-4.5');
   const [upgradeFocus, setUpgradeFocus] = useState<'subscriptions' | 'credits'>('subscriptions');
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -82,6 +83,7 @@ const App: React.FC = () => {
           setProfile(payload.new as UserProfile);
           setCredits(payload.new.credits);
           setWizardMode(payload.new.wizard_mode || 'iterative');
+          setDefaultModel(payload.new.default_model || 'claude-sonnet-4.5');
         })
         .subscribe();
 
@@ -102,6 +104,7 @@ const App: React.FC = () => {
       setProfile(data[0]);
       setCredits(data[0].credits);
       setWizardMode(data[0].wizard_mode || 'iterative');
+      setDefaultModel(data[0].default_model || 'claude-sonnet-4.5');
     }
   };
 
@@ -117,15 +120,36 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSidebarNavigate = (view: AppView) => {
-    if (view === 'workspace') {
-      setActiveChatId(null); // Clear active chat to show new chat screen
+  const updateDefaultModel = async (model: AIModel) => {
+    if (!session?.user) return;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ default_model: model })
+      .eq('id', session.user.id);
+
+    if (!error) {
+      setDefaultModel(model);
     }
+  };
+
+  const handleSidebarNavigate = (view: AppView) => {
+    // Only clear activeChatId when clicking "New Chat" button, not when navigating
     setCurrentView(view);
     if (window.innerWidth < 768) {
       setSidebarCollapsed(true);
     }
   };
+
+  const handleNewChat = () => {
+    setActiveChatId(null);
+    setCurrentView('workspace');
+    if (window.innerWidth < 768) {
+      setSidebarCollapsed(true);
+    }
+  };
+
+  // Force sidebar refresh counter - incrementing this triggers sidebar to refetch
+  const [chatRefreshKey, setChatRefreshKey] = useState(0);
 
   const handleDeleteChat = async (chatId: string) => {
     const { error } = await supabase
@@ -137,6 +161,8 @@ const App: React.FC = () => {
       if (activeChatId === chatId) {
         setActiveChatId(null);
       }
+      // Force sidebar to refetch by incrementing refresh key
+      setChatRefreshKey(prev => prev + 1);
       setToast({
         visible: true,
         message: 'Chat deleted successfully',
@@ -193,6 +219,9 @@ const App: React.FC = () => {
         <SettingsPage
           wizardMode={wizardMode}
           onToggleWizardMode={() => updateWizardMode(wizardMode === 'iterative' ? 'batch' : 'iterative')}
+          defaultModel={defaultModel}
+          onModelChange={updateDefaultModel}
+          isDev={isDev}
           onBack={() => setCurrentView('workspace')}
         />
       );
@@ -227,6 +256,7 @@ const App: React.FC = () => {
         })}
         onUpgrade={() => setCurrentView('upgrade')}
         wizardMode={wizardMode}
+        defaultModel={defaultModel}
         onSelectMode={setCurrentMode}
         activeChatId={activeChatId}
         onLoadChat={setActiveChatId}
@@ -248,11 +278,13 @@ const App: React.FC = () => {
         activeChatId={activeChatId}
         onLoadChat={(chatId) => {
           setActiveChatId(chatId);
-          // If on mobile/small screen, maybe close sidebar?
+          setCurrentView('workspace');
         }}
         userId={session.user.id}
         onDeleteChat={handleDeleteChat}
         onRenameChat={handleRenameChat}
+        onNewChat={handleNewChat}
+        refreshKey={chatRefreshKey}
       />
 
       <main className="flex-1 flex flex-col min-w-0 relative h-full transition-all duration-300">

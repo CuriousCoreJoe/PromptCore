@@ -56,6 +56,7 @@ CREATE TABLE profiles (
   last_daily_bonus TIMESTAMPTZ DEFAULT NOW(),
   lifetime_prompts INTEGER DEFAULT 0,
   wizard_mode TEXT DEFAULT 'iterative', -- 'iterative' or 'batch'
+  default_model TEXT DEFAULT 'claude-sonnet-4.5', -- 'gpt-5', 'gemini-3-pro', 'claude-sonnet-4.5'
   stripe_customer_id TEXT,
   subscription_status TEXT DEFAULT 'free', -- free, pro, powerhouse
   updated_at TIMESTAMPTZ DEFAULT NOW()
