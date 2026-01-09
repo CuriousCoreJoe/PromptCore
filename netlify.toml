@@ -4,11 +4,21 @@
 [functions]
   directory = "netlify/functions"
 
+# Increase timeout for execute function (image generation takes ~30s)
+[functions."execute"]
+  timeout = 60
+
+[functions."chat"]
+  timeout = 60
+
 [dev]
   command = "bun run dev"
   targetPort = 3000
   port = 8888
   publish = "dist"
+  functions_timeout = 60
+  [dev.environment]
+    NETLIFY_FUNCTIONS_TIMEOUT = "60"
 
 [build.environment]
   SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY"
@@ -26,6 +36,11 @@
 [[redirects]]
   from = "/api/execute"
   to = "/.netlify/functions/execute"
+  status = 200
+
+[[redirects]]
+  from = "/api/builder-background"
+  to = "/.netlify/functions/builder-background"
   status = 200
 
 [[redirects]]

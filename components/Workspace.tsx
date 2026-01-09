@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Message, AppMode, ChatSession } from '../types';
 import { supabase } from '../lib/supabase';
 import { MessageBubble } from './MessageBubble';
-import { Send, Mic, Sparkles, ChevronRight, Minimize2, Maximize2, Briefcase, Coffee, List, FileText, Plus, ChevronDown, LayoutGrid, Clock } from 'lucide-react';
+import { Send, Mic, Sparkles, ChevronRight, Minimize2, Maximize2, Briefcase, Coffee, List, FileText, Plus, ChevronDown, LayoutGrid, Clock, Upload, Link, Image, Video, Music, Code, Zap, Bug, Palette, Type, MessageSquare, Youtube } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -32,7 +32,8 @@ interface GoalOption {
     promptSuffix: string;
 }
 
-const GOAL_OPTIONS: GoalOption[] = [
+// Mode-specific goal options
+const EVERYDAY_GOALS: GoalOption[] = [
     { id: 'enhance', label: 'Enhance', icon: <Sparkles size={16} />, promptSuffix: "Enhance this with more details, clarity, and impact." },
     { id: 'explain', label: 'Explain this', icon: <FileText size={16} />, promptSuffix: "Explain this concept clearly and visually." },
     { id: 'shorten', label: 'Shorten', icon: <Minimize2 size={16} />, promptSuffix: "Shorten this text significantly while keeping key info." },
@@ -40,6 +41,47 @@ const GOAL_OPTIONS: GoalOption[] = [
     { id: 'casual', label: 'More Casual', icon: <Coffee size={16} />, promptSuffix: "Rewrite this to be casual and friendly." },
     { id: 'bulletize', label: 'Bulletize', icon: <List size={16} />, promptSuffix: "Convert this into a bulleted list." },
 ];
+
+const VIBE_CODE_GOALS: GoalOption[] = [
+    { id: 'make-it-pop', label: 'Make it Pop', icon: <Sparkles size={16} className="text-yellow-400" />, promptSuffix: "Make it pop with modern, colorful, shadowed CSS and glassmorphism." },
+    { id: 'mobile-first', label: 'Mobile First', icon: <LayoutGrid size={16} />, promptSuffix: "Ensure the design is fully responsive and mobile-first." },
+    { id: 'gamify', label: 'Gamify', icon: <Zap size={16} />, promptSuffix: "Add fun interactions, animations, and gamified elements." },
+    { id: 'professional', label: 'Professional', icon: <Briefcase size={16} />, promptSuffix: "Make the design clean, corporate, and professional." },
+    { id: 'minimal', label: 'Minimalist', icon: <Minimize2 size={16} />, promptSuffix: "Use a clean, minimalist aesthetic with lots of whitespace." },
+    { id: 'dark-mode', label: 'Dark Mode', icon: <Sparkles size={16} />, promptSuffix: "Implement a sleek, modern dark mode." },
+];
+
+const MEDIA_GEN_GOALS: GoalOption[] = [
+    { id: 'image', label: 'Image', icon: <Image size={16} />, promptSuffix: "Generate an image prompt for Midjourney/DALL-E." },
+    { id: 'video', label: 'Video', icon: <Video size={16} />, promptSuffix: "Generate a video prompt for Runway/Pika." },
+    { id: 'music', label: 'Music', icon: <Music size={16} />, promptSuffix: "Generate a music prompt for Suno/Udio." },
+    { id: 'style-transfer', label: 'Style Transfer', icon: <Palette size={16} />, promptSuffix: "Transform content into a specific artistic style." },
+    { id: 'enhance-visual', label: 'Enhance', icon: <Sparkles size={16} />, promptSuffix: "Enhance and upscale existing media." },
+    { id: 'animate', label: 'Animate', icon: <Zap size={16} />, promptSuffix: "Create animation from static content." },
+];
+
+const TALK_TO_SOURCE_GOALS: GoalOption[] = [
+    { id: 'summarize', label: 'Summarize', icon: <FileText size={16} />, promptSuffix: "Summarize the key points of this content." },
+    { id: 'extract', label: 'Extract Info', icon: <List size={16} />, promptSuffix: "Extract specific information or data points." },
+    { id: 'explain', label: 'Explain', icon: <MessageSquare size={16} />, promptSuffix: "Explain the concepts in this content." },
+    { id: 'compare', label: 'Compare', icon: <Code size={16} />, promptSuffix: "Compare different ideas or sections." },
+    { id: 'generate', label: 'Generate Content', icon: <Sparkles size={16} />, promptSuffix: "Generate new content based on this source." },
+    { id: 'qa', label: 'Q&A', icon: <MessageSquare size={16} />, promptSuffix: "Answer questions about this content." },
+];
+
+const getGoalOptionsForMode = (mode: AppMode): GoalOption[] => {
+    switch (mode) {
+        case AppMode.VIBE_CODE:
+            return VIBE_CODE_GOALS;
+        case AppMode.MEDIA_GEN:
+            return MEDIA_GEN_GOALS;
+        case AppMode.TALK_TO_SOURCE:
+            return TALK_TO_SOURCE_GOALS;
+        case AppMode.EVERYDAY:
+        default:
+            return EVERYDAY_GOALS;
+    }
+};
 
 
 import { ModeSelector } from './ModeSelector';
@@ -54,9 +96,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
     const [wizardStage, setWizardStage] = useState<WizardStage>('IDLE');
     const [draftPrompt, setDraftPrompt] = useState('');
     const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
+    const [showYouTubeInput, setShowYouTubeInput] = useState(false);
+    const [youtubeUrl, setYoutubeUrl] = useState('');
+    const [uploadedSource, setUploadedSource] = useState<string | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const isDev = session?.user?.email === 'dev@promptcore.com';
 
@@ -71,38 +117,89 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
     }, [messages, wizardStage]);
 
     // Load Chat History
+    const loadHistory = useCallback(async () => {
+        if (!activeChatId) return;
+
+        const { data, error } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('chat_id', activeChatId)
+            .order('created_at', { ascending: true });
+
+        if (data) {
+            const mappedMessages: Message[] = data.map(m => ({
+                id: m.id,
+                role: m.role as any,
+                content: m.content,
+                timestamp: new Date(m.created_at).getTime(),
+                mode: currentMode,
+                status: m.status as any,
+                msgType: m.msg_type as any,
+                executionModel: m.execution_model,
+                metadata: m.metadata
+            }));
+            // Add system message at top if needed, or just replace
+            setMessages([{ id: '0', role: 'system', content: '', timestamp: 0, mode: currentMode }, ...mappedMessages]);
+            // Only reset wizard for existing chats if not currently in a transition
+            setWizardStage(prev => prev === 'IDLE' ? 'IDLE' : prev);
+        }
+    }, [activeChatId, currentMode]);
+
     useEffect(() => {
         if (activeChatId) {
-            const loadHistory = async () => {
-                const { data, error } = await supabase
-                    .from('messages')
-                    .select('*')
-                    .eq('chat_id', activeChatId)
-                    .order('created_at', { ascending: true });
-
-                if (data) {
-                    const mappedMessages: Message[] = data.map(m => ({
-                        id: m.id,
-                        role: m.role as any,
-                        content: m.content,
-                        timestamp: new Date(m.created_at).getTime(),
-                        mode: currentMode // Assuming chat mode is consistent
-                    }));
-                    // Add system message at top if needed, or just replace
-                    setMessages([{ id: '0', role: 'system', content: '', timestamp: 0, mode: currentMode }, ...mappedMessages]);
-                    // Only reset wizard for existing chats if not currently in a transition
-                    setWizardStage(prev => prev === 'IDLE' ? 'IDLE' : prev);
-                }
-            };
             loadHistory();
         } else {
             // New Session
             setMessages([{ id: '0', role: 'system', content: '', timestamp: Date.now(), mode: currentMode }]);
             setWizardStage('IDLE');
         }
+    }, [activeChatId, loadHistory]);
+
+    // Message Real-time Subscription (to catch Background Builder updates)
+    useEffect(() => {
+        if (!activeChatId) return;
+
+        const channel = supabase
+            .channel(`chat-messages-${activeChatId}`)
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'messages',
+                filter: `chat_id=eq.${activeChatId}`
+            }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    const newMsg = payload.new;
+                    setMessages(prev => {
+                        if (prev.find(m => m.id === newMsg.id)) return prev;
+                        return [...prev, {
+                            id: newMsg.id,
+                            role: newMsg.role,
+                            content: newMsg.content,
+                            timestamp: new Date(newMsg.created_at).getTime(),
+                            mode: currentMode,
+                            status: newMsg.status,
+                            msgType: newMsg.msg_type,
+                            executionModel: newMsg.execution_model,
+                            metadata: newMsg.metadata
+                        }];
+                    });
+                } else if (payload.eventType === 'UPDATE') {
+                    const updatedMsg = payload.new;
+                    setMessages(prev => prev.map(m => m.id === updatedMsg.id ? {
+                        ...m,
+                        content: updatedMsg.content,
+                        status: updatedMsg.status,
+                        metadata: updatedMsg.metadata
+                    } : m));
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [activeChatId]);
 
-    // Fetch Recent Chats for Welcome Screen with real-time updates
     useEffect(() => {
         const fetchRecent = async () => {
             if (!session?.user) return;
@@ -118,7 +215,6 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         };
         fetchRecent();
 
-        // Subscribe to real-time changes for hot updates
         if (session?.user) {
             const channelName = `workspace-recents-${session.user.id}-${currentMode}`;
             const channel = supabase
@@ -129,7 +225,6 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                     table: 'chats',
                     filter: `user_id=eq.${session.user.id}`
                 }, (payload) => {
-                    // Refetch on any change
                     fetchRecent();
                 })
                 .subscribe();
@@ -363,11 +458,20 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         // Extract the actual prompt from the message content
         let promptToRun = content;
 
-        // Extract content from code block if present
+        // Extract content from code block if present - Prioritize JSON blocks for Media Gen
         if (content.includes('```')) {
-            const codeBlockMatch = content.match(/```(?:[\w]*\n)?([\s\S]*?)```/);
-            if (codeBlockMatch) {
-                promptToRun = codeBlockMatch[1].trim();
+            const blocks = content.split('```');
+            // Find blocks that are likely JSON (starts with { or marked with json)
+            const jsonBlock = blocks.find(b => b.trim().startsWith('json') || (b.trim().startsWith('{') && b.trim().endsWith('}')));
+
+            if (jsonBlock) {
+                promptToRun = jsonBlock.replace(/^json\n?/, '').trim();
+            } else {
+                // Fallback to the first available code block
+                const codeBlockMatch = content.match(/```(?:[\w]*\n)?([\s\S]*?)```/);
+                if (codeBlockMatch) {
+                    promptToRun = codeBlockMatch[1].trim();
+                }
             }
         } else if (content.includes('FINAL PROMPT:')) {
             // Fallback: Extract content after "FINAL PROMPT:"
@@ -375,6 +479,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         }
 
         setIsRunningExecution(true);
+        onShowToast('🚀 Initializing Builder...');
 
         try {
             // Get execution history (only execution_result messages)
@@ -382,14 +487,20 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 .filter(m => m.msgType === 'execution_result')
                 .map(m => ({ role: m.role, content: m.content }));
 
-            const response = await fetch('/api/execute', {
+            // Determine if we should use the background builder (for Vibe Code) or standard execute
+            const useBackgroundBuilder = currentMode === AppMode.VIBE_CODE;
+            const endpoint = useBackgroundBuilder ? '/api/builder-background' : '/api/execute';
+
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prompt: promptToRun,
                     userId: session.user.id,
+                    chatId: activeChatId, // Required for background builder update
                     conversationHistory: executionHistory,
-                    model: defaultModel // Pass the user's selected model
+                    model: defaultModel,
+                    mode: currentMode
                 })
             });
 
@@ -398,29 +509,43 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 throw new Error(errorData.error || 'Execution failed');
             }
 
-            const data = await response.json();
+            // If background builder, we just wait for Realtime to update the UI
+            if (useBackgroundBuilder) {
+                onShowToast('🏗️ Architect is building in the background...');
+                // Force a refresh after a delay to ensure the "Processing" message is caught
+                // (Optimistic update backup in case Realtime is slow)
+                setTimeout(() => {
+                    loadHistory();
+                }, 1000);
+            } else {
+                // Standard synchronous execution (Media Gen, etc.)
+                const data = await response.json();
 
-            const executionMsg: Message = {
-                id: Date.now().toString(),
-                role: 'model',
-                content: data.text,
-                timestamp: Date.now(),
-                mode: currentMode,
-                msgType: 'execution_result'
-            };
-
-            setMessages(prev => [...prev, executionMsg]);
-
-            // Save to DB
-            if (activeChatId) {
-                await supabase.from('messages').insert({
-                    chat_id: activeChatId,
+                const executionMsg: Message = {
+                    id: Date.now().toString(),
                     role: 'model',
-                    content: data.text
-                });
+                    content: data.text,
+                    timestamp: Date.now(),
+                    mode: currentMode,
+                    msgType: 'execution_result',
+                    executionModel: data.model
+                };
+
+                setMessages(prev => [...prev, executionMsg]);
+
+                // Save to DB
+                if (activeChatId) {
+                    await supabase.from('messages').insert({
+                        chat_id: activeChatId,
+                        role: 'model',
+                        content: data.text,
+                        msg_type: 'execution_result',
+                        execution_model: data.model
+                    });
+                }
+                onShowToast(`✓ Executed with ${data.model || 'external LLM'}`);
             }
 
-            onShowToast(`✓ Executed with ${data.model || 'external LLM'}`);
         } catch (err: any) {
             console.error('Execution error:', err);
             onShowToast('Execution failed. Check configuration.', 'Upgrade', onUpgrade);
@@ -498,6 +623,56 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
 
     const handleEdit = (messageId: string) => {
         onShowToast('Edit feature coming soon! ✏️');
+    };
+
+    // Talk to Source handlers
+    const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.type !== 'application/pdf') {
+            onShowToast('Please upload a PDF file');
+            return;
+        }
+
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            onShowToast('File too large. Max 10MB.');
+            return;
+        }
+
+        onShowToast('Processing PDF...');
+
+        try {
+            // Read file as text (basic extraction - in production you'd use a proper PDF parser)
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const text = event.target?.result as string;
+                // For now, we'll pass the file name and let the user describe what they uploaded
+                setUploadedSource(`PDF: ${file.name}`);
+                setInput(`I've uploaded a PDF document: "${file.name}". `);
+                onShowToast(`✓ PDF "${file.name}" ready for analysis`);
+            };
+            reader.readAsText(file);
+        } catch (err) {
+            onShowToast('Failed to process PDF. Try again.');
+        }
+    };
+
+    const handleYouTubeSubmit = async () => {
+        if (!youtubeUrl.trim()) return;
+
+        // Basic YouTube URL validation
+        const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/|v\/)|youtu\.be\/)[\w-]+/;
+        if (!youtubeRegex.test(youtubeUrl)) {
+            onShowToast('Please enter a valid YouTube URL');
+            return;
+        }
+
+        setUploadedSource(`YouTube: ${youtubeUrl}`);
+        setInput(`I want to analyze this YouTube video: ${youtubeUrl}\n\n`);
+        setShowYouTubeInput(false);
+        setYoutubeUrl('');
+        onShowToast('✓ YouTube video ready for analysis');
     };
 
     const MODE_CONFIGS = {
@@ -619,16 +794,33 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                     {showQuickActions && (
                         <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                             <div className="flex flex-col gap-2 mb-2">
-                                <span className="text-sm text-gray-400 ml-1">Refine your request:</span>
+                                <span className="text-sm text-gray-400 ml-1">
+                                    {currentMode === AppMode.VIBE_CODE ? "What do you want to do?" :
+                                        currentMode === AppMode.MEDIA_GEN ? "What type of media?" :
+                                            currentMode === AppMode.TALK_TO_SOURCE ? "How should I analyze this?" :
+                                                "Refine your request:"}
+                                </span>
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                {GOAL_OPTIONS.map((opt) => (
+                                {getGoalOptionsForMode(currentMode).map((opt) => (
                                     <button
                                         key={opt.id}
                                         onClick={() => handleGoalSelect(opt)}
-                                        className="flex flex-col items-start gap-2 p-3 bg-dark-900/50 hover:bg-dark-800 border border-dark-800 hover:border-blue-500/30 rounded-[20px] transition-all text-left group"
+                                        className={cn(
+                                            "flex flex-col items-start gap-2 p-3 bg-dark-900/50 hover:bg-dark-800 border border-dark-800 rounded-[20px] transition-all text-left group",
+                                            currentMode === AppMode.VIBE_CODE ? "hover:border-purple-500/30" :
+                                                currentMode === AppMode.MEDIA_GEN ? "hover:border-pink-500/30" :
+                                                    currentMode === AppMode.TALK_TO_SOURCE ? "hover:border-orange-500/30" :
+                                                        "hover:border-blue-500/30"
+                                        )}
                                     >
-                                        <span className="text-blue-400 group-hover:text-blue-300 transition-colors bg-blue-500/10 p-1.5 rounded-lg">
+                                        <span className={cn(
+                                            "transition-colors p-1.5 rounded-lg",
+                                            currentMode === AppMode.VIBE_CODE ? "text-purple-400 group-hover:text-purple-300 bg-purple-500/10" :
+                                                currentMode === AppMode.MEDIA_GEN ? "text-pink-400 group-hover:text-pink-300 bg-pink-500/10" :
+                                                    currentMode === AppMode.TALK_TO_SOURCE ? "text-orange-400 group-hover:text-orange-300 bg-orange-500/10" :
+                                                        "text-blue-400 group-hover:text-blue-300 bg-blue-500/10"
+                                        )}>
                                             {opt.icon}
                                         </span>
                                         <span className="font-medium text-gray-200 text-xs">{opt.label}</span>
@@ -654,6 +846,78 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             {/* Input Area */}
             <div className="flex-shrink-0 p-6 bg-[#131314]">
                 <div className="max-w-4xl mx-auto">
+                    {/* Talk to Source - Source Input Buttons */}
+                    {currentMode === AppMode.TALK_TO_SOURCE && wizardStage === 'IDLE' && messages.length === 1 && (
+                        <div className="mb-4 flex items-center gap-3">
+                            {/* Hidden file input */}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".pdf"
+                                onChange={handlePdfUpload}
+                                className="hidden"
+                            />
+
+                            {/* Upload PDF Button */}
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 hover:border-orange-500/50 rounded-xl text-orange-400 hover:text-orange-300 transition-all text-sm font-medium"
+                            >
+                                <Upload size={18} />
+                                <span>Upload PDF</span>
+                            </button>
+
+                            {/* YouTube URL Button/Input */}
+                            {!showYouTubeInput ? (
+                                <button
+                                    onClick={() => setShowYouTubeInput(true)}
+                                    className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50 rounded-xl text-red-400 hover:text-red-300 transition-all text-sm font-medium"
+                                >
+                                    <Youtube size={18} />
+                                    <span>YouTube URL</span>
+                                </button>
+                            ) : (
+                                <div className="flex items-center gap-2 flex-1">
+                                    <input
+                                        type="text"
+                                        value={youtubeUrl}
+                                        onChange={(e) => setYoutubeUrl(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleYouTubeSubmit()}
+                                        placeholder="Paste YouTube URL..."
+                                        className="flex-1 px-4 py-2.5 bg-dark-800 border border-red-500/30 rounded-xl text-gray-200 placeholder-gray-500 focus:outline-none focus:border-red-500/50 text-sm"
+                                        autoFocus
+                                    />
+                                    <button
+                                        onClick={handleYouTubeSubmit}
+                                        disabled={!youtubeUrl.trim()}
+                                        className="px-4 py-2.5 bg-red-500 hover:bg-red-400 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-xl text-white text-sm font-medium transition-all"
+                                    >
+                                        Add
+                                    </button>
+                                    <button
+                                        onClick={() => { setShowYouTubeInput(false); setYoutubeUrl(''); }}
+                                        className="p-2.5 text-gray-500 hover:text-gray-300 transition-colors"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Uploaded Source Indicator */}
+                            {uploadedSource && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 text-xs">
+                                    <span>✓ {uploadedSource}</span>
+                                    <button
+                                        onClick={() => setUploadedSource(null)}
+                                        className="hover:text-green-300"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <div className={cn(
                         "flex items-center bg-[#1E1F20] rounded-[28px] transition-all duration-200 border border-transparent focus-within:border-dark-700 shadow-2xl overflow-hidden pr-2 py-2",
                         "focus-within:bg-[#1E1F20]"
@@ -664,9 +928,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
                             placeholder={
-                                wizardStage === 'IDLE' ? "Enter a prompt here" :
-                                    wizardStage === 'CLARIFYING' ? "Answer the questions..." :
-                                        "Reply to Gemini..."
+                                currentMode === AppMode.TALK_TO_SOURCE && wizardStage === 'IDLE'
+                                    ? "Paste content or describe what you uploaded..."
+                                    : wizardStage === 'IDLE' ? "Enter a prompt here" :
+                                        wizardStage === 'CLARIFYING' ? "Answer the questions..." :
+                                            "Reply to Gemini..."
                             }
                             className="flex-1 bg-transparent text-[#E3E3E3] placeholder-[#8E918F] px-6 py-3 focus:outline-none resize-none min-h-[56px] max-h-[200px] overflow-y-auto leading-relaxed text-[15px]"
                             rows={1}

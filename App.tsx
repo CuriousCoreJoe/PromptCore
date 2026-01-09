@@ -33,7 +33,7 @@ const App: React.FC = () => {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [credits, setCredits] = useState(0);
   const [wizardMode, setWizardMode] = useState<'iterative' | 'batch'>('iterative');
-  const [defaultModel, setDefaultModel] = useState<AIModel>('claude-sonnet-4.5');
+  const [defaultModel, setDefaultModel] = useState<AIModel>('gemini-3-pro');
   const [upgradeFocus, setUpgradeFocus] = useState<'subscriptions' | 'credits'>('subscriptions');
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -83,7 +83,7 @@ const App: React.FC = () => {
           setProfile(payload.new as UserProfile);
           setCredits(payload.new.credits);
           setWizardMode(payload.new.wizard_mode || 'iterative');
-          setDefaultModel(payload.new.default_model || 'claude-sonnet-4.5');
+          setDefaultModel(payload.new.default_model || 'gemini-3-pro');
         })
         .subscribe();
 
@@ -104,7 +104,7 @@ const App: React.FC = () => {
       setProfile(data[0]);
       setCredits(data[0].credits);
       setWizardMode(data[0].wizard_mode || 'iterative');
-      setDefaultModel(data[0].default_model || 'claude-sonnet-4.5');
+      setDefaultModel(data[0].default_model || 'gemini-3-pro');
     }
   };
 

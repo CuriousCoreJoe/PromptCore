@@ -24,6 +24,9 @@ export interface Message {
   mode?: AppMode;
   attachments?: string[];
   msgType?: 'meta_helper' | 'execution_result';
+  executionModel?: string;
+  status?: 'processing' | 'completed' | 'failed';
+  metadata?: any;
 }
 
 export type AIModel = 'gpt-5' | 'gemini-3-pro' | 'claude-sonnet-4.5' | 'gemini-3-flash';

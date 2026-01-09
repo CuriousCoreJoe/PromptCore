@@ -56,7 +56,7 @@ CREATE TABLE profiles (
   last_daily_bonus TIMESTAMPTZ DEFAULT NOW(),
   lifetime_prompts INTEGER DEFAULT 0,
   wizard_mode TEXT DEFAULT 'iterative', -- 'iterative' or 'batch'
-  default_model TEXT DEFAULT 'claude-sonnet-4.5', -- 'gpt-5', 'gemini-3-pro', 'claude-sonnet-4.5'
+  default_model TEXT DEFAULT 'gemini-3-pro', -- 'gpt-5', 'gemini-3-pro', 'claude-sonnet-4.5', 'gemini-3-flash'
   stripe_customer_id TEXT,
   subscription_status TEXT DEFAULT 'free', -- free, pro, powerhouse
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -117,6 +117,10 @@ CREATE TABLE messages (
   chat_id UUID REFERENCES chats(id) ON DELETE CASCADE NOT NULL,
   role TEXT NOT NULL, -- 'user', 'model', 'system'
   content TEXT NOT NULL,
+  status TEXT DEFAULT 'completed', -- 'processing', 'completed', 'failed'
+  msg_type TEXT, -- 'meta_helper', 'execution_result'
+  execution_model TEXT,
+  metadata JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

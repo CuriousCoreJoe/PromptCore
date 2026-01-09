@@ -54,7 +54,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const optionsRegex = /\[OPTIONS:\s*(.*?)\]\s*$/s;
   const match = message.content.match(optionsRegex);
   const options = match ? match[1].split(',').map(o => o.trim()).filter(o => o.length > 0) : [];
-  const displayContent = message.content.replace(optionsRegex, '').trim();
+
+  // Extract embedded image data (sent separately to avoid ReactMarkdown issues with huge data URLs)
+  const imageDataRegex = /<!-- IMAGE_DATA_START -->\n(data:image\/[^;]+;base64,[^\n]+)\n<!-- IMAGE_DATA_END -->/;
+  const imageMatch = message.content.match(imageDataRegex);
+  const embeddedImageData = imageMatch ? imageMatch[1] : null;
+
+  // Remove both options and image data markers from display content
+  const displayContent = message.content
+    .replace(optionsRegex, '')
+    .replace(imageDataRegex, '')
+    .trim();
 
   const isSystem = message.role === 'system';
   const isExecutionResult = message.msgType === 'execution_result';
@@ -126,7 +136,105 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     h1: ({ children }: any) => <h1 className="text-2xl font-medium text-gray-100 mb-4 mt-6">{children}</h1>,
     h2: ({ children }: any) => <h2 className="text-xl font-medium text-gray-100 mb-3 mt-5">{children}</h2>,
     h3: ({ children }: any) => <h3 className="text-lg font-medium text-gray-100 mb-2 mt-4">{children}</h3>,
+    img: ({ src, alt }: any) => {
+      const [imgError, setImgError] = React.useState(false);
+      const [imgLoaded, setImgLoaded] = React.useState(false);
+
+      // Debug: Log data URL info
+      React.useEffect(() => {
+        console.log(`Image component received src, length: ${src?.length || 0}`);
+        if (src && src.length > 0) {
+          console.log(`Image src type: ${src.startsWith('data:') ? 'base64' : 'url'}`);
+          if (src.startsWith('data:')) {
+            console.log(`Data URL prefix: ${src.substring(0, 100)}...`);
+          }
+        } else {
+          console.warn('Image component received empty src!');
+        }
+      }, [src]);
+
+      // Don't render if src is empty
+      if (!src || src.length === 0) {
+        return (
+          <div className="my-4 rounded-xl overflow-hidden border border-red-700 bg-red-900/20 p-4">
+            <span className="text-red-400 text-sm">Image data was empty or missing</span>
+            {alt && <p className="text-xs text-gray-400 mt-2">{alt}</p>}
+          </div>
+        );
+      }
+
+      return (
+        <div className="my-4 rounded-xl overflow-hidden border border-dark-700 shadow-2xl transition-transform hover:scale-[1.02]">
+          {!imgLoaded && !imgError && (
+            <div className="w-full h-64 bg-dark-800 flex items-center justify-center">
+              <span className="text-gray-400 text-sm">Loading image...</span>
+            </div>
+          )}
+          {imgError && (
+            <div className="w-full h-64 bg-dark-800 flex items-center justify-center">
+              <span className="text-red-400 text-sm">Failed to load image</span>
+            </div>
+          )}
+          <img
+            src={src}
+            alt={alt}
+            className={`w-full h-auto object-cover ${imgLoaded ? '' : 'hidden'}`}
+            loading="lazy"
+            onLoad={() => setImgLoaded(true)}
+            onError={(e) => {
+              console.error('Image failed to load:', e);
+              console.error('Failed src (first 100 chars):', src?.substring(0, 100));
+              setImgError(true);
+            }}
+          />
+          {alt && <p className="px-4 py-2 text-xs text-gray-400 bg-dark-900/50 italic border-t border-dark-800">{alt}</p>}
+        </div>
+      );
+    },
   }), []);
+
+  // EmbeddedImage component for rendering images outside of ReactMarkdown
+  const EmbeddedImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
+    const [imgError, setImgError] = React.useState(false);
+    const [imgLoaded, setImgLoaded] = React.useState(false);
+
+    React.useEffect(() => {
+      console.log(`EmbeddedImage rendering, src length: ${src?.length || 0}`);
+    }, [src]);
+
+    if (!src) return null;
+
+    return (
+      <div className="my-4 rounded-xl overflow-hidden border border-dark-700 shadow-2xl">
+        {!imgLoaded && !imgError && (
+          <div className="w-full h-64 bg-dark-800 flex items-center justify-center">
+            <span className="text-gray-400 text-sm">Loading generated image...</span>
+          </div>
+        )}
+        {imgError && (
+          <div className="w-full h-64 bg-dark-800 flex items-center justify-center">
+            <span className="text-red-400 text-sm">Failed to load generated image</span>
+          </div>
+        )}
+        <img
+          src={src}
+          alt={alt}
+          className={`w-full h-auto object-cover ${imgLoaded ? '' : 'hidden'}`}
+          onLoad={() => {
+            console.log('EmbeddedImage loaded successfully');
+            setImgLoaded(true);
+          }}
+          onError={(e) => {
+            console.error('EmbeddedImage failed to load:', e);
+            setImgError(true);
+          }}
+        />
+        {alt && imgLoaded && (
+          <p className="px-4 py-2 text-xs text-gray-400 bg-dark-900/50 italic border-t border-dark-800">{alt}</p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className={`flex w-full mb-8 gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -164,25 +272,63 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <div className="px-2 py-1 bg-green-500/20 rounded-md">
                   <span className="text-xs font-bold text-green-400">EXECUTION RESULT</span>
                 </div>
-                <span className="text-xs text-gray-400">Claude 3.5 Sonnet</span>
+                <span className="text-xs text-gray-400">
+                  {message.executionModel?.includes('pro-image-preview') ? '🍌 Nano Banana' :
+                    message.executionModel?.includes('claude-sonnet-4.5') ? 'Claude Sonnet 4.5' :
+                      message.executionModel || 'Claude 3.5 Sonnet'}
+                </span>
               </div>
             )}
-            <ReactMarkdown components={markdownComponents}>
-              {displayContent}
-            </ReactMarkdown>
+            {message.status === 'processing' ? (
+              <div className="flex flex-col gap-3 py-2">
+                <div className="flex items-center gap-3 text-purple-300 font-medium">
+                  <div className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
+                  </div>
+                  Building your application...
+                </div>
+                <div className="text-sm text-gray-400/80 italic">
+                  This may take up to a minute for complex architectures.
+                </div>
+                <div className="mt-2 h-1 w-full bg-dark-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-purple-600 to-pink-600 w-1/3 animate-[shimmer_2s_infinite]"></div>
+                </div>
+              </div>
+            ) : (
+              <ReactMarkdown components={markdownComponents}>
+                {displayContent}
+              </ReactMarkdown>
+            )}
 
-            {/* Quick Reply Options */}
+            {/* Embedded Image (rendered separately to avoid ReactMarkdown issues with huge data URLs) */}
+            {embeddedImageData && (
+              <EmbeddedImage src={embeddedImageData} alt="Generated Image" />
+            )}
+
+            {/* Quick Reply Options / Outcome Buttons */}
             {options.length > 0 && onOptionSelect && (
               <div className="mt-4 flex flex-wrap gap-2 animate-in fade-in duration-500">
-                {options.map((opt, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => onOptionSelect(opt)}
-                    className="px-4 py-2 bg-dark-800 hover:bg-brand-600 hover:text-white text-brand-200 text-sm font-medium rounded-lg border border-dark-700 hover:border-brand-500 transition-all shadow-sm"
-                  >
-                    {opt}
-                  </button>
-                ))}
+                {options.map((opt, idx) => {
+                  // Check if this is a Vibe Code "Outcome Button"
+                  const isOutcomeButton = message.mode === 'Vibe Code' &&
+                    ['Make it Pop', 'Mobile First', 'Gamify', 'Professional'].some(key => opt.includes(key));
+
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => onOptionSelect(opt)}
+                      className={
+                        isOutcomeButton
+                          ? "px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-sm font-bold rounded-full border border-purple-400/30 transition-all shadow-lg shadow-purple-500/20 hover:scale-105 active:scale-95 flex items-center gap-2"
+                          : "px-4 py-2 bg-dark-800 hover:bg-brand-600 hover:text-white text-brand-200 text-sm font-medium rounded-lg border border-dark-700 hover:border-brand-500 transition-all shadow-sm"
+                      }
+                    >
+                      {isOutcomeButton && <Sparkles size={14} className="text-yellow-300" />}
+                      {opt}
+                    </button>
+                  );
+                })}
               </div>
             )}
             {/* Message Action Bar - Regenerate, Edit, Vote, Copy */}

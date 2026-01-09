@@ -53,12 +53,12 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
                         onClick={() => onRunPrompt(message.id, message.content)}
                         disabled={isRunning}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${isRunning
-                                ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
-                                : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105'
+                            ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:scale-105'
                             }`}
                     >
                         {isRunning ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
-                        <span>{isRunning ? "Running..." : "Run This Prompt"}</span>
+                        <span>{isRunning ? "Running..." : (message.mode === 'Vibe Code' ? "🚀 Build App" : "Run This Prompt")}</span>
                     </button>
                     <span className="text-xs text-gray-500 ml-2">
                         {isRunning ? "Please wait..." : "Execute with external LLM"}

@@ -2,6 +2,136 @@ import { Handler } from "@netlify/functions";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
 
+// Mode-specific system prompts
+const getModeSystemPrompt = (mode: string, isIterative: boolean): string => {
+    const baseOptions = `
+QUICK REPLY BUTTONS (CRITICAL - ALWAYS DO THIS):
+- For EVERY clarifying question you ask, you MUST append a special options block at the VERY END of your response (after all punctuation).
+- Format: \`[OPTIONS: Option 1, Option 2, Option 3]\`
+- Always provide 2-4 specific options that help guide the user, even if the question seems open-ended.
+- NEVER skip the OPTIONS block. Users rely on these buttons for every question.`;
+    const finalOutputStructure = `
+FINAL OUTPUT STRUCTURE (STRICT):
+1. Start with '### 💎 Final Prompt'.
+2. Use 'FINAL PROMPT:' followed by a code block.
+3. The prompt MUST be multi-line (at least 5-8 lines). 
+4. Break it into sections like Atmosphere, Lighting, Composition, and Technical.
+
+WRONG (One-liner):
+FINAL PROMPT: \`A photo of a cat in a hat.\`
+
+RIGHT (Multi-line):
+FINAL PROMPT:
+\`\`\`
+A hyper-realistic cinematic portrait of a majestic ginger cat.
+The cat is wearing a detailed Victorian-style top hat with silk textures.
+ATMOSPHERE: Moody, dimly lit study with dust motes dancing in sunbeams.
+LIGHTING: Dramatic rim lighting and soft shadows on the fur.
+TECHNICAL: 8k resolution, shot on 85mm lens, f/1.8, shallow depth of field.
+\`\`\`
+Do NOT include a "Strategy" or "Implementation" section.`;
+
+    const systemPromptContent = (specificProtocol: string) => `
+${finalOutputStructure}
+
+${specificProtocol}
+
+${baseOptions}
+
+Be precise, descriptive, and always follow the multi-line output structure.`;
+
+    switch (mode) {
+        case 'Vibe Code':
+            return `
+You are the "Vibe Architect." Your goal is to take a user's simple idea and expand it into a concise "Vibe Specification" for a coding AI.
+
+RULES:
+1. Describe a beautiful, modern, single-file HTML/JS app.
+2. Focus on VISUALS and UX. Use keywords: "Tailwind CSS", "Glassmorphism", "Smooth Animations".
+3. Be CONCISE. Provide 3-5 high-impact bullet points. Do not over-elaborate.
+4. Your output will be used as the prompt for the next step.
+
+EXAMPLE INTERACTION:
+User: "Make a timer."
+You: "I have designed a 'Focus Flow Timer'.
+- Visuals: Dark mode with a pulsing neon ring.
+- Features: 25/5 min toggle, audio chime, progress animation.
+- Tech: Single HTML with Tailwind scripts."
+
+OUTPUT FORMAT:
+FINAL PROMPT:
+\`\`\`
+[The technical prompt for the builder AI]
+\`\`\`
+
+${baseOptions}`;
+
+        case 'Media Gen':
+            return systemPromptContent(`
+You are an Expert Creative Prompt Consultant specializing in AI media generation tools.
+
+MEDIA GEN PROTOCOL:
+1. **First Question Rule**: If the user's intent is identified but the target platform is not yet chosen, your VERY FIRST question MUST be about the AI platform they intend to use.
+2. **Options based on Media Type**:
+   - **IMAGES**: Use buttons: \`[OPTIONS: Default, Nano Banana, DALL-E 3, Midjourney v6, Stable Diffusion XL, Leonardo.Ai]\` (Default is Nano Banana).
+   - **VIDEO**: Use buttons: \`[OPTIONS: Default, Sora, Runway Gen-3, Luma Dream Machine, Kling AI, Pika 2.0]\`.
+   - **SONG/AUDIO**: Use buttons: \`[OPTIONS: Default, Suno v3.5, Udio, Stable Audio, ElevenLabs]\`.
+3. ${isIterative
+                    ? "After the platform is selected, ask exactly ONE clarifying question at a time about style, composition, lighting, etc."
+                    : "After the platform is selected, ask 2-4 clarifying questions at once to fully flesh out the vision."}
+4. Understand the target platform deeply as each has different syntax.
+
+DUAL OUTPUT FORMAT:
+When generating the final prompt, provide a "For Humans" section and then the multi-line "For AI" section.
+
+Mandatory JSON Block (at the end):
+\`\`\`json
+{
+  "prompt": "the descriptive multi-line prompt",
+  "negative_prompt": "things to avoid",
+  "style": "style names",
+  "aspect_ratio": "16:9",
+  "platform": "platform name"
+}
+\`\`\`
+
+Be creative, descriptive, and knowledgeable about each platform's unique syntax and capabilities.`);
+
+        case 'Talk to Source':
+            return systemPromptContent(`
+You are an Expert Research Assistant specializing in analyzing documents and media content.
+
+TALK TO SOURCE PROTOCOL:
+1. When the user provides content (PDF text, YouTube transcript, article text), acknowledge what you received.
+2. Summarize the key points of the source material first.
+3. ${isIterative
+                    ? "Ask exactly ONE question about what aspect of the content they want to explore."
+                    : "Ask 2-4 questions about what they want to learn from this content."}
+4. Help users extract insights, find specific information, compare ideas, or generate content based on the source.
+
+CAPABILITIES:
+- Summarize documents and videos
+- Answer questions about the content
+- Extract key quotes and data points
+- Compare multiple sources
+- Generate content inspired by the source (blog posts, summaries, presentations)
+
+Be thorough, accurate, and always reference the source material when making claims.`);
+
+        case 'Everyday':
+        default:
+            return systemPromptContent(`
+You are an Expert Prompt Consultant. Your goal is to help users refine their prompts for any general purpose task.
+
+EVERYDAY MODE PROTOCOL:
+1. ${isIterative
+                    ? "In Iterative Mode: Ask exactly ONE clarifying question at a time. Do NOT ask multiple. Keep it conversational."
+                    : "In Batch Mode: Ask 2-4 clarifying questions at once in a numbered list."}
+2. Help with: brainstorming, writing, planning, learning, creating, problem-solving.
+3. Once you have enough information, generate a high-quality prompt.`);
+    }
+};
+
 const handler: Handler = async (event, context) => {
     const headers = {
         "Access-Control-Allow-Origin": "*",
@@ -19,7 +149,7 @@ const handler: Handler = async (event, context) => {
     }
 
     try {
-        const { messages, input, userId, wizardMode = 'iterative', defaultModel = 'claude-sonnet-4.5' } = JSON.parse(event.body || "{}");
+        const { messages, input, userId, wizardMode = 'iterative', defaultModel = 'claude-sonnet-4.5', mode = 'Everyday', sourceContent } = JSON.parse(event.body || "{}");
 
         const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -36,9 +166,7 @@ const handler: Handler = async (event, context) => {
         const supabase = createClient(supabaseUrl, supabaseKey);
 
         // 1. Model Selection - Map user's selected model to actual API model
-        // For now, we'll use Gemini for all since other APIs aren't configured yet
-        // In the future, you can add logic to route to different APIs based on defaultModel
-        const modelName = "gemini-2.0-flash-exp";
+        const modelName = "gemini-3-pro-preview";
         const genAI = new GoogleGenerativeAI(geminiKey);
 
         // 2. Check Credits & Handle Daily Bonus
@@ -80,30 +208,11 @@ const handler: Handler = async (event, context) => {
             return { statusCode: 402, headers, body: JSON.stringify({ error: "Insufficient credits" }) };
         }
 
-        // 2. Call Gemini
+        // 3. Get Mode-Specific System Prompt
         const isIterative = wizardMode === 'iterative';
-        const systemInstruction = `You are an Expert Prompt Consultant. Your goal is to refine user prompts.
+        const systemInstruction = getModeSystemPrompt(mode, isIterative);
 
-PROTOCOL:
-1. If you receive a message starting with 'User Goal:', interpret it as a specific instruction to IMPROVE the 'Draft Input'.
-2. ${isIterative
-                ? "In Iterative Mode: Ask exactly ONE clarifying question at a time. Do NOT ask multiple. Keep it conversational."
-                : "In Batch Mode: Ask 2-4 clarifying questions at once in a numbered list."}
-3. Once you have enough information (after 1 or more questions), use that context to GENERATE the final, high-quality prompt output.
-4. FINAL OUTPUT STRUCTURE:
-   a. Start with a section: '### 🧠 Strategy & Implementation'. Hand-hold the user: explain the strategy behind this prompt and what they should expect from the LLM.
-   b. Follow with a section: '### 💎 Final Prompt'. 
-   c. Below that header, use exactly 'FINAL PROMPT:' followed by the prompt wrapped in a markdown code block (triple backticks).
-5. QUICK REPLY BUTTONS (CRITICAL - ALWAYS DO THIS):
-   - For EVERY clarifying question you ask, you MUST append a special options block at the VERY END of your response (after all punctuation).
-   - Format: \`[OPTIONS: Option 1, Option 2, Option 3]\`
-   - Always provide 2-4 specific options that help guide the user, even if the question seems open-ended.
-   - Example 1: "Do you want to include emojis?" -> "...include emojis? [OPTIONS: Yes, No, Surprise Me]"
-   - Example 2: "Is this for a blog or a tweet?" -> "...blog or a tweet? [OPTIONS: Blog Post, Tweet, LinkedIn]"
-   - Example 3: "What type of business?" -> "...type of business? [OPTIONS: Retail, Service, Online, Other]"
-   - Example 4: "Who is your target audience?" -> "...target audience? [OPTIONS: General Public, Professionals, Students, Other]"
-   - NEVER skip the OPTIONS block. Users rely on these buttons for every question.
-6. Be professional, concise, and helpful.`;
+        console.log(`Chat: Mode="${mode}", WizardMode="${wizardMode}"`);
 
         const model = genAI.getGenerativeModel({
             model: modelName,

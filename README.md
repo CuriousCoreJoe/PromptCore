@@ -10,11 +10,12 @@ View your app in AI Studio: https://ai.studio/apps/drive/1KYrvtvHJhu_9voDsKWJAjq
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisites:** [Bun](https://bun.sh)
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+   `bun install`
+2. Set the `GEMINI_API_KEY` in [.env](.env) to your Gemini API key (or use existing .env)
 3. Run the app:
-   `npm run dev`
+   `bun run dev`
+4. Run Netlify local server:
+   `bun x netlify dev`
