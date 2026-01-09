@@ -248,6 +248,7 @@ const App: React.FC = () => {
         currentMode={currentMode}
         session={session}
         credits={credits}
+        userProfile={profile}
         onShowToast={(message, actionLabel, action) => setToast({
           visible: true,
           message,

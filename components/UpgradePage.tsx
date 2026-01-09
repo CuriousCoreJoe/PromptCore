@@ -81,17 +81,20 @@ export const UpgradePage: React.FC<UpgradePageProps> = ({ initialFocus, onBack, 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="bg-dark-900 border border-dark-800 rounded-2xl p-6 flex flex-col hover:border-dark-700 transition-colors">
               <div className="mb-4">
-                <span className="bg-dark-800 text-gray-300 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">Basic</span>
+                <span className="bg-dark-800 text-gray-300 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">Standard Rate</span>
               </div>
               <h3 className="text-2xl font-bold text-white">Starter</h3>
               <div className="mt-4 flex items-baseline">
                 <span className="text-4xl font-extrabold text-white">$0</span>
                 <span className="ml-1 text-xl text-gray-500">/mo</span>
               </div>
+              <p className="mt-4 text-gray-400 text-sm">Get started with core features. Perfect for trying out PromptCore.</p>
               <ul className="mt-8 space-y-4 flex-1">
-                <FeatureItem text="50 Everyday Chat messages/day" />
-                <FeatureItem text="Basic Code Refinement" />
-                <FeatureItem text="1 Active Knowledge Source" />
+                <FeatureItem text="50 Monthly Credits (Renews)" />
+                <FeatureItem text="Unlimited Prompt Factory Access" highlighted />
+                <FeatureItem text="Everyday & Media Gen Modes" />
+                <FeatureItem text="⚠️ Standard Rate: 3x cost after 100 credits/month" />
+                <FeatureItem text="Community Support" />
               </ul>
               <button className="mt-8 w-full py-3 px-4 bg-dark-800 text-gray-400 font-semibold rounded-lg cursor-default border border-dark-700">
                 Current Plan
@@ -100,22 +103,26 @@ export const UpgradePage: React.FC<UpgradePageProps> = ({ initialFocus, onBack, 
 
             <div className="bg-dark-900 border border-brand-900/40 rounded-2xl p-6 flex flex-col hover:border-brand-500/30 transition-colors relative overflow-hidden">
               <div className="mb-4">
-                <span className="bg-brand-900/20 text-brand-300 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">Pro</span>
+                <span className="bg-brand-900/20 text-brand-300 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">Preferred Rate</span>
               </div>
               <h3 className="text-2xl font-bold text-white">Creator</h3>
               <div className="mt-4 flex items-baseline">
-                <span className="text-4xl font-extrabold text-white">$10</span>
+                <span className="text-4xl font-extrabold text-white">$8.99</span>
                 <span className="ml-1 text-xl text-gray-500">/mo</span>
               </div>
+              <p className="mt-4 text-gray-400 text-sm">Unlock powerful features and eliminate the usage tax.</p>
               <ul className="mt-8 space-y-4 flex-1">
-                <FeatureItem text="1,000 Fast Chats / day" highlighted />
-                <FeatureItem text="20 Active Knowledge Sources" highlighted />
-                <FeatureItem text="2,000 Monthly Bonus Credits" />
+                <FeatureItem text="1,000 Monthly Credits (Renews)" highlighted />
+                <FeatureItem text="✨ Preferred Rate: No 3x penalty" highlighted />
+                <FeatureItem text="Unlock Vibe Code / App Builder" highlighted />
+                <FeatureItem text="Unlock Talk to Source (RAG)" highlighted />
+                <FeatureItem text="Save Workspace History" />
+                <FeatureItem text="All Modes Unlocked" />
               </ul>
               <button
                 onClick={() => handleCheckout('price_creator_sub', 'subscription')}
                 disabled={loadingPriceId === 'price_creator_sub'}
-                className="mt-8 w-full py-3 px-4 bg-dark-800 hover:bg-dark-700 text-white border border-dark-600 font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="mt-8 w-full py-3 px-4 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
               >
                 {loadingPriceId === 'price_creator_sub' ? <Loader2 className="animate-spin" /> : 'Upgrade to Creator'}
               </button>
@@ -124,25 +131,34 @@ export const UpgradePage: React.FC<UpgradePageProps> = ({ initialFocus, onBack, 
             <div className="relative bg-dark-900 border-2 border-brand-500 rounded-2xl p-6 flex flex-col shadow-2xl shadow-brand-900/20 transform md:-translate-y-2">
               <div className="absolute top-0 right-0 -mt-3 -mr-3">
                 <span className="bg-brand-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-lg flex items-center gap-1">
-                  <Star size={10} fill="currentColor" /> Unlimited
+                  <Star size={10} fill="currentColor" /> Best Value
                 </span>
               </div>
-              <h3 className="text-2xl font-bold text-white">Powerhouse</h3>
+              <div className="mb-4">
+                <span className="bg-gradient-to-r from-brand-600 to-indigo-600 text-white px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider shadow-sm">
+                  Pro
+                </span>
+              </div>
+              <h3 className="text-2xl font-bold text-white">Pro</h3>
               <div className="mt-4 flex items-baseline">
-                <span className="text-4xl font-extrabold text-white">$20</span>
+                <span className="text-4xl font-extrabold text-white">$14.99</span>
                 <span className="ml-1 text-xl text-gray-500">/mo</span>
               </div>
+              <p className="mt-4 text-gray-400 text-sm">For power users building at scale.</p>
               <ul className="mt-8 space-y-4 flex-1">
-                <FeatureItem text="Unlimited Everything" highlighted />
-                <FeatureItem text="Priority Gemini 1.5 Pro" highlighted />
-                <FeatureItem text="5,000 Monthly Bonus Credits" highlighted />
+                <FeatureItem text="2,500 Monthly Credits (Renews)" highlighted />
+                <FeatureItem text="✨ Preferred Rate: No usage penalties" highlighted />
+                <FeatureItem text="Mass App Prototyping (30cr/app)" highlighted />
+                <FeatureItem text="Priority Support" highlighted />
+                <FeatureItem text="Early Access to New Models" />
+                <FeatureItem text="Everything Included" />
               </ul>
               <button
                 onClick={() => handleCheckout('price_powerhouse_sub', 'subscription')}
                 disabled={loadingPriceId === 'price_powerhouse_sub'}
                 className="mt-8 w-full py-3 px-4 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-lg transition-colors shadow-lg shadow-brand-900/50 flex items-center justify-center gap-2"
               >
-                {loadingPriceId === 'price_powerhouse_sub' ? <Loader2 className="animate-spin" /> : <><Rocket size={18} /> Go Ultimate</>}
+                {loadingPriceId === 'price_powerhouse_sub' ? <Loader2 className="animate-spin" /> : <><Rocket size={18} /> GO PRO</>}
               </button>
             </div>
           </div>
@@ -150,7 +166,12 @@ export const UpgradePage: React.FC<UpgradePageProps> = ({ initialFocus, onBack, 
 
         <div className="pt-8 border-t border-dark-800">
           <div ref={creditsRef} className={`scroll-mt-6 rounded-2xl p-6 transition-all duration-1000 ease-out ${highlightCredits ? 'ring-2 ring-brand-500 bg-brand-900/10' : ''}`}>
-            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><Coins className="text-yellow-500" /> Credit Packs</h2>
+            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><Coins className="text-yellow-500" /> Credit Top-Up Packs</h2>
+            <p className="text-gray-400 mb-6 max-w-3xl">
+              Need more credits? Top-up packs never expire and work with any subscription tier.
+              <strong className="text-brand-400"> Note:</strong> Free users pay Standard Rate (3x) after 100 credits/month.
+              Subscribe to Creator to get Preferred Rates and make your credits last longer!
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <PackCard amount={500} price={5} label="Starter Pack" priceId="price_starter_pack" onBuy={() => handleCheckout('price_starter_pack', 'credits')} loading={loadingPriceId === 'price_starter_pack'} />
               <PackCard amount={1500} price={12} label="Creator Pack" priceId="price_creator_pack" highlighted onBuy={() => handleCheckout('price_creator_pack', 'credits')} loading={loadingPriceId === 'price_creator_pack'} />

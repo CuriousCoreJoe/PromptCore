@@ -197,9 +197,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, profi
             <User size={20} />
           )}
           {!isCollapsed && (
-            <div className="ml-3">
-              <p className="text-sm font-medium text-white truncate max-w-[120px]">{profile?.full_name || 'User'}</p>
-              <p className="text-xs text-gray-500 capitalize">{isDev ? 'Developer' : (profile?.subscription_status || 'Free')} Tier</p>
+            <div className="ml-3 flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{profile?.full_name || 'User'}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <p className="text-xs text-gray-500 capitalize">{isDev ? 'Developer' : (profile?.subscription_status || 'Free')} Tier</p>
+                {!isDev && profile?.subscription_status === 'free' && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-yellow-900/30 text-yellow-400 border border-yellow-700/30" title="Costs increase 3x after 100 credits/month. Upgrade for consistent rates.">
+                    3x Rate
+                  </span>
+                )}
+                {!isDev && (profile?.subscription_status === 'lite' || profile?.subscription_status === 'pro') && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-900/30 text-green-400 border border-green-700/30" title="Preferred Rate: No usage penalties">
+                    Preferred
+                  </span>
+                )}
+              </div>
             </div>
           )}
           {!isCollapsed && (

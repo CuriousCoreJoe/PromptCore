@@ -26,6 +26,49 @@ const handler: Handler = async (event, context) => {
         const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+        // 1. Check Credits, Subscription & Monthly Usage
+        const { data: profile } = await supabase.from('profiles').select('credits, monthly_usage, last_usage_reset, subscription_status').eq('id', userId).single();
+        const { data: userData } = await supabase.auth.admin.getUserById(userId);
+        const isDev = userData?.user?.email === 'dev@promptcore.com';
+
+        const status = profile?.subscription_status || 'free';
+        const isFree = status === 'free';
+
+        // PAYWALL: Block free users from background building
+        if (!isDev && isFree) {
+            console.log(`[Background Builder] Blocking free user ${userId}`);
+            return { statusCode: 403, body: "App Builder is restricted to Lite and Pro subscribers." };
+        }
+
+        let currentCredits = profile?.credits || 0;
+        let monthlyUsage = profile?.monthly_usage || 0;
+        const lastReset = new Date(profile?.last_usage_reset || 0);
+        const now = new Date();
+
+        // Monthly Reset logic
+        const isNewMonth = now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear();
+        if (isNewMonth) {
+            monthlyUsage = 0;
+            const allowances: Record<string, number> = { 'free': 50, 'lite': 1000, 'pro': 2500 };
+            const allowance = allowances[status] || 50;
+            currentCredits = Math.max(currentCredits, allowance);
+
+            await supabase.from("profiles").update({
+                monthly_usage: 0,
+                credits: currentCredits,
+                last_usage_reset: now.toISOString()
+            }).eq("id", userId);
+        }
+
+        const COST = 30; // app_build_prototype: 30
+        const multiplier = (isFree && monthlyUsage > 100) ? 3 : 1;
+        const finalCost = COST * multiplier;
+
+        if (!isDev && currentCredits < finalCost) {
+            console.log(`[Background Builder] User ${userId} has insufficient credits (${currentCredits} < ${finalCost})`);
+            return { statusCode: 402, body: "Insufficient credits" };
+        }
+
         const openRouterKey = process.env.OPENROUTER_API_KEY;
 
         // Use Gemini 3 Pro Preview as requested for powerful building
@@ -63,7 +106,24 @@ const handler: Handler = async (event, context) => {
 
         // 2. Perform the Heavy AI Task
         try {
+            const systemPrompt = `You are the "App Architect." Your user has an idea for an app.
+Your goal is to build a "Visual Prototype" (a working first version) so the user can verify the logic.
+
+IF THE USER ASKS TO "BUILD APP":
+- Write a single, self-contained HTML file.
+- Use simple, clean formatting (Tailwind via CDN).
+- Focus on logic and functionality.
+- Wrap the HTML code in \`\`\`html\`\`\` blocks.
+- **IMPORTANT**: After the code block, include a section titled "### 💎 Final Prompt" containing a polished, comprehensive text prompt that could be used in any AI builder tool.
+
+IF THE USER ASKS TO "DESCRIBE PLAN":
+- Output simple numbered list requirements (simple plan).
+
+IF THE USER ASKS TO "GET INSTRUCTIONS":
+- Generate a comprehensive System Prompt for pro AI coding tools.`;
+
             const messages = [
+                { role: 'system', content: systemPrompt },
                 ...conversationHistory.map((msg: any) => ({
                     role: msg.role === 'model' ? 'assistant' : 'user',
                     content: msg.content
@@ -111,6 +171,17 @@ const handler: Handler = async (event, context) => {
                 console.error("Failed to update message with result:", updateError);
             } else {
                 console.log(`[Background Builder] Job completed successfully for ${messageId}`);
+
+                // 4. Decrement Credits & Update Monthly Usage
+                if (!isDev) {
+                    await supabase
+                        .from('profiles')
+                        .update({
+                            credits: Math.max(0, currentCredits - finalCost),
+                            monthly_usage: monthlyUsage + finalCost
+                        })
+                        .eq('id', userId);
+                }
             }
 
         } catch (executionError: any) {

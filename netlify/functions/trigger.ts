@@ -40,7 +40,7 @@ const handler: Handler = async (event, context) => {
         // 1. Check Credits & Calculate Cost
         const { data: profiles, error: profileError } = await supabase
             .from("profiles")
-            .select("credits, last_daily_bonus, lifetime_prompts, subscription_status")
+            .select("credits, monthly_usage, last_usage_reset, subscription_status, lifetime_prompts")
             .eq("id", userId);
 
         const profile = profiles && profiles.length > 0 ? profiles[0] : null;
@@ -51,48 +51,47 @@ const handler: Handler = async (event, context) => {
         }
 
         let currentCredits = profile?.credits || 0;
-        const lastBonus = new Date(profile?.last_daily_bonus || 0);
+        let monthlyUsage = profile?.monthly_usage || 0;
+        const lastReset = new Date(profile?.last_usage_reset || 0);
         const now = new Date();
-        const oneDay = 24 * 60 * 60 * 1000;
 
-        // Daily Refresh
-        if ((now.getTime() - lastBonus.getTime() > oneDay) && currentCredits < 100) {
-            currentCredits = 100;
-            // Fire and forget update for speed, or await if critical
+        // Monthly Reset logic (same as chat.ts)
+        const isNewMonth = now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear();
+        if (isNewMonth) {
+            monthlyUsage = 0;
+            const allowances: Record<string, number> = { 'free': 50, 'lite': 1000, 'pro': 2500 };
+            const allowance = allowances[profile?.subscription_status || 'free'] || 50;
+            currentCredits = Math.max(currentCredits, allowance);
+
             await supabase.from("profiles").update({
-                credits: 100,
-                last_daily_bonus: now.toISOString()
+                monthly_usage: 0,
+                credits: currentCredits,
+                last_usage_reset: now.toISOString()
             }).eq("id", userId);
         }
 
-        // Dev Bypass (Email-based or Local Environment)
+        const status = profile?.subscription_status || 'free';
+        const isFree = status === 'free';
+
+        // Prompt Factory is the "Hook" - Open for Free Users
+
+        // Cost Calculation
+        // JSON: "prompt_factory_batch": 5 (assuming 5 prompts per batch)
+        const batchSize = 5;
+        const batches = Math.ceil(count / batchSize);
+        const baseCost = batches * 5;
+
+        // Efficiency Logic (Multiplier)
+        const multiplier = (isFree && monthlyUsage > 100) ? 3 : 1;
+        const totalCost = baseCost * multiplier;
+
+        // Dev Bypass
         const { data: devUser } = await supabase.auth.admin.getUserById(userId);
         const isLocalDev = process.env.NETLIFY_DEV === 'true';
         const isDev = devUser?.user?.email === 'dev@promptcore.com' || isLocalDev;
 
-        const lifetime = profile?.lifetime_prompts || 0;
-        const isPro = profile?.subscription_status === 'pro';
-
-        // Cost Calculation
-        // Rule 1: Catch -> If Free AND lifetime >= 500, Base Cost is 2. Else 1.
-        // Pro users are EXEMPT from the catch (always 1).
-        const baseCost = (lifetime >= 500 && !isPro) ? 2 : 1;
-
-        // Rule 2: Tiered Logic -> First 50 @ Base, Excess @ 1.5x Base
-        let totalCost = 0;
-        const tier1Limit = 50;
-
-        if (count <= tier1Limit) {
-            totalCost = count * baseCost;
-        } else {
-            const tier1Cost = tier1Limit * baseCost;
-            const excessCount = count - tier1Limit;
-            const tier2Cost = excessCount * (baseCost * 1.5);
-            totalCost = tier1Cost + tier2Cost;
-        }
-
         if (!isDev && currentCredits < totalCost) {
-            return { statusCode: 402, body: JSON.stringify({ error: `Insufficient credits. Cost: ${totalCost}, Balance: ${currentCredits}` }) };
+            return { statusCode: 402, body: JSON.stringify({ error: `Insufficient credits. Standard Rate (3x) applies. Cost: ${totalCost}, Balance: ${currentCredits}. Upgrade to Creator for Preferred Rates.` }) };
         }
 
         // 2. Create the Pack record immediately
@@ -114,10 +113,12 @@ const handler: Handler = async (event, context) => {
 
         // 3. Deduct Credits & Update Lifetime (if not dev)
         if (!isDev) {
+            const lifetime = profile?.lifetime_prompts || 0;
             const { error: updateError } = await supabase
                 .from("profiles")
                 .update({
-                    credits: currentCredits - totalCost,
+                    credits: Math.max(0, currentCredits - totalCost),
+                    monthly_usage: monthlyUsage + totalCost,
                     lifetime_prompts: lifetime + count
                 })
                 .eq("id", userId);

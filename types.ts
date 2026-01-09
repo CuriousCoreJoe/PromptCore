@@ -34,14 +34,16 @@ export type AIModel = 'gpt-5' | 'gemini-3-pro' | 'claude-sonnet-4.5' | 'gemini-3
 export interface UserProfile {
   id: string;
   credits: number;
-  subscriptionTier: 'free' | 'pro' | 'ultimate';
+  subscriptionTier: 'free' | 'lite' | 'pro';
   wizardMode: 'iterative' | 'batch';
   defaultModel: AIModel;
+  monthly_usage: number;
+  last_usage_reset: string;
   createdAt: number;
   email?: string;
   full_name?: string;
   avatar_url?: string;
-  subscription_status?: string;
+  subscription_status?: 'free' | 'lite' | 'pro';
 }
 
 // Added Document interface to resolve "Module '"../types"' has no exported member 'Document'" error in Dashboard.tsx

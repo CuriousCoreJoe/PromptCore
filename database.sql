@@ -58,7 +58,9 @@ CREATE TABLE profiles (
   wizard_mode TEXT DEFAULT 'iterative', -- 'iterative' or 'batch'
   default_model TEXT DEFAULT 'gemini-3-pro', -- 'gpt-5', 'gemini-3-pro', 'claude-sonnet-4.5', 'gemini-3-flash'
   stripe_customer_id TEXT,
-  subscription_status TEXT DEFAULT 'free', -- free, pro, powerhouse
+  subscription_status TEXT DEFAULT 'free', -- free, lite, pro
+  monthly_usage INTEGER DEFAULT 0,
+  last_usage_reset TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -144,3 +146,9 @@ CREATE POLICY "Users can insert messages to their chats" ON messages
       AND chats.user_id = (select auth.uid())
     )
   );
+
+-- Enable Realtime for messages table (required for live updates)
+-- Note: Run this in Supabase SQL Editor if not already configured
+ALTER PUBLICATION supabase_realtime ADD TABLE messages;
+ALTER PUBLICATION supabase_realtime ADD TABLE profiles;
+ALTER PUBLICATION supabase_realtime ADD TABLE chats;

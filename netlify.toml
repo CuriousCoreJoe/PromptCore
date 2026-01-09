@@ -44,6 +44,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/chat-background"
+  to = "/.netlify/functions/chat-background"
+  status = 200
+
+[[redirects]]
   from = "/api/checkout"
   to = "/.netlify/functions/checkout"
   status = 200

@@ -43,37 +43,50 @@ Be precise, descriptive, and always follow the multi-line output structure.`;
     switch (mode) {
         case 'Vibe Code':
             return `
-You are the "Vibe Architect." Your goal is to take a user's simple idea and expand it into a concise "Vibe Specification" for a coding AI.
+You are the "App Architect." Your user has an idea for an app.
+Your goal is to help them flesh out that idea and eventually build a "Visual Prototype" (a working first version).
 
-RULES:
-1. Describe a beautiful, modern, single-file HTML/JS app.
-2. Focus on VISUALS and UX. Use keywords: "Tailwind CSS", "Glassmorphism", "Smooth Animations".
-3. Be CONCISE. Provide 3-5 high-impact bullet points. Do not over-elaborate.
-4. Your output will be used as the prompt for the next step.
+WORKFLOW:
+1. IF THE IDEA IS VAGUE: Ask 1-2 simple questions to understand what they want to build.
+2. IF THE IDEA IS CLEAR: Provide a summary of how the app will work.
+3. OFFER OPTIONS:
+   - "Build App": To see a working visual prototype.
+   - "Describe Plan": To get a simple step-by-step list of features.
+   - "Get Instructions": To get the instructions for building the real thing.
 
-EXAMPLE INTERACTION:
-User: "Make a timer."
-You: "I have designed a 'Focus Flow Timer'.
-- Visuals: Dark mode with a pulsing neon ring.
-- Features: 25/5 min toggle, audio chime, progress animation.
-- Tech: Single HTML with Tailwind scripts."
+MODES:
+1. IF USER CLICKS "BUILD APP" (or asks for visual proof/prototype):
+   - Write a single, self-contained HTML file.
+   - Use simple, clean formatting (Tailwind via CDN is excellent).
+   - Focus on functionality. Make sure buttons work and logic is sound.
+   - Wrap the HTML code in \`\`\`html\`\`\` blocks.
+   - **IMPORTANT**: After the code block, include a section titled "### 💎 Final Prompt" containing a polished, comprehensive text prompt that could be used in ANY pro AI coding tool to recreate this app from scratch.
 
-OUTPUT FORMAT:
-FINAL PROMPT:
-\`\`\`
-[The technical prompt for the builder AI]
-\`\`\`
+2. IF USER CLICKS "DESCRIBE PLAN" (or asks for a feature list):
+   - Output a simple numbered list in Markdown.
+   - Sections: How it works, Key Features, Simple Steps.
+   - Do NOT write code. Write a simple PLAN.
+
+3. IF USER CLICKS "GET INSTRUCTIONS" (or asks for technical instructions):
+   - Generate a "System Prompt" block for an expert AI builder.
+   - Start with: "You are a Senior Engineer. Your task is to build [AppName] using modern frameworks..."
+   - List the requirements in a way that any powerful AI tool can follow.
+
+DEFAULT BEHAVIOR:
+Stay conversational. If the user is just starting, say: "That sounds like a great idea! Do you want to see a **Visual Prototype** of how it would work, or should I **Describe the Plan** for you first?"
 
 ${baseOptions}`;
+
+
 
         case 'Media Gen':
             return systemPromptContent(`
 You are an Expert Creative Prompt Consultant specializing in AI media generation tools.
 
 MEDIA GEN PROTOCOL:
-1. **First Question Rule**: If the user's intent is identified but the target platform is not yet chosen, your VERY FIRST question MUST be about the AI platform they intend to use.
-2. **Options based on Media Type**:
-   - **IMAGES**: Use buttons: \`[OPTIONS: Default, Nano Banana, DALL-E 3, Midjourney v6, Stable Diffusion XL, Leonardo.Ai]\` (Default is Nano Banana).
+            1. ** First Question Rule **: If the user's intent is identified but the target platform is not yet chosen, your VERY FIRST question MUST be about the AI platform they intend to use.
+            2. ** Options based on Media Type **:
+   - ** IMAGES **: Use buttons: \`[OPTIONS: Default, Nano Banana, DALL-E 3, Midjourney v6, Stable Diffusion XL, Leonardo.Ai]\` (Default is Nano Banana).
    - **VIDEO**: Use buttons: \`[OPTIONS: Default, Sora, Runway Gen-3, Luma Dream Machine, Kling AI, Pika 2.0]\`.
    - **SONG/AUDIO**: Use buttons: \`[OPTIONS: Default, Suno v3.5, Udio, Stable Audio, ElevenLabs]\`.
 3. ${isIterative
@@ -98,25 +111,35 @@ Mandatory JSON Block (at the end):
 Be creative, descriptive, and knowledgeable about each platform's unique syntax and capabilities.`);
 
         case 'Talk to Source':
-            return systemPromptContent(`
-You are an Expert Research Assistant specializing in analyzing documents and media content.
+            // NotebookLM-style conversational research assistant (no prompt generation)
+            return `You are an intelligent research assistant, similar to NotebookLM. Your role is to help users understand, explore, and extract insights from their source materials.
 
 TALK TO SOURCE PROTOCOL:
-1. When the user provides content (PDF text, YouTube transcript, article text), acknowledge what you received.
-2. Summarize the key points of the source material first.
-3. ${isIterative
-                    ? "Ask exactly ONE question about what aspect of the content they want to explore."
-                    : "Ask 2-4 questions about what they want to learn from this content."}
-4. Help users extract insights, find specific information, compare ideas, or generate content based on the source.
+1. When the user shares content (PDF text, YouTube transcript, article, or any text), acknowledge it and provide a helpful summary.
+2. Be conversational and helpful - this is a dialogue about the content, not a prompt generator.
+3. Answer questions directly and thoroughly, always grounding your answers in the source material.
+4. When citing or referencing the source, be specific about where the information comes from.
 
 CAPABILITIES:
-- Summarize documents and videos
-- Answer questions about the content
-- Extract key quotes and data points
-- Compare multiple sources
-- Generate content inspired by the source (blog posts, summaries, presentations)
+- Summarize documents, videos, and articles at various levels of detail
+- Answer specific questions about the content
+- Extract key quotes, statistics, and data points
+- Identify themes, arguments, and main ideas
+- Compare and contrast ideas within the source
+- Explain complex concepts from the source in simpler terms
+- Generate study guides, outlines, or notes based on the content
+- Help brainstorm how to use or apply the information
 
-Be thorough, accurate, and always reference the source material when making claims.`);
+RESPONSE STYLE:
+- Be conversational and engaging, like a knowledgeable study partner
+- Use clear formatting (headers, bullets, numbered lists) when helpful
+- Quote directly from the source when relevant, using quotation marks
+- If you're unsure about something, say so rather than guessing
+- Offer follow-up suggestions to help the user explore further
+
+DO NOT generate "FINAL PROMPT:" blocks. This is a research/conversation mode, not a prompt builder.
+
+${baseOptions}`;
 
         case 'Everyday':
         default:
@@ -169,10 +192,10 @@ const handler: Handler = async (event, context) => {
         const modelName = "gemini-3-pro-preview";
         const genAI = new GoogleGenerativeAI(geminiKey);
 
-        // 2. Check Credits & Handle Daily Bonus
+        // 2. Check Credits & Handle Monthly Usage Reset
         const { data: profiles, error: profileError } = await supabase
             .from("profiles")
-            .select("credits, last_daily_bonus, lifetime_prompts")
+            .select("credits, monthly_usage, last_usage_reset, subscription_status, lifetime_prompts")
             .eq("id", userId);
 
         const profile = profiles && profiles.length > 0 ? profiles[0] : null;
@@ -182,20 +205,29 @@ const handler: Handler = async (event, context) => {
         }
 
         let currentCredits = profile?.credits || 0;
-        const lastBonus = new Date(profile?.last_daily_bonus || 0);
+        let monthlyUsage = profile?.monthly_usage || 0;
+        const lastReset = new Date(profile?.last_usage_reset || 0);
         const now = new Date();
-        const oneDay = 24 * 60 * 60 * 1000;
 
-        // Daily Refresh
-        if ((now.getTime() - lastBonus.getTime() > oneDay) && currentCredits < 100) {
-            currentCredits = 100;
+        // 1. Monthly Usage Reset & Allowance Renewal
+        const isNewMonth = now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear();
+        if (isNewMonth) {
+            monthlyUsage = 0;
+            // Allowance: Free gets 50, Lite 1000, Pro 2500
+            const allowances: Record<string, number> = { 'free': 50, 'lite': 1000, 'pro': 2500 };
+            const allowance = allowances[profile?.subscription_status || 'free'] || 50;
+
+            // For renewal, we ensure they have AT LEAST their allowance
+            currentCredits = Math.max(currentCredits, allowance);
+
             await supabase.from("profiles").update({
-                credits: 100,
-                last_daily_bonus: now.toISOString()
+                monthly_usage: 0,
+                credits: currentCredits,
+                last_usage_reset: now.toISOString()
             }).eq("id", userId);
         }
 
-        // Dev Bypass
+        // Dev Bypass (check this FIRST before any restrictions)
         const isLocalDev = process.env.NETLIFY_DEV === 'true';
         let isDev = isLocalDev;
 
@@ -204,8 +236,25 @@ const handler: Handler = async (event, context) => {
             isDev = devUser?.user?.email === 'dev@promptcore.com';
         }
 
+        // 2. Feature Lock: Free tier restricted from high-compute tools
+        const status = profile?.subscription_status || 'free';
+        const isFree = status === 'free';
+        if (!isDev && isFree && (mode === 'Vibe Code' || mode === 'Talk to Source')) {
+            return {
+                statusCode: 402,
+                headers,
+                body: JSON.stringify({ error: "Access Denied: Vibe Coding & Talk to Source are reserved for Creator and Pro subscribers." })
+            };
+        }
+
         if (!isDev && currentCredits <= 0) {
-            return { statusCode: 402, headers, body: JSON.stringify({ error: "Insufficient credits" }) };
+            return {
+                statusCode: 402,
+                headers,
+                body: JSON.stringify({
+                    error: "Insufficient credits. Top up your account or upgrade to a subscription plan for monthly credits."
+                })
+            };
         }
 
         // 3. Get Mode-Specific System Prompt
@@ -248,15 +297,47 @@ const handler: Handler = async (event, context) => {
         const result = await chat.sendMessage(input);
         const responseText = result.response.text();
 
-        // 3. Decrement Credits (if not dev) & Increment Lifetime
+        // 3. Calculate costs and track usage
+        let baseCost = 1; // chat_message: 1
+        if (mode === 'Media Gen') baseCost = 5;
+        if (mode === 'Vibe Code') {
+            const lowerInput = input.toLowerCase();
+            if (lowerInput.includes('build app')) baseCost = 30; // app_build_prototype: 30
+            else if (lowerInput.includes('describe plan')) baseCost = 2;
+            else baseCost = 1;
+        }
+
+        // Efficiency Logic (The "Usage Tax")
+        // After threshold (100 credits), free users pay 3x
+        const isAboveThreshold = isFree && monthlyUsage > 100;
+        const multiplier = isAboveThreshold ? 3 : 1;
+        const finalCost = baseCost * multiplier;
+
+        // Threshold Warning: Show message when user just crossed the threshold
+        const willCrossThreshold = isFree && monthlyUsage <= 100 && (monthlyUsage + finalCost) > 100;
+
+        // Decrement Credits (if not dev) & Increment Lifetime
         if (!isDev) {
             await supabase
                 .from("profiles")
                 .update({
-                    credits: currentCredits - 1,
+                    credits: Math.max(0, currentCredits - finalCost),
+                    monthly_usage: monthlyUsage + finalCost,
                     lifetime_prompts: (profile?.lifetime_prompts || 0) + 1
                 })
                 .eq("id", userId);
+        }
+
+        // Build rate tier metadata for the response
+        const rateTierInfo: any = {};
+        if (!isDev && isFree) {
+            if (isAboveThreshold) {
+                rateTierInfo.message = `💡 You're on Standard Rate (3x cost). Upgrade to Creator for Preferred Rates and save credits.`;
+                rateTierInfo.multiplier = 3;
+            } else if (willCrossThreshold) {
+                rateTierInfo.message = `⚠️ You've used ${monthlyUsage} credits this month. After 100, Standard Rate (3x) applies. Upgrade to Creator for consistent pricing.`;
+                rateTierInfo.approaching = true;
+            }
         }
 
         return {
@@ -264,7 +345,8 @@ const handler: Handler = async (event, context) => {
             headers,
             body: JSON.stringify({
                 text: responseText,
-                msgType: 'meta_helper'
+                msgType: 'meta_helper',
+                rateTierInfo: Object.keys(rateTierInfo).length > 0 ? rateTierInfo : undefined
             }),
         };
     } catch (err: any) {

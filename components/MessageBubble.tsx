@@ -18,7 +18,9 @@ interface MessageBubbleProps {
   onRegenerate?: (messageId: string) => void;
   onRate?: (messageId: string, isPositive: boolean) => void;
   onEdit?: (messageId: string) => void;
+  onRecoverStuck?: (messageId: string) => void;
   isRunning?: boolean;
+  onOpenArtifact?: (content: string, title?: string) => void;
 }
 
 const ActionButton: React.FC<{ icon: React.ReactNode, title: string, onClick?: () => void }> = ({ icon, title, onClick }) => (
@@ -45,7 +47,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onRegenerate,
   onRate,
   onEdit,
-  isRunning = false
+  onRecoverStuck,
+  isRunning = false,
+  onOpenArtifact
 }) => {
   const isUser = message.role === 'user';
   const [copied, setCopied] = React.useState(false);
@@ -59,6 +63,26 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const imageDataRegex = /<!-- IMAGE_DATA_START -->\n(data:image\/[^;]+;base64,[^\n]+)\n<!-- IMAGE_DATA_END -->/;
   const imageMatch = message.content.match(imageDataRegex);
   const embeddedImageData = imageMatch ? imageMatch[1] : null;
+
+  // Extract HTML content for Vibe Code Preview
+  let artifactContent: string | null = null;
+  const isVibeCodeResult = message.mode === 'Vibe Code' && message.msgType === 'execution_result';
+
+  if (isVibeCodeResult) {
+    // Try to find HTML code block
+    const codeBlockMatch = message.content.match(/```html\n([\s\S]*?)```/);
+    if (codeBlockMatch) {
+      artifactContent = codeBlockMatch[1];
+    } else if (message.content.includes('<!DOCTYPE html>')) {
+      // Fallback if no code block but standard HTML structure found
+      const htmlStart = message.content.indexOf('<!DOCTYPE html>');
+      artifactContent = message.content.substring(htmlStart);
+      // Cleanup trailing markdown if present
+      if (artifactContent.endsWith('```')) {
+        artifactContent = artifactContent.substring(0, artifactContent.lastIndexOf('```'));
+      }
+    }
+  }
 
   // Remove both options and image data markers from display content
   const displayContent = message.content
@@ -279,26 +303,121 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 </span>
               </div>
             )}
-            {message.status === 'processing' ? (
-              <div className="flex flex-col gap-3 py-2">
-                <div className="flex items-center gap-3 text-purple-300 font-medium">
-                  <div className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
+            {message.status === 'processing' || message.status === 'failed' ? (
+              (() => {
+                // Detect if message is stuck (processing for > 2 minutes)
+                const startTime = message.metadata?.startTime;
+                const isStuck = startTime && (Date.now() - startTime > 2 * 60 * 1000);
+                const isFailed = message.status === 'failed';
+
+                if (isFailed || isStuck) {
+                  return (
+                    <div className="flex flex-col gap-3 py-2">
+                      <div className="flex items-center gap-3 text-amber-400 font-medium">
+                        <div className="relative flex h-3 w-3">
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                        </div>
+                        {isFailed ? 'This request failed to complete' : 'This request appears to be stuck'}
+                      </div>
+                      <div className="text-sm text-gray-400/80">
+                        {isFailed
+                          ? 'An error occurred while processing. You can try again or continue the conversation.'
+                          : 'The background process may have been interrupted. You can retry or dismiss this message.'}
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        {onRecoverStuck && (
+                          <button
+                            onClick={() => onRecoverStuck(message.id)}
+                            className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium rounded-lg transition-all"
+                          >
+                            <RotateCcw size={14} />
+                            Retry
+                          </button>
+                        )}
+                        {onRegenerate && (
+                          <button
+                            onClick={() => onRegenerate(message.id)}
+                            className="flex items-center gap-2 px-4 py-2 bg-dark-700 hover:bg-dark-600 text-gray-300 text-sm font-medium rounded-lg transition-all border border-dark-600"
+                          >
+                            Continue Chat
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Mode-specific processing labels
+                const isTalkToSource = message.mode === 'Talk to Source';
+                const processingLabel = isTalkToSource
+                  ? 'Analyzing your content...'
+                  : 'Building your application...';
+                const processingSubtext = isTalkToSource
+                  ? 'Reading and understanding your source material.'
+                  : 'This may take up to a minute for complex architectures.';
+                const gradientClass = isTalkToSource
+                  ? 'from-orange-600 to-amber-600'
+                  : 'from-purple-600 to-pink-600';
+                const dotColor = isTalkToSource ? 'bg-orange-400' : 'bg-purple-400';
+                const dotColorSolid = isTalkToSource ? 'bg-orange-500' : 'bg-purple-500';
+                const textColor = isTalkToSource ? 'text-orange-300' : 'text-purple-300';
+
+                return (
+                  <div className="flex flex-col gap-3 py-2">
+                    <div className={`flex items-center gap-3 ${textColor} font-medium`}>
+                      <div className="relative flex h-3 w-3">
+                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${dotColor} opacity-75`}></span>
+                        <span className={`relative inline-flex rounded-full h-3 w-3 ${dotColorSolid}`}></span>
+                      </div>
+                      {processingLabel}
+                    </div>
+                    <div className="text-sm text-gray-400/80 italic">
+                      {processingSubtext}
+                    </div>
+                    <div className="mt-2 h-1 w-full bg-dark-800 rounded-full overflow-hidden">
+                      <div className={`h-full bg-gradient-to-r ${gradientClass} w-1/3 animate-[shimmer_2s_infinite]`}></div>
+                    </div>
                   </div>
-                  Building your application...
-                </div>
-                <div className="text-sm text-gray-400/80 italic">
-                  This may take up to a minute for complex architectures.
-                </div>
-                <div className="mt-2 h-1 w-full bg-dark-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-purple-600 to-pink-600 w-1/3 animate-[shimmer_2s_infinite]"></div>
-                </div>
-              </div>
+                );
+              })()
             ) : (
-              <ReactMarkdown components={markdownComponents}>
-                {displayContent}
-              </ReactMarkdown>
+              <div className="flex flex-col gap-4">
+                <ReactMarkdown components={markdownComponents}>
+                  {displayContent}
+                </ReactMarkdown>
+
+                {artifactContent && (
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between p-4 bg-[#2A2B2C]/50 rounded-xl border border-dark-700 hover:border-purple-500/30 transition-all group">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400 group-hover:text-purple-300 transition-colors">
+                          <Sparkles size={18} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-gray-200">Application Generated</span>
+                          <span className="text-xs text-gray-500">Click to view preview</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => onOpenArtifact && onOpenArtifact(artifactContent!, "Generated App")}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-lg transition-all shadow-lg hover:shadow-purple-500/20"
+                      >
+                        View App
+                      </button>
+                    </div>
+
+                    {/* Auto-open effect */}
+                    {(() => {
+                      React.useEffect(() => {
+                        if (onOpenArtifact && artifactContent && isExecutionResult) {
+                          onOpenArtifact(artifactContent, "Generated App");
+                        }
+                      }, [artifactContent]);
+                      return null;
+                    })()}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Embedded Image (rendered separately to avoid ReactMarkdown issues with huge data URLs) */}
