@@ -44,6 +44,10 @@ export interface UserProfile {
   full_name?: string;
   avatar_url?: string;
   subscription_status?: 'free' | 'lite' | 'pro';
+  // Premium mode usage tracking for free users
+  vibe_code_uses_monthly?: number;
+  talk_to_source_uses_monthly?: number;
+  media_gen_uses_monthly?: number;
 }
 
 // Added Document interface to resolve "Module '"../types"' has no exported member 'Document'" error in Dashboard.tsx

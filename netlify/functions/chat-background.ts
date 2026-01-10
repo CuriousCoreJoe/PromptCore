@@ -112,17 +112,31 @@ const handler: Handler = async (event, context) => {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         // 1. Check Credits, Subscription & Dev Status
-        const { data: profile } = await supabase.from('profiles').select('credits, monthly_usage, last_usage_reset, subscription_status').eq('id', userId).single();
+        const { data: profile } = await supabase.from('profiles').select('credits, monthly_usage, last_usage_reset, subscription_status, vibe_code_uses_monthly, talk_to_source_uses_monthly, media_gen_uses_monthly').eq('id', userId).single();
         const { data: userData } = await supabase.auth.admin.getUserById(userId);
         const isDev = userData?.user?.email === 'dev@promptcore.com';
 
         const status = profile?.subscription_status || 'free';
         const isFree = status === 'free';
 
-        // PAYWALL: Block free users from Talk to Source
-        if (!isDev && isFree && (mode === 'Talk to Source' || mode === 'Vibe Code')) {
-            console.log(`[Chat Background] Blocking free user ${userId} from ${mode}`);
-            return { statusCode: 403, body: `${mode} is restricted to Lite and Pro subscribers.` };
+        // Check Trial Limits for Free Users on Premium Modes
+        if (!isDev && isFree) {
+            const trialLimits: Record<string, number> = {
+                'Vibe Code': 5,
+                'Talk to Source': 10,
+                'Media Gen': 10
+            };
+            
+            const currentUses: Record<string, number> = {
+                'Vibe Code': profile?.vibe_code_uses_monthly || 0,
+                'Talk to Source': profile?.talk_to_source_uses_monthly || 0,
+                'Media Gen': profile?.media_gen_uses_monthly || 0
+            };
+
+            if (trialLimits[mode] && currentUses[mode] >= trialLimits[mode]) {
+                console.log(`[Chat Background] Blocking free user ${userId} - trial limit reached for ${mode}`);
+                return { statusCode: 402, body: `You've used all ${trialLimits[mode]} free uses of ${mode} this month. Upgrade to Lite for unlimited access.` };
+            }
         }
 
         let currentCredits = profile?.credits || 0;
@@ -141,14 +155,32 @@ const handler: Handler = async (event, context) => {
             await supabase.from("profiles").update({
                 monthly_usage: 0,
                 credits: currentCredits,
-                last_usage_reset: now.toISOString()
+                last_usage_reset: now.toISOString(),
+                vibe_code_uses_monthly: 0,
+                talk_to_source_uses_monthly: 0,
+                media_gen_uses_monthly: 0
             }).eq("id", userId);
         }
 
-        // Cost for Talk to Source is higher due to content analysis
-        const COST = mode === 'Talk to Source' ? 5 : 1;
-        const multiplier = (isFree && monthlyUsage > 100) ? 3 : 1;
-        const finalCost = COST * multiplier;
+        // Calculate cost based on mode and subscription
+        let baseCost = 1;
+        if (mode === 'Talk to Source') baseCost = 2;
+        if (mode === 'Media Gen') baseCost = 5;
+        if (mode === 'Vibe Code') baseCost = 1;
+
+        // Free users pay higher costs for premium modes (2x-3x)
+        let finalCost = baseCost;
+        if (!isDev && isFree) {
+            if (mode === 'Vibe Code') finalCost = baseCost * 3;
+            else if (mode === 'Talk to Source') finalCost = baseCost * 2;
+            else if (mode === 'Media Gen') finalCost = baseCost * 2;
+        }
+
+        // Efficiency Logic (The "Usage Tax")
+        const isAboveThreshold = isFree && monthlyUsage > 100;
+        if (isAboveThreshold) {
+            finalCost = finalCost * 3;
+        }
 
         if (!isDev && currentCredits < finalCost) {
             console.log(`[Chat Background] User ${userId} has insufficient credits (${currentCredits} < ${finalCost})`);
@@ -241,12 +273,25 @@ const handler: Handler = async (event, context) => {
 
                 // 4. Decrement Credits & Update Monthly Usage
                 if (!isDev) {
+                    const updateData: any = {
+                        credits: Math.max(0, currentCredits - finalCost),
+                        monthly_usage: monthlyUsage + finalCost
+                    };
+
+                    // Track premium mode usage for free users
+                    if (isFree) {
+                        if (mode === 'Vibe Code') {
+                            updateData.vibe_code_uses_monthly = (profile?.vibe_code_uses_monthly || 0) + 1;
+                        } else if (mode === 'Talk to Source') {
+                            updateData.talk_to_source_uses_monthly = (profile?.talk_to_source_uses_monthly || 0) + 1;
+                        } else if (mode === 'Media Gen') {
+                            updateData.media_gen_uses_monthly = (profile?.media_gen_uses_monthly || 0) + 1;
+                        }
+                    }
+
                     await supabase
                         .from('profiles')
-                        .update({
-                            credits: Math.max(0, currentCredits - finalCost),
-                            monthly_usage: monthlyUsage + finalCost
-                        })
+                        .update(updateData)
                         .eq('id', userId);
                 }
             }

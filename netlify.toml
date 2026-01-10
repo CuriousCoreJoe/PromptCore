@@ -49,6 +49,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/media-gen-background"
+  to = "/.netlify/functions/media-gen-background"
+  status = 200
+
+[[redirects]]
   from = "/api/checkout"
   to = "/.netlify/functions/checkout"
   status = 200

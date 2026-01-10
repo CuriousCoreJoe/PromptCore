@@ -27,17 +27,22 @@ const handler: Handler = async (event, context) => {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         // 1. Check Credits, Subscription & Monthly Usage
-        const { data: profile } = await supabase.from('profiles').select('credits, monthly_usage, last_usage_reset, subscription_status').eq('id', userId).single();
+        const { data: profile } = await supabase.from('profiles').select('credits, monthly_usage, last_usage_reset, subscription_status, vibe_code_uses_monthly').eq('id', userId).single();
         const { data: userData } = await supabase.auth.admin.getUserById(userId);
         const isDev = userData?.user?.email === 'dev@promptcore.com';
 
         const status = profile?.subscription_status || 'free';
         const isFree = status === 'free';
 
-        // PAYWALL: Block free users from background building
+        // Check Trial Limits for Free Users on Vibe Code
         if (!isDev && isFree) {
-            console.log(`[Background Builder] Blocking free user ${userId}`);
-            return { statusCode: 403, body: "App Builder is restricted to Lite and Pro subscribers." };
+            const trialLimit = 5;
+            const currentUses = profile?.vibe_code_uses_monthly || 0;
+
+            if (currentUses >= trialLimit) {
+                console.log(`[Background Builder] Blocking free user ${userId} - trial limit reached for Vibe Code`);
+                return { statusCode: 402, body: `You've used all ${trialLimit} free uses of Vibe Code this month. Upgrade to Lite for unlimited access.` };
+            }
         }
 
         let currentCredits = profile?.credits || 0;
@@ -56,13 +61,23 @@ const handler: Handler = async (event, context) => {
             await supabase.from("profiles").update({
                 monthly_usage: 0,
                 credits: currentCredits,
-                last_usage_reset: now.toISOString()
+                last_usage_reset: now.toISOString(),
+                vibe_code_uses_monthly: 0
             }).eq("id", userId);
         }
 
-        const COST = 30; // app_build_prototype: 30
-        const multiplier = (isFree && monthlyUsage > 100) ? 3 : 1;
-        const finalCost = COST * multiplier;
+        // Free users pay 3x for Vibe Code (90 credits per use)
+        const baseCost = 30;
+        let finalCost = baseCost;
+        if (!isDev && isFree) {
+            finalCost = baseCost * 3;
+        }
+
+        // Efficiency Logic (The "Usage Tax")
+        const isAboveThreshold = isFree && monthlyUsage > 100;
+        if (isAboveThreshold) {
+            finalCost = finalCost * 3;
+        }
 
         if (!isDev && currentCredits < finalCost) {
             console.log(`[Background Builder] User ${userId} has insufficient credits (${currentCredits} < ${finalCost})`);
@@ -174,12 +189,19 @@ IF THE USER ASKS TO "GET INSTRUCTIONS":
 
                 // 4. Decrement Credits & Update Monthly Usage
                 if (!isDev) {
+                    const updateData: any = {
+                        credits: Math.max(0, currentCredits - finalCost),
+                        monthly_usage: monthlyUsage + finalCost
+                    };
+
+                    // Track Vibe Code usage for free users
+                    if (isFree) {
+                        updateData.vibe_code_uses_monthly = (profile?.vibe_code_uses_monthly || 0) + 1;
+                    }
+
                     await supabase
                         .from('profiles')
-                        .update({
-                            credits: Math.max(0, currentCredits - finalCost),
-                            monthly_usage: monthlyUsage + finalCost
-                        })
+                        .update(updateData)
                         .eq('id', userId);
                 }
             }

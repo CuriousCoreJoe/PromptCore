@@ -195,7 +195,7 @@ const handler: Handler = async (event, context) => {
         // 2. Check Credits & Handle Monthly Usage Reset
         const { data: profiles, error: profileError } = await supabase
             .from("profiles")
-            .select("credits, monthly_usage, last_usage_reset, subscription_status, lifetime_prompts")
+            .select("credits, monthly_usage, last_usage_reset, subscription_status, lifetime_prompts, vibe_code_uses_monthly, talk_to_source_uses_monthly, media_gen_uses_monthly")
             .eq("id", userId);
 
         const profile = profiles && profiles.length > 0 ? profiles[0] : null;
@@ -220,10 +220,14 @@ const handler: Handler = async (event, context) => {
             // For renewal, we ensure they have AT LEAST their allowance
             currentCredits = Math.max(currentCredits, allowance);
 
+            // Reset premium mode usage counters for free users
             await supabase.from("profiles").update({
                 monthly_usage: 0,
                 credits: currentCredits,
-                last_usage_reset: now.toISOString()
+                last_usage_reset: now.toISOString(),
+                vibe_code_uses_monthly: 0,
+                talk_to_source_uses_monthly: 0,
+                media_gen_uses_monthly: 0
             }).eq("id", userId);
         }
 
@@ -236,15 +240,32 @@ const handler: Handler = async (event, context) => {
             isDev = devUser?.user?.email === 'dev@promptcore.com';
         }
 
-        // 2. Feature Lock: Free tier restricted from high-compute tools
         const status = profile?.subscription_status || 'free';
         const isFree = status === 'free';
-        if (!isDev && isFree && (mode === 'Vibe Code' || mode === 'Talk to Source')) {
-            return {
-                statusCode: 402,
-                headers,
-                body: JSON.stringify({ error: "Access Denied: Vibe Coding & Talk to Source are reserved for Creator and Pro subscribers." })
+
+        // 3. Check Trial Limits for Free Users on Premium Modes
+        if (!isDev && isFree) {
+            const trialLimits: Record<string, number> = {
+                'Vibe Code': 5,
+                'Talk to Source': 10,
+                'Media Gen': 10
             };
+            
+            const currentUses: Record<string, number> = {
+                'Vibe Code': profile?.vibe_code_uses_monthly || 0,
+                'Talk to Source': profile?.talk_to_source_uses_monthly || 0,
+                'Media Gen': profile?.media_gen_uses_monthly || 0
+            };
+
+            if (trialLimits[mode] && currentUses[mode] >= trialLimits[mode]) {
+                return {
+                    statusCode: 402,
+                    headers,
+                    body: JSON.stringify({
+                        error: `You've used all ${trialLimits[mode]} free uses of ${mode} this month. Upgrade to Lite for unlimited access.`
+                    })
+                };
+            }
         }
 
         if (!isDev && currentCredits <= 0) {
@@ -297,9 +318,11 @@ const handler: Handler = async (event, context) => {
         const result = await chat.sendMessage(input);
         const responseText = result.response.text();
 
-        // 3. Calculate costs and track usage
+        // 4. Calculate costs and track usage
+        // Base costs for different modes
         let baseCost = 1; // chat_message: 1
         if (mode === 'Media Gen') baseCost = 5;
+        if (mode === 'Talk to Source') baseCost = 2;
         if (mode === 'Vibe Code') {
             const lowerInput = input.toLowerCase();
             if (lowerInput.includes('build app')) baseCost = 30; // app_build_prototype: 30
@@ -307,24 +330,47 @@ const handler: Handler = async (event, context) => {
             else baseCost = 1;
         }
 
+        // Free users pay higher costs for premium modes (2x-3x)
+        let finalCost = baseCost;
+        if (!isDev && isFree) {
+            if (mode === 'Vibe Code') finalCost = baseCost * 3; // 90 credits per use
+            else if (mode === 'Talk to Source') finalCost = baseCost * 2; // 4 credits per use
+            else if (mode === 'Media Gen') finalCost = baseCost * 2; // 10 credits per use
+        }
+
         // Efficiency Logic (The "Usage Tax")
-        // After threshold (100 credits), free users pay 3x
+        // After threshold (100 credits), free users pay 3x on top of mode multiplier
         const isAboveThreshold = isFree && monthlyUsage > 100;
-        const multiplier = isAboveThreshold ? 3 : 1;
-        const finalCost = baseCost * multiplier;
+        if (isAboveThreshold) {
+            finalCost = finalCost * 3;
+        }
 
         // Threshold Warning: Show message when user just crossed the threshold
         const willCrossThreshold = isFree && monthlyUsage <= 100 && (monthlyUsage + finalCost) > 100;
 
-        // Decrement Credits (if not dev) & Increment Lifetime
+        // Prepare update object for profile
+        const updateData: any = {
+            credits: Math.max(0, currentCredits - finalCost),
+            monthly_usage: monthlyUsage + finalCost,
+            lifetime_prompts: (profile?.lifetime_prompts || 0) + 1
+        };
+
+        // Track premium mode usage for free users
+        if (!isDev && isFree) {
+            if (mode === 'Vibe Code') {
+                updateData.vibe_code_uses_monthly = (profile?.vibe_code_uses_monthly || 0) + 1;
+            } else if (mode === 'Talk to Source') {
+                updateData.talk_to_source_uses_monthly = (profile?.talk_to_source_uses_monthly || 0) + 1;
+            } else if (mode === 'Media Gen') {
+                updateData.media_gen_uses_monthly = (profile?.media_gen_uses_monthly || 0) + 1;
+            }
+        }
+
+        // Decrement Credits (if not dev) & Track Usage
         if (!isDev) {
             await supabase
                 .from("profiles")
-                .update({
-                    credits: Math.max(0, currentCredits - finalCost),
-                    monthly_usage: monthlyUsage + finalCost,
-                    lifetime_prompts: (profile?.lifetime_prompts || 0) + 1
-                })
+                .update(updateData)
                 .eq("id", userId);
         }
 

@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Message, AppMode, ChatSession } from '../types';
 import { supabase } from '../lib/supabase';
 import { MessageBubble } from './MessageBubble';
-import { Send, Mic, Sparkles, ChevronRight, Minimize2, Maximize2, Briefcase, Coffee, List, FileText, Plus, ChevronDown, LayoutGrid, Clock, Upload, Link, Image, Video, Music, Code, Zap, Bug, Palette, Type, MessageSquare, Youtube } from 'lucide-react';
+import { Send, Mic, Sparkles, ChevronRight, Minimize2, Maximize2, Briefcase, Coffee, List, FileText, Plus, ChevronDown, LayoutGrid, Clock, Upload, Link, Image, Video, Music, Code, Zap, Bug, Palette, Type, MessageSquare, Youtube, AlertCircle } from 'lucide-react';
 import { ArtifactPreview } from './ArtifactPreview';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { calculateModeCost, hasExceededTrialLimit, getTrialLimitMessage } from '../config/pricing';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
     return twMerge(clsx(inputs));
@@ -307,8 +308,56 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         }
     }, [input]);
 
+    // Check if user can use premium mode (trial limit check)
+    const checkPremiumModeAccess = useCallback((): { canAccess: boolean; message: string | null } => {
+        const subscriptionStatus = userProfile?.subscription_status || 'free';
+        
+        // Subscribers have unlimited access
+        if (subscriptionStatus !== 'free') {
+            return { canAccess: true, message: null };
+        }
+
+        // Check trial limits for premium modes
+        const monthlyUsage = {
+            vibeCode: userProfile?.vibe_code_uses_monthly || 0,
+            talkToSource: userProfile?.talk_to_source_uses_monthly || 0,
+            mediaGen: userProfile?.media_gen_uses_monthly || 0,
+        };
+
+        const check = hasExceededTrialLimit(currentMode, subscriptionStatus, monthlyUsage);
+        
+        if (check.exceeded) {
+            return {
+                canAccess: false,
+                message: `You've used all ${check.limit} free uses of ${currentMode} this month. Upgrade to Lite for unlimited access.`
+            };
+        }
+
+        // Show warning if close to limit
+        if (check.remaining <= 2 && check.remaining > 0) {
+            return {
+                canAccess: true,
+                message: `⚠️ Only ${check.remaining} free ${currentMode} uses remaining this month.`
+            };
+        }
+
+        return { canAccess: true, message: null };
+    }, [currentMode, userProfile]);
+
     const handleInitialSubmit = async () => {
         if (!input.trim()) return;
+        
+        // Check premium mode access before proceeding
+        const accessCheck = checkPremiumModeAccess();
+        if (!accessCheck.canAccess) {
+            onShowToast(accessCheck.message!, 'Upgrade', onUpgrade);
+            return;
+        }
+        
+        if (accessCheck.message) {
+            onShowToast(accessCheck.message);
+        }
+        
         setDraftPrompt(input);
 
         let chatId = activeChatId;
@@ -332,17 +381,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             }
         }
 
-        const newMsg: Message = {
-            id: Date.now().toString(),
-            role: 'user',
-            content: input,
-            timestamp: Date.now(),
-            mode: currentMode
-        };
-
-        setMessages(prev => [...prev, newMsg]);
-
-        // Save to DB immediately with the (potentially new) chatId
+        // Save to DB immediately - Realtime subscription will add it to state
         if (chatId) {
             await supabase.from('messages').insert({
                 chat_id: chatId,
@@ -372,15 +411,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             setWizardStage('GENERATING');
         }
 
-        const newMsg: Message = {
-            id: Date.now().toString(),
-            role: 'user',
-            content: answer,
-            timestamp: Date.now(),
-            mode: currentMode
-        };
-        setMessages(prev => [...prev, newMsg]);
-        await saveMessage(newMsg);
+        // Save to DB - Realtime subscription will add it to state
+        await saveMessage({ id: '', role: 'user', content: answer, timestamp: Date.now(), mode: currentMode });
         await processMessage(answer);
     };
 
@@ -461,21 +493,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 }
                 const data = await response.json();
 
-                setMessages(prev => [...prev, {
-                    id: Date.now().toString(),
-                    role: 'model',
-                    content: data.text,
-                    timestamp: Date.now(),
-                    mode: currentMode,
-                    msgType: data.msgType || 'meta_helper'
-                }]);
-
-                // Save Model Response
+                // Save Model Response to DB first - Realtime subscription will add it to state
                 if (activeChatId) {
                     await supabase.from('messages').insert({
                         chat_id: activeChatId,
                         role: 'model',
-                        content: data.text
+                        content: data.text,
+                        msg_type: data.msgType || 'meta_helper'
                     });
                 }
 
@@ -508,9 +532,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             else if (!isLoading) {
                 const val = input;
                 setInput('');
-                const newMsg: Message = { id: Date.now().toString(), role: 'user', content: val, timestamp: Date.now(), mode: currentMode };
-                setMessages(prev => [...prev, newMsg]);
-                saveMessage(newMsg);
+                // Save to DB - Realtime subscription will add it to state
+                saveMessage({ id: '', role: 'user', content: val, timestamp: Date.now(), mode: currentMode });
                 processMessage(val);
             }
         }
@@ -522,18 +545,17 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         // Detect if this is a "Build App" click in Vibe Code mode
         if (currentMode === AppMode.VIBE_CODE && (processedOption.includes('Build App') || processedOption === 'build-app')) {
             // Trigger background builder instead of sync chat to avoid timeouts
-            const newMsg: Message = { id: Date.now().toString(), role: 'user', content: processedOption, timestamp: Date.now(), mode: currentMode };
-            setMessages(prev => [...prev, newMsg]);
-            saveMessage(newMsg);
-            handleRunPrompt(newMsg.id, processedOption);
+            const msgId = Date.now().toString();
+            // Save to DB - Realtime subscription will add it to state
+            saveMessage({ id: msgId, role: 'user', content: processedOption, timestamp: Date.now(), mode: currentMode });
+            handleRunPrompt(msgId, processedOption);
             return;
         }
 
         // Detect "Get Instructions" for consistency
         if (currentMode === AppMode.VIBE_CODE && (processedOption.includes('Get Instructions') || processedOption === 'get-code')) {
-            const newMsg: Message = { id: Date.now().toString(), role: 'user', content: processedOption, timestamp: Date.now(), mode: currentMode };
-            setMessages(prev => [...prev, newMsg]);
-            saveMessage(newMsg);
+            // Save to DB - Realtime subscription will add it to state
+            saveMessage({ id: '', role: 'user', content: processedOption, timestamp: Date.now(), mode: currentMode });
             processMessage(processedOption);
             return;
         }
@@ -543,15 +565,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             setInput(processedOption);
             // We need to wait a tick or call a modified handler because handleClarificationAnswer uses 'input' state
             // But since setState is async, we can just call the logic directly:
-            const newMsg: Message = {
-                id: Date.now().toString(),
-                role: 'user',
-                content: processedOption,
-                timestamp: Date.now(),
-                mode: currentMode
-            };
-            setMessages(prev => [...prev, newMsg]);
-            saveMessage(newMsg);
+            // Save to DB - Realtime subscription will add it to state
+            saveMessage({ id: '', role: 'user', content: processedOption, timestamp: Date.now(), mode: currentMode });
 
             if (wizardMode === 'batch') setWizardStage('GENERATING');
 
@@ -559,9 +574,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         } else {
             // Fallback for normal inputs
             setInput('');
-            const newMsg: Message = { id: Date.now().toString(), role: 'user', content: processedOption, timestamp: Date.now(), mode: currentMode };
-            setMessages(prev => [...prev, newMsg]);
-            saveMessage(newMsg);
+            // Save to DB - Realtime subscription will add it to state
+            saveMessage({ id: '', role: 'user', content: processedOption, timestamp: Date.now(), mode: currentMode });
             processMessage(processedOption);
         }
     };
@@ -611,7 +625,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         }
 
         setIsRunningExecution(true);
-        onShowToast('🚀 Initializing Builder...');
+        onShowToast('🚀 Initializing...');
 
         try {
             // Get execution history (only execution_result messages)
@@ -619,9 +633,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 .filter(m => m.msgType === 'execution_result')
                 .map(m => ({ role: m.role, content: m.content }));
 
-            // Determine if we should use the background builder (for Vibe Code) or standard execute
+            // Determine which background process to use based on mode
             const useBackgroundBuilder = currentMode === AppMode.VIBE_CODE;
-            const endpoint = useBackgroundBuilder ? '/api/builder-background' : '/api/execute';
+            const useBackgroundMediaGen = currentMode === AppMode.MEDIA_GEN;
+            const endpoint = useBackgroundBuilder ? '/api/builder-background' :
+                           useBackgroundMediaGen ? '/api/media-gen-background' :
+                           '/api/execute';
 
             const response = await fetch(endpoint, {
                 method: 'POST',
@@ -629,7 +646,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 body: JSON.stringify({
                     prompt: promptToRun,
                     userId: session.user.id,
-                    chatId: activeChatId, // Required for background builder update
+                    chatId: activeChatId, // Required for background processes
                     conversationHistory: executionHistory,
                     model: defaultModel,
                     mode: currentMode
@@ -641,31 +658,23 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 throw new Error(errorData.error || 'Execution failed');
             }
 
-            // If background builder, we just wait for Realtime to update the UI
-            if (useBackgroundBuilder) {
-                onShowToast('🏗️ Architect is building in the background...');
+            // If using background processing, wait for Realtime to update the UI
+            if (useBackgroundBuilder || useBackgroundMediaGen) {
+                const toastMessage = useBackgroundBuilder
+                    ? '🏗️ Architect is building in the background...'
+                    : '🎨 Creating your media in the background...';
+                onShowToast(toastMessage);
+
                 // Force a refresh after a delay to ensure the "Processing" message is caught
                 // (Optimistic update backup in case Realtime is slow)
                 setTimeout(() => {
                     loadHistory();
                 }, 1000);
             } else {
-                // Standard synchronous execution (Media Gen, etc.)
+                // Standard synchronous execution (fallback)
                 const data = await response.json();
 
-                const executionMsg: Message = {
-                    id: Date.now().toString(),
-                    role: 'model',
-                    content: data.text,
-                    timestamp: Date.now(),
-                    mode: currentMode,
-                    msgType: 'execution_result',
-                    executionModel: data.model
-                };
-
-                setMessages(prev => [...prev, executionMsg]);
-
-                // Save to DB
+                // Save to DB first - Realtime subscription will add it to state
                 if (activeChatId) {
                     await supabase.from('messages').insert({
                         chat_id: activeChatId,
@@ -889,6 +898,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                     currentMode={currentMode}
                     onSelectMode={onSelectMode}
                     userProfile={userProfile}
+                    isDev={isDev}
                 />
             </div>
 
@@ -908,9 +918,41 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                 <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
                                     {MODE_CONFIGS[currentMode].title}
                                 </h1>
-                                <p className="text-sm text-gray-400 mb-6 leading-relaxed max-w-lg mx-auto">
+                                <p className="text-sm text-gray-400 mb-4 leading-relaxed max-w-lg mx-auto">
                                     {MODE_CONFIGS[currentMode].desc}
                                 </p>
+
+                                {/* Trial Limit Indicator for Free Users */}
+                                {userProfile?.subscription_status === 'free' && (
+                                    <div className="mb-6">
+                                        {(() => {
+                                            const monthlyUsage = {
+                                                vibeCode: userProfile?.vibe_code_uses_monthly || 0,
+                                                talkToSource: userProfile?.talk_to_source_uses_monthly || 0,
+                                                mediaGen: userProfile?.media_gen_uses_monthly || 0,
+                                            };
+                                            const check = hasExceededTrialLimit(currentMode, 'free', monthlyUsage);
+                                            const cost = calculateModeCost(currentMode, 'free');
+                                            
+                                            if (check.exceeded) {
+                                                return (
+                                                    <div className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                                                        <AlertCircle size={16} />
+                                                        <span>Trial limit reached ({check.limit}/{check.limit}). Upgrade for unlimited access.</span>
+                                                    </div>
+                                                );
+                                            }
+                                            
+                                            return (
+                                                <div className="flex items-center gap-3 px-4 py-2 bg-dark-800/50 border border-dark-700 rounded-lg text-gray-400 text-sm">
+                                                    <span>{check.remaining} free uses remaining</span>
+                                                    <span className="text-gray-600">•</span>
+                                                    <span>{cost} credits per use</span>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
 
                                 {/* Recent Section */}
                                 <div className="w-full max-w-md text-left mx-auto">
@@ -1110,7 +1152,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                         else {
                                             const val = input;
                                             setInput('');
-                                            setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', content: val, timestamp: Date.now(), mode: currentMode }]);
+                                            // Save to DB - Realtime subscription will add it to state
+                                            saveMessage({ id: '', role: 'user', content: val, timestamp: Date.now(), mode: currentMode });
                                             processMessage(val);
                                         }
                                     }}
