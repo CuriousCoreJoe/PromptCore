@@ -51,7 +51,7 @@ export const sendMessageToGemini = async (
 ): Promise<string> => {
     try {
         const model = ai.getGenerativeModel({
-            model: 'gemini-2.5-pro',
+            model: 'gemini-3-pro-preview',
             systemInstruction: SYSTEM_INSTRUCTIONS[mode]
         });
 
@@ -78,7 +78,7 @@ export const STYLES = ["Strict & Organized", "Creative & Loose", "Step-by-Step T
 export const generateFactoryAngles = async (topic: string, count: number): Promise<string[]> => {
     try {
         const model = ai.getGenerativeModel({
-            model: 'gemini-2.5-pro',
+            model: 'gemini-3-pro-preview',
             generationConfig: {
                 responseMimeType: "application/json",
                 responseSchema: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
@@ -104,7 +104,7 @@ export const generateBatchItems = async (topic: string, angle: string, count: nu
 
         try {
             const model = ai.getGenerativeModel({
-                model: 'gemini-2.5-pro',
+                model: 'gemini-3-pro-preview',
                 systemInstruction: MASTER_FACTORY_SYSTEM_PROMPT,
                 generationConfig: {
                     responseMimeType: "application/json",

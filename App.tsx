@@ -205,7 +205,17 @@ const App: React.FC = () => {
       return (
         <HistoryPage
           onBack={() => setCurrentView('workspace')}
-          onLoadChat={(chatId) => {
+          onLoadChat={async (chatId) => {
+            // Load the chat to get its mode
+            const { data } = await supabase
+              .from('chats')
+              .select('mode')
+              .eq('id', chatId)
+              .single();
+            
+            if (data?.mode) {
+              setCurrentMode(data.mode as AppMode);
+            }
             setActiveChatId(chatId);
             setCurrentView('workspace');
           }}
@@ -277,7 +287,17 @@ const App: React.FC = () => {
         isCollapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         activeChatId={activeChatId}
-        onLoadChat={(chatId) => {
+        onLoadChat={async (chatId) => {
+          // Load the chat to get its mode
+          const { data } = await supabase
+            .from('chats')
+            .select('mode')
+            .eq('id', chatId)
+            .single();
+          
+          if (data?.mode) {
+            setCurrentMode(data.mode as AppMode);
+          }
           setActiveChatId(chatId);
           setCurrentView('workspace');
         }}

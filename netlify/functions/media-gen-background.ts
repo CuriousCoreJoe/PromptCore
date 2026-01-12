@@ -355,7 +355,7 @@ const handler: Handler = async (event, context) => {
             return { statusCode: 402, body: "Insufficient credits" };
         }
 
-        const openRouterKey = process.env.OPENROUTER_API_KEY;
+        const openRouterKey = (process.env.PROMPTCORE_NETLIFY_PROD || process.env.OPENROUTER_API_KEY || "").trim();
         const geminiKey = (process.env.LOCAL_GEMINI_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY || "").trim();
         const togetherKey = process.env.TOGETHER_API_KEY;
 

@@ -126,16 +126,16 @@ async function generateImageWithGemini(prompt: string, geminiKey: string): Promi
         const { GoogleGenerativeAI } = require("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(geminiKey);
 
-        // Use imagen-4.0-generate-001 for image generation
+        // Use imagen-3.0-generate-001 for image generation
         const model = genAI.getGenerativeModel({
-            model: "imagen-4.0-generate-001",
+            model: "imagen-3.0-generate-001",
             generationConfig: {
                 responseModalities: ["image", "text"],
             }
         });
 
         // Request image generation
-        console.log(`[Gemini] Calling model: imagen-4.0-generate-001`);
+        console.log(`[Gemini] Calling model: imagen-3.0-generate-001`);
         const result = await model.generateContent(`Generate an image: ${prompt}`);
 
         const response = result.response;
@@ -213,7 +213,27 @@ async function generateImageWithFallback(prompt: string, options: {
     
     console.log(`[ImageGen] Starting fallback chain for prompt: "${prompt.substring(0, 100)}..."`);
     
-    // Try OpenRouter first (Nano Banana - default model)
+    // 1. Try Gemini Native (Primary - High Quality)
+    if (geminiKey) {
+        console.log(`[ImageGen] Trying Gemini native`);
+        const geminiResult = await generateImageWithGemini(prompt, geminiKey);
+        if (geminiResult.success) {
+            return geminiResult;
+        }
+        console.warn(`[ImageGen] Gemini failed: ${geminiResult.error}`);
+    }
+
+    // 2. Try Together.ai
+    if (togetherKey) {
+        console.log(`[ImageGen] Trying Together.ai`);
+        const togetherResult = await generateImageWithTogether(prompt, togetherKey);
+        if (togetherResult.success) {
+            return togetherResult;
+        }
+        console.warn(`[ImageGen] Together.ai failed: ${togetherResult.error}`);
+    }
+
+    // 3. Try OpenRouter (Nano Banana - default model)
     if (openRouterKey) {
         console.log(`[ImageGen] Trying OpenRouter with model: google/gemini-3-pro-image-preview`);
         try {
@@ -272,33 +292,13 @@ async function generateImageWithFallback(prompt: string, options: {
         }
     }
 
-    // Try Pollinations.ai (free fallback - always available)
+    // 4. Try Pollinations.ai (free fallback - last resort)
     console.log(`[ImageGen] Trying Pollinations.ai (free fallback)`);
     const pollinationsResult = await generateImageWithPollinations(prompt);
     if (pollinationsResult.success) {
         return pollinationsResult;
     }
     console.warn(`[ImageGen] Pollinations.ai failed: ${pollinationsResult.error}`);
-
-    // Try Together.ai
-    if (togetherKey) {
-        console.log(`[ImageGen] Trying Together.ai`);
-        const togetherResult = await generateImageWithTogether(prompt, togetherKey);
-        if (togetherResult.success) {
-            return togetherResult;
-        }
-        console.warn(`[ImageGen] Together.ai failed: ${togetherResult.error}`);
-    }
-
-    // Try Gemini native (last fallback)
-    if (geminiKey) {
-        console.log(`[ImageGen] Trying Gemini native`);
-        const geminiResult = await generateImageWithGemini(prompt, geminiKey);
-        if (geminiResult.success) {
-            return geminiResult;
-        }
-        console.warn(`[ImageGen] Gemini failed: ${geminiResult.error}`);
-    }
 
     // All services failed
     console.error(`[ImageGen] All image generation services failed`);
@@ -347,7 +347,7 @@ const handler: Handler = async (event, context) => {
             };
         }
 
-        const openRouterKey = process.env.OPENROUTER_API_KEY;
+        const openRouterKey = (process.env.PROMPTCORE_NETLIFY_PROD || process.env.OPENROUTER_API_KEY || "").trim();
         const geminiKey = (process.env.LOCAL_GEMINI_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY || "").trim();
         const togetherKey = process.env.TOGETHER_API_KEY;
 

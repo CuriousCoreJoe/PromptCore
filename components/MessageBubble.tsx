@@ -7,7 +7,7 @@ import { MessageActionBar } from './MessageActionBar';
 
 interface MessageBubbleProps {
   message: Message;
-  onOptionSelect?: (option: string) => void;
+  onOptionSelect?: (option: string, messageId?: string) => void;
   onRunPrompt?: (messageId: string, content: string) => void;
   onShorten?: (messageId: string) => void;
   onElaborate?: (messageId: string) => void;
@@ -59,8 +59,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const match = message.content.match(optionsRegex);
   const options = match ? match[1].split(',').map(o => o.trim()).filter(o => o.length > 0) : [];
 
-  // Extract embedded image data (sent separately to avoid ReactMarkdown issues with huge data URLs)
-  const imageDataRegex = /<!-- IMAGE_DATA_START -->\n(data:image\/[^;]+;base64,[^\n]+)\n<!-- IMAGE_DATA_END -->/;
+  // Extract embedded image data (sent separately to avoid ReactMarkdown issues)
+  // Now supports both Base64 and standard URLs
+  const imageDataRegex = /<!-- IMAGE_DATA_START -->\n([^\n]+)\n<!-- IMAGE_DATA_END -->/;
   const imageMatch = message.content.match(imageDataRegex);
   const embeddedImageData = imageMatch ? imageMatch[1] : null;
 
@@ -83,6 +84,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       }
     }
   }
+
+  const hasOpenedRef = React.useRef(false);
+
+  // Auto-open effect for Vibe Code artifacts
+  React.useEffect(() => {
+    const isProcessingOrFailed = message.status === 'processing' || message.status === 'failed';
+    if (!isProcessingOrFailed && onOpenArtifact && artifactContent && isVibeCodeResult && !hasOpenedRef.current) {
+      onOpenArtifact(artifactContent, "Generated App");
+      hasOpenedRef.current = true;
+    }
+  }, [artifactContent, isVibeCodeResult, onOpenArtifact, message.status]);
 
   // Remove both options and image data markers from display content
   const displayContent = message.content
@@ -161,57 +173,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     h2: ({ children }: any) => <h2 className="text-xl font-medium text-gray-100 mb-3 mt-5">{children}</h2>,
     h3: ({ children }: any) => <h3 className="text-lg font-medium text-gray-100 mb-2 mt-4">{children}</h3>,
     img: ({ src, alt }: any) => {
-      const [imgError, setImgError] = React.useState(false);
-      const [imgLoaded, setImgLoaded] = React.useState(false);
-
-      // Debug: Log data URL info
-      React.useEffect(() => {
-        console.log(`Image component received src, length: ${src?.length || 0}`);
-        if (src && src.length > 0) {
-          console.log(`Image src type: ${src.startsWith('data:') ? 'base64' : 'url'}`);
-          if (src.startsWith('data:')) {
-            console.log(`Data URL prefix: ${src.substring(0, 100)}...`);
-          }
-        } else {
-          console.warn('Image component received empty src!');
-        }
-      }, [src]);
-
-      // Don't render if src is empty
-      if (!src || src.length === 0) {
-        return (
-          <div className="my-4 rounded-xl overflow-hidden border border-red-700 bg-red-900/20 p-4">
-            <span className="text-red-400 text-sm">Image data was empty or missing</span>
-            {alt && <p className="text-xs text-gray-400 mt-2">{alt}</p>}
-          </div>
-        );
-      }
-
+      if (!src) return null;
+      
       return (
-        <div className="my-4 rounded-xl overflow-hidden border border-dark-700 shadow-2xl transition-transform hover:scale-[1.02]">
-          {!imgLoaded && !imgError && (
-            <div className="w-full h-64 bg-dark-800 flex items-center justify-center">
-              <span className="text-gray-400 text-sm">Loading image...</span>
-            </div>
-          )}
-          {imgError && (
-            <div className="w-full h-64 bg-dark-800 flex items-center justify-center">
-              <span className="text-red-400 text-sm">Failed to load image</span>
-            </div>
-          )}
+        <div className="my-2 max-w-md">
           <img
             src={src}
             alt={alt}
-            className={`w-full h-auto object-cover ${imgLoaded ? '' : 'hidden'}`}
+            className="w-full h-auto rounded-lg border border-dark-700"
             loading="lazy"
-            onLoad={() => setImgLoaded(true)}
-            onError={(e) => {
-              console.error('Image failed to load:', e);
-              console.error('Failed src (first 100 chars):', src?.substring(0, 100));
-              setImgError(true);
-            }}
           />
-          {alt && <p className="px-4 py-2 text-xs text-gray-400 bg-dark-900/50 italic border-t border-dark-800">{alt}</p>}
+          <a href={src} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline mt-1 block">
+            Open Image
+          </a>
         </div>
       );
     },
@@ -405,16 +379,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                         View App
                       </button>
                     </div>
-
-                    {/* Auto-open effect */}
-                    {(() => {
-                      React.useEffect(() => {
-                        if (onOpenArtifact && artifactContent && isExecutionResult) {
-                          onOpenArtifact(artifactContent, "Generated App");
-                        }
-                      }, [artifactContent]);
-                      return null;
-                    })()}
                   </div>
                 )}
               </div>
@@ -436,7 +400,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   return (
                     <button
                       key={idx}
-                      onClick={() => onOptionSelect(opt)}
+                      onClick={() => onOptionSelect(opt, message.id)}
                       className={
                         isOutcomeButton
                           ? "px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-sm font-bold rounded-full border border-purple-400/30 transition-all shadow-lg shadow-purple-500/20 hover:scale-105 active:scale-95 flex items-center gap-2"

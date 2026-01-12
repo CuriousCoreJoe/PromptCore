@@ -100,6 +100,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
     const [youtubeUrl, setYoutubeUrl] = useState('');
     const [uploadedSource, setUploadedSource] = useState<string | null>(null);
     const [activeArtifact, setActiveArtifact] = useState<{ content: string; title?: string } | null>(null);
+    const [loadedChatId, setLoadedChatId] = useState<string | null>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -121,6 +123,15 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
     const loadHistory = useCallback(async () => {
         if (!activeChatId) return;
 
+        // First, get the chat to get its mode
+        const { data: chatData, error: chatError } = await supabase
+            .from('chats')
+            .select('mode')
+            .eq('id', activeChatId)
+            .single();
+
+        const chatMode = chatData?.mode as AppMode || currentMode;
+
         const { data, error } = await supabase
             .from('messages')
             .select('*')
@@ -133,7 +144,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 role: m.role as any,
                 content: m.content,
                 timestamp: new Date(m.created_at).getTime(),
-                mode: currentMode,
+                mode: chatMode, // Use the chat's mode for all messages
                 status: m.status as any,
                 msgType: m.msg_type as any,
                 executionModel: m.execution_model,
@@ -153,18 +164,22 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
 
             // Add system message at top if needed, or just replace
             setMessages([{ id: '0', role: 'system', content: '', timestamp: 0, mode: currentMode }, ...mappedMessages]);
+            setLoadedChatId(activeChatId);
             // Only reset wizard for existing chats if not currently in a transition
             setWizardStage(prev => prev === 'IDLE' ? 'IDLE' : prev);
         }
     }, [activeChatId, currentMode, onShowToast]);
 
     useEffect(() => {
+        setActiveArtifact(null);
         if (activeChatId) {
             loadHistory();
         } else {
             // New Session
             setMessages([{ id: '0', role: 'system', content: '', timestamp: Date.now(), mode: currentMode }]);
             setWizardStage('IDLE');
+            setLoadedChatId(null);
+            setInput('');
         }
     }, [activeChatId, loadHistory]);
 
@@ -173,13 +188,21 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         if (!activeChatId) return;
 
         const channel = supabase
-            .channel(`chat-messages-${activeChatId}`)
+            .channel(`chat-messages-${activeChatId}-${session.user.id}`)
             .on('postgres_changes', {
                 event: '*',
                 schema: 'public',
                 table: 'messages',
                 filter: `chat_id=eq.${activeChatId}`
-            }, (payload) => {
+            }, async (payload) => {
+                // Get the chat's mode for new messages
+                const { data: chatData } = await supabase
+                    .from('chats')
+                    .select('mode')
+                    .eq('id', activeChatId)
+                    .single();
+                const chatMode = chatData?.mode as AppMode || currentMode;
+
                 if (payload.eventType === 'INSERT') {
                     const newMsg = payload.new;
                     setMessages(prev => {
@@ -189,7 +212,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                             role: newMsg.role,
                             content: newMsg.content,
                             timestamp: new Date(newMsg.created_at).getTime(),
-                            mode: currentMode,
+                            mode: chatMode,
                             status: newMsg.status,
                             msgType: newMsg.msg_type,
                             executionModel: newMsg.execution_model,
@@ -282,7 +305,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         fetchRecent();
 
         if (session?.user) {
-            const channelName = `workspace-recents-${session.user.id}-${currentMode}`;
+            const channelName = `workspace-recents-${session.user.id}`;
             const channel = supabase
                 .channel(channelName)
                 .on('postgres_changes', {
@@ -428,6 +451,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
 
     const processMessage = async (content: string, isHiddenInstruction = false) => {
         setIsLoading(true);
+        abortControllerRef.current = new AbortController();
+
         const tempMessages = [...messages];
         if (isHiddenInstruction) {
             tempMessages.push({
@@ -442,17 +467,29 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         // Use background processing for Talk to Source to avoid timeouts
         const useBackgroundChat = currentMode === AppMode.TALK_TO_SOURCE;
 
+        // Prepare messages for chat API (truncate large execution results to avoid payload limits)
+        const chatMessages = tempMessages.map(m => {
+            if (m.msgType === 'execution_result' && m.content.length > 5000) {
+                return {
+                    ...m,
+                    content: m.content.substring(0, 5000) + "\n...[Content Truncated for Chat Context]..."
+                };
+            }
+            return m;
+        });
+
         try {
             if (useBackgroundChat && activeChatId) {
                 // Route to background function for heavy processing
                 const response = await fetch('/api/chat-background', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    signal: abortControllerRef.current?.signal,
                     body: JSON.stringify({
                         input: content,
                         chatId: activeChatId,
                         userId: session.user.id,
-                        conversationHistory: tempMessages.filter(m => m.role !== 'system').map(m => ({
+                        conversationHistory: chatMessages.filter(m => m.role !== 'system').map(m => ({
                             role: m.role,
                             content: m.content
                         })),
@@ -476,8 +513,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    signal: abortControllerRef.current?.signal,
                     body: JSON.stringify({
-                        messages: tempMessages,
+                        messages: chatMessages,
                         input: isHiddenInstruction ? content : content,
                         mode: currentMode,
                         userId: session.user.id,
@@ -524,6 +562,16 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         }
     };
 
+    const handleStop = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+            setIsLoading(false);
+            setIsRunningExecution(false);
+            onShowToast('Stopped.');
+        }
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -562,7 +610,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
 
         // If we answer a clarifying question via quick action, handle it as an answer
         if (wizardStage === 'CLARIFYING') {
-            setInput(processedOption);
+            setInput('');
             // We need to wait a tick or call a modified handler because handleClarificationAnswer uses 'input' state
             // But since setState is async, we can just call the logic directly:
             // Save to DB - Realtime subscription will add it to state
@@ -580,9 +628,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         }
     };
 
-    const handleOpenPreview = (content: string, title?: string) => {
+    const handleOpenPreview = useCallback((content: string, title?: string) => {
         setActiveArtifact({ content, title });
-    };
+    }, []);
 
     const handleClosePreview = () => {
         setActiveArtifact(null);
@@ -596,6 +644,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
 
     // Dual-Lane Action Handlers
     const handleRunPrompt = async (messageId: string, content: string) => {
+        // Safety check: Ensure we are acting on the correct chat context
+        if (activeChatId && loadedChatId !== activeChatId) {
+            console.warn("Attempted to run prompt while chat was switching. Ignoring.");
+            return;
+        }
+
         // Prevent double clicks - if already running, do nothing
         if (isRunningExecution) {
             return;
@@ -626,11 +680,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
 
         setIsRunningExecution(true);
         onShowToast('🚀 Initializing...');
+        abortControllerRef.current = new AbortController();
 
         try {
-            // Get execution history (only execution_result messages)
+            // Get full conversation history for context
             const executionHistory = messages
-                .filter(m => m.msgType === 'execution_result')
+                .filter(m => m.role !== 'system' && m.id !== '0' && !m.id.startsWith('hidden-'))
                 .map(m => ({ role: m.role, content: m.content }));
 
             // Determine which background process to use based on mode
@@ -643,6 +698,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                signal: abortControllerRef.current?.signal,
                 body: JSON.stringify({
                     prompt: promptToRun,
                     userId: session.user.id,
@@ -893,7 +949,10 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
     return (
         <div className="flex flex-row h-screen bg-[#131314] text-white overflow-hidden relative">
             {/* Mode Selector - Floating or Top */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50">
+            <div className={clsx(
+                "absolute top-4 -translate-x-1/2 z-50 transition-all duration-300",
+                activeArtifact ? "left-1/4" : "left-1/2"
+            )}>
                 <ModeSelector
                     currentMode={currentMode}
                     onSelectMode={onSelectMode}
@@ -1145,28 +1204,38 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
 
                             {/* Send Button */}
                             <div className="flex-shrink-0">
-                                <button
-                                    onClick={() => {
-                                        if (wizardStage === 'IDLE') handleInitialSubmit();
-                                        else if (wizardStage === 'CLARIFYING') handleClarificationAnswer();
-                                        else {
-                                            const val = input;
-                                            setInput('');
-                                            // Save to DB - Realtime subscription will add it to state
-                                            saveMessage({ id: '', role: 'user', content: val, timestamp: Date.now(), mode: currentMode });
-                                            processMessage(val);
-                                        }
-                                    }}
-                                    disabled={!input.trim() || isLoading}
-                                    className={cn(
-                                        "p-2.5 rounded-full transition-all duration-200",
-                                        input.trim()
-                                            ? "bg-[#E3E3E3] text-[#131314] hover:bg-white shadow-lg"
-                                            : "bg-transparent text-gray-600 cursor-not-allowed hover:bg-dark-800"
-                                    )}
-                                >
-                                    <Send size={18} />
-                                </button>
+                                {isLoading || isRunningExecution ? (
+                                    <button
+                                        onClick={handleStop}
+                                        className="p-2.5 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all duration-200"
+                                        title="Stop Generation"
+                                    >
+                                        <div className="w-4 h-4 bg-current rounded-sm" />
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            if (wizardStage === 'IDLE') handleInitialSubmit();
+                                            else if (wizardStage === 'CLARIFYING') handleClarificationAnswer();
+                                            else {
+                                                const val = input;
+                                                setInput('');
+                                                // Save to DB - Realtime subscription will add it to state
+                                                saveMessage({ id: '', role: 'user', content: val, timestamp: Date.now(), mode: currentMode });
+                                                processMessage(val);
+                                            }
+                                        }}
+                                        disabled={!input.trim() || isLoading}
+                                        className={cn(
+                                            "p-2.5 rounded-full transition-all duration-200",
+                                            input.trim()
+                                                ? "bg-[#E3E3E3] text-[#131314] hover:bg-white shadow-lg"
+                                                : "bg-transparent text-gray-600 cursor-not-allowed hover:bg-dark-800"
+                                        )}
+                                    >
+                                        <Send size={18} />
+                                    </button>
+                                )}
                             </div>
                         </div>
 

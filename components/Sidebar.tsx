@@ -39,8 +39,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, profi
 
       fetchRecent();
 
-      // Create unique channel name to avoid conflicts
-      const channelName = `sidebar-history-${fetchId}-${Date.now()}`;
+      // Create unique channel name to avoid conflicts (without Date.now() to prevent infinite re-renders)
+      const channelName = `sidebar-history-${fetchId}`;
       const channel = supabase
         .channel(channelName)
         .on('postgres_changes', {

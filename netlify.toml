@@ -67,3 +67,8 @@
   from = "/api/trigger"
   to = "/.netlify/functions/trigger"
   status = 200
+
+[[redirects]]
+  from = "/api/image-proxy"
+  to = "/.netlify/functions/image-proxy"
+  status = 200

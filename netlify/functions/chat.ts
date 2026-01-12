@@ -1,5 +1,4 @@
 import { Handler } from "@netlify/functions";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
 
 // Mode-specific system prompts
@@ -176,21 +175,20 @@ const handler: Handler = async (event, context) => {
 
         const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-        const geminiKey = (process.env.LOCAL_GEMINI_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY || "").trim();
+        const openRouterKey = (process.env.PROMPTCORE_NETLIFY_PROD || process.env.OPENROUTER_API_KEY || "").trim();
 
-        if (!supabaseUrl || !supabaseKey || !geminiKey) {
+        if (!supabaseUrl || !supabaseKey || !openRouterKey) {
             return {
                 statusCode: 500,
                 headers,
-                body: JSON.stringify({ error: "Configuration Error" })
+                body: JSON.stringify({ error: "Configuration Error: Missing API Keys" })
             };
         }
 
         const supabase = createClient(supabaseUrl, supabaseKey);
 
         // 1. Model Selection - Map user's selected model to actual API model
-        const modelName = "gemini-3-pro-preview";
-        const genAI = new GoogleGenerativeAI(geminiKey);
+        const modelName = "google/gemini-3-pro-preview";
 
         // 2. Check Credits & Handle Monthly Usage Reset
         const { data: profiles, error: profileError } = await supabase
@@ -284,39 +282,38 @@ const handler: Handler = async (event, context) => {
 
         console.log(`Chat: Mode="${mode}", WizardMode="${wizardMode}"`);
 
-        const model = genAI.getGenerativeModel({
-            model: modelName,
-            systemInstruction: systemInstruction
+        // Prepare messages for OpenRouter
+        const openRouterMessages = [
+            { role: 'system', content: systemInstruction },
+            ...(messages || []).filter((m: any) => m.role !== 'system' && m.content && m.content.trim() !== "").map((m: any) => ({
+                role: m.role === 'model' ? 'assistant' : 'user',
+                content: m.content
+            })),
+            { role: 'user', content: input || "" }
+        ];
+
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${openRouterKey}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://promptcore.app',
+                'X-Title': 'PromptCore'
+            },
+            body: JSON.stringify({
+                model: modelName,
+                messages: openRouterMessages,
+                max_tokens: 4096,
+                temperature: 0.7
+            })
         });
 
-        // Filter out system messages and the last user message if it's the current input
-        const filteredMessages = (messages || []).filter((m: any) =>
-            m.role !== 'system' && m.content.trim() !== ""
-        );
-
-        const history = filteredMessages.map((m: any) => ({
-            role: m.role === 'model' ? 'model' : 'user',
-            parts: [{ text: m.content }]
-        }));
-
-        // Gemini Integrity Check: History MUST start with 'user'
-        if (history.length > 0 && history[0].role === 'model') {
-            // Option 1: Remove the orphan model message
-            history.shift();
-            // Option 2 (Alternative): Prepend a dummy user message
-            // history.unshift({ role: 'user', parts: [{ text: 'Context:' }] });
+        if (!response.ok) {
+            throw new Error(`OpenRouter API error: ${response.status} ${await response.text()}`);
         }
 
-        // Prevent duplicate user turns (Gemini restriction)
-        if (history.length > 0 &&
-            history[history.length - 1].role === 'user' &&
-            history[history.length - 1].parts[0].text === input) {
-            history.pop();
-        }
-
-        const chat = model.startChat({ history });
-        const result = await chat.sendMessage(input);
-        const responseText = result.response.text();
+        const data = await response.json();
+        const responseText = data.choices?.[0]?.message?.content || "No response generated.";
 
         // 4. Calculate costs and track usage
         // Base costs for different modes

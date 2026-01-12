@@ -187,7 +187,7 @@ const handler: Handler = async (event, context) => {
             return { statusCode: 402, body: "Insufficient credits" };
         }
 
-        const openRouterKey = process.env.OPENROUTER_API_KEY;
+        const openRouterKey = (process.env.PROMPTCORE_NETLIFY_PROD || process.env.OPENROUTER_API_KEY || "").trim();
 
         // Use Gemini 3 Pro for Talk to Source (good at analysis)
         const modelId = 'google/gemini-3-pro-preview';
