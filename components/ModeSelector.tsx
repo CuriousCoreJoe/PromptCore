@@ -48,7 +48,7 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({ currentMode, onSelec
           <button
             key={mode.id}
             onClick={() => onSelectMode(mode.id)}
-            className={`relative flex-1 md:flex-none flex items-center justify-center px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+            className={`relative flex-1 md:flex-none flex items-center justify-center px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
               isActive
                 ? {
                     [AppMode.EVERYDAY]: 'bg-blue-600 text-white shadow-lg shadow-blue-900/20',
@@ -59,8 +59,9 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({ currentMode, onSelec
                 : 'text-gray-400 hover:text-white hover:bg-dark-800'
             }`}
           >
-            <span className="mr-2 opacity-90">{mode.icon}</span>
-            <span>{mode.label}</span>
+            <span className="mr-1.5 md:mr-2 opacity-90">{mode.icon}</span>
+            <span className="hidden sm:inline">{mode.label}</span>
+            <span className="sm:hidden">{mode.label.split(' ')[0]}</span>
           </button>
         );
       })}

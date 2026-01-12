@@ -169,9 +169,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     ul: ({ children }: any) => <ul className="list-disc pl-5 my-3 space-y-1">{children}</ul>,
     ol: ({ children }: any) => <ol className="list-decimal pl-5 my-3 space-y-1">{children}</ol>,
     p: ({ children }: any) => <div className="mb-4 last:mb-0 leading-7 text-gray-300">{children}</div>,
-    h1: ({ children }: any) => <h1 className="text-2xl font-medium text-gray-100 mb-4 mt-6">{children}</h1>,
-    h2: ({ children }: any) => <h2 className="text-xl font-medium text-gray-100 mb-3 mt-5">{children}</h2>,
-    h3: ({ children }: any) => <h3 className="text-lg font-medium text-gray-100 mb-2 mt-4">{children}</h3>,
+    h1: ({ children }: any) => <h1 className="text-xl md:text-2xl font-medium text-gray-100 mb-4 mt-6">{children}</h1>,
+    h2: ({ children }: any) => <h2 className="text-lg md:text-xl font-medium text-gray-100 mb-3 mt-5">{children}</h2>,
+    h3: ({ children }: any) => <h3 className="text-base md:text-lg font-medium text-gray-100 mb-2 mt-4">{children}</h3>,
     img: ({ src, alt }: any) => {
       if (!src) return null;
       

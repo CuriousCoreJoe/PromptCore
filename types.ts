@@ -44,6 +44,7 @@ export interface UserProfile {
   full_name?: string;
   avatar_url?: string;
   subscription_status?: 'free' | 'lite' | 'pro';
+  lifetime_prompts?: number;
   // Premium mode usage tracking for free users
   vibe_code_uses_monthly?: number;
   talk_to_source_uses_monthly?: number;

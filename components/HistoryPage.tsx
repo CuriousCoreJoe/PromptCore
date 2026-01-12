@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { ChatSession, UserProfile, AppMode } from '../types';
-import { ArrowLeft, Clock, Bookmark, Search, MoreHorizontal, MessageSquare, Trash2, Edit2, Calendar } from 'lucide-react';
+import { ArrowLeft, Clock, Bookmark, Search, MoreHorizontal, MessageSquare, Trash2, Edit2, Calendar, Layers } from 'lucide-react';
 import { clsx } from 'clsx';
+import { BatchList } from './BatchList';
 
 interface HistoryPageProps {
     onBack: () => void;
@@ -13,12 +14,14 @@ interface HistoryPageProps {
 export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, userProfile }) => {
     const [chats, setChats] = useState<ChatSession[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'history' | 'bookmarks'>('history');
+    const [activeTab, setActiveTab] = useState<'chat' | 'batches' | 'bookmarks'>('chat');
 
     useEffect(() => {
-        fetchChats();
+        if (activeTab === 'chat') {
+            fetchChats();
+        }
 
-        if (userProfile?.id) {
+        if (userProfile?.id && activeTab === 'chat') {
             const channelName = `history-page-${userProfile.id}-${Date.now()}`;
             const channel = supabase
                 .channel(channelName)
@@ -52,7 +55,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, us
                 supabase.removeChannel(channel);
             };
         }
-    }, [userProfile?.id]);
+    }, [userProfile?.id, activeTab]);
 
     const fetchChats = async () => {
         setIsLoading(true);
@@ -128,85 +131,107 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, us
                 {/* Tabs */}
                 <div className="flex items-center bg-[#1E1F20] p-1 rounded-full border border-white/5">
                     <button
-                        onClick={() => setActiveTab('bookmarks')} // Placeholder
+                        onClick={() => setActiveTab('chat')}
                         className={clsx(
-                            "px-6 py-2 rounded-full text-sm font-medium transition-all",
+                            "px-6 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2",
+                            activeTab === 'chat' ? "bg-white text-black shadow-lg" : "text-gray-400 hover:text-white"
+                        )}
+                    >
+                        <MessageSquare size={14} />
+                        Chat
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('batches')}
+                        className={clsx(
+                            "px-6 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2",
+                            activeTab === 'batches' ? "bg-white text-black shadow-lg" : "text-gray-400 hover:text-white"
+                        )}
+                    >
+                        <Layers size={14} />
+                        Batches
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('bookmarks')}
+                        className={clsx(
+                            "px-6 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2",
                             activeTab === 'bookmarks' ? "bg-white text-black shadow-lg" : "text-gray-400 hover:text-white"
                         )}
                     >
+                        <Bookmark size={14} />
                         Bookmark
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('history')}
-                        className={clsx(
-                            "px-6 py-2 rounded-full text-sm font-medium transition-all",
-                            activeTab === 'history' ? "bg-white text-black shadow-lg" : "text-gray-400 hover:text-white"
-                        )}
-                    >
-                        History
                     </button>
                 </div>
             </div>
 
             {/* List Content */}
             <div className="flex-1 max-w-4xl mx-auto w-full px-6 py-8">
-                {isLoading ? (
-                    <div className="text-center text-gray-500 mt-20">Loading history...</div>
-                ) : chats.length === 0 ? (
-                    <div className="text-center text-gray-500 mt-20">No history found. Start a new chat!</div>
-                ) : (
-                    <div className="space-y-12">
-                        {Object.entries(groupedChats).map(([dateLabel, groupChats]) => (
-                            <div key={dateLabel}>
-                                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-6 border-b border-white/5 pb-2">
-                                    {dateLabel}
-                                </h3>
-                                <div className="space-y-1">
-                                    {groupChats.map(chat => (
-                                        <div
-                                            key={chat.id}
-                                            onClick={() => onLoadChat(chat.id)}
-                                            className="group flex items-center gap-4 p-4 rounded-xl hover:bg-[#1E1F20] cursor-pointer transition-all border border-transparent hover:border-white/5"
-                                        >
-                                            <div className="text-xs font-mono text-gray-500 w-12 text-right">
-                                                {new Date(chat.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </div>
+                {activeTab === 'batches' ? (
+                    userProfile?.id ? (
+                        <BatchList userId={userProfile.id} />
+                    ) : (
+                        <div className="text-center text-gray-500 mt-20">Please log in to view batches.</div>
+                    )
+                ) : activeTab === 'chat' ? (
+                    isLoading ? (
+                        <div className="text-center text-gray-500 mt-20">Loading history...</div>
+                    ) : chats.length === 0 ? (
+                        <div className="text-center text-gray-500 mt-20">No history found. Start a new chat!</div>
+                    ) : (
+                        <div className="space-y-12">
+                            {Object.entries(groupedChats).map(([dateLabel, groupChats]) => (
+                                <div key={dateLabel}>
+                                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-6 border-b border-white/5 pb-2">
+                                        {dateLabel}
+                                    </h3>
+                                    <div className="space-y-1">
+                                        {groupChats.map(chat => (
+                                            <div
+                                                key={chat.id}
+                                                onClick={() => onLoadChat(chat.id)}
+                                                className="group flex items-center gap-4 p-4 rounded-xl hover:bg-[#1E1F20] cursor-pointer transition-all border border-transparent hover:border-white/5"
+                                            >
+                                                <div className="text-xs font-mono text-gray-500 w-12 text-right">
+                                                    {new Date(chat.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </div>
 
-                                            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-dark-800 text-gray-400 group-hover:bg-brand-500/10 group-hover:text-brand-400 transition-colors">
-                                                <MessageSquare size={16} />
-                                            </div>
+                                                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-dark-800 text-gray-400 group-hover:bg-brand-500/10 group-hover:text-brand-400 transition-colors">
+                                                    <MessageSquare size={16} />
+                                                </div>
 
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="text-gray-300 group-hover:text-white font-medium truncate transition-colors">
-                                                    {chat.title || 'New Chat'}
-                                                </h4>
-                                                <p className="text-xs text-gray-600 group-hover:text-gray-500 truncate mt-0.5 capitalize">
-                                                    {chat.mode ? chat.mode.replace('_', ' ').toLowerCase() : 'Everyday'}
-                                                </p>
-                                            </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="text-gray-300 group-hover:text-white font-medium truncate transition-colors">
+                                                        {chat.title || 'New Chat'}
+                                                    </h4>
+                                                    <p className="text-xs text-gray-600 group-hover:text-gray-500 truncate mt-0.5 capitalize">
+                                                        {chat.mode ? chat.mode.replace('_', ' ').toLowerCase() : 'Everyday'}
+                                                    </p>
+                                                </div>
 
-                                            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-2 transition-opacity">
-                                                <button
-                                                    onClick={(e) => handleRenameChat(e, chat.id, chat.title || '')}
-                                                    className="p-2 text-gray-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                                                    title="Rename Chat"
-                                                >
-                                                    <Edit2 size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => handleDeleteChat(e, chat.id)}
-                                                    className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
-                                                    title="Delete Chat"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                <div className="opacity-0 group-hover:opacity-100 flex items-center gap-2 transition-opacity">
+                                                    <button
+                                                        onClick={(e) => handleRenameChat(e, chat.id, chat.title || '')}
+                                                        className="p-2 text-gray-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                                                        title="Rename Chat"
+                                                    >
+                                                        <Edit2 size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleDeleteChat(e, chat.id)}
+                                                        className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                                                        title="Delete Chat"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )
+                ) : (
+                    <div className="text-center text-gray-500 mt-20">Bookmarks coming soon.</div>
                 )}
             </div>
         </div>

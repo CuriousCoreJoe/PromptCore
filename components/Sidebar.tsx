@@ -18,9 +18,11 @@ interface SidebarProps {
   onRenameChat?: (chatId: string, newTitle: string) => void;
   onNewChat?: () => void;
   refreshKey?: number;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, profile, isDev, isCollapsed, onToggleCollapse, activeChatId, onLoadChat, userId, onDeleteChat, onRenameChat, onNewChat, refreshKey }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, profile, isDev, isCollapsed, onToggleCollapse, activeChatId, onLoadChat, userId, onDeleteChat, onRenameChat, onNewChat, refreshKey, isMobileOpen, onCloseMobile }) => {
   const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
 
   useEffect(() => {
@@ -88,26 +90,50 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, profi
   };
 
   return (
-    <div className={clsx(
-      "flex-shrink-0 bg-dark-900 border-r border-dark-800 flex flex-col h-full transition-all duration-300 relative",
-      isCollapsed ? "w-16" : "w-64"
-    )}>
-      {/* Logo Area */}
-      <div className="h-16 flex items-center px-4 border-b border-dark-800">
-        <div className="flex items-center flex-1 overflow-hidden">
-          <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
-            P
+    <>
+      {/* Mobile Overlay Backdrop */}
+      {isMobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+          onClick={onCloseMobile}
+        />
+      )}
+
+      <div className={clsx(
+        "bg-dark-900 border-r border-dark-800 flex flex-col h-full transition-all duration-300",
+        // Mobile: Fixed drawer
+        "fixed inset-y-0 left-0 z-50 md:relative md:z-0",
+        // Mobile: Slide in/out
+        isMobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0",
+        // Width
+        isCollapsed ? "w-16" : "w-64"
+      )}>
+        {/* Logo Area */}
+        <div className="h-16 flex items-center px-4 border-b border-dark-800 justify-between">
+          <div className="flex items-center flex-1 overflow-hidden">
+            <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+              P
+            </div>
+            {!isCollapsed && <span className="ml-3 font-semibold text-lg text-white truncate">PromptCore</span>}
           </div>
-          {!isCollapsed && <span className="ml-3 font-semibold text-lg text-white truncate">PromptCore</span>}
+          
+          {/* Mobile Close Button */}
+          <button
+            onClick={onCloseMobile}
+            className="md:hidden p-1.5 text-gray-400 hover:text-white rounded-md"
+          >
+            <X size={20} />
+          </button>
+
+          {/* Desktop Collapse Button */}
+          <button
+            onClick={onToggleCollapse}
+            className="hidden md:block p-1.5 text-gray-500 hover:text-white hover:bg-dark-800 rounded-md transition-all ml-1"
+            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            {isCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
         </div>
-        <button
-          onClick={onToggleCollapse}
-          className="p-1.5 text-gray-500 hover:text-white hover:bg-dark-800 rounded-md transition-all ml-1"
-          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-        >
-          {isCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-        </button>
-      </div>
 
       {/* Nav Items */}
       <nav className="flex-1 py-4 px-2 md:px-4 space-y-2 overflow-y-auto">
@@ -252,6 +278,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, profi
         )}
       </div>
     </div>
+    </>
   );
 };
 

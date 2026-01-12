@@ -8,7 +8,8 @@ import {
     Cpu,
     Sparkles,
     Command,
-    Brain
+    Brain,
+    Layers
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -23,6 +24,8 @@ interface SettingsPageProps {
     onToggleWizardMode: () => void;
     defaultModel: AIModel;
     onModelChange: (model: AIModel) => void;
+    defaultExpandBatches: boolean;
+    onToggleDefaultExpandBatches: () => void;
     isDev?: boolean;
     onBack: () => void;
 }
@@ -32,6 +35,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     onToggleWizardMode,
     defaultModel,
     onModelChange,
+    defaultExpandBatches,
+    onToggleDefaultExpandBatches,
     isDev = false,
     onBack
 }) => {
@@ -106,6 +111,52 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         )}
                                     >
                                         Batch
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Factory Settings */}
+                    <section className="space-y-4">
+                        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                            <Layers size={14} className="text-brand-500" /> Factory Settings
+                        </h2>
+
+                        <div className="bg-dark-900 border border-dark-800 rounded-2xl divide-y divide-dark-800">
+                            <div className="p-6 flex items-center justify-between transition-colors hover:bg-dark-900/50">
+                                <div className="space-y-1 pr-8">
+                                    <div className="flex items-center gap-2">
+                                        <Layers size={16} className="text-brand-400" />
+                                        <p className="font-semibold text-gray-100">Default Expand Batches</p>
+                                    </div>
+                                    <p className="text-sm text-gray-400 leading-relaxed max-w-lg">
+                                        Automatically expand all batch groups in the history view for quick access.
+                                    </p>
+                                </div>
+
+                                <div className="flex bg-dark-950 p-1 rounded-xl border border-dark-800 self-start mt-2 md:mt-0">
+                                    <button
+                                        onClick={() => !defaultExpandBatches && onToggleDefaultExpandBatches()}
+                                        className={cn(
+                                            "px-4 py-2 rounded-lg text-xs font-bold transition-all uppercase tracking-tighter",
+                                            defaultExpandBatches
+                                                ? "bg-brand-600 text-white shadow-lg"
+                                                : "text-gray-500 hover:text-gray-300"
+                                        )}
+                                    >
+                                        On
+                                    </button>
+                                    <button
+                                        onClick={() => defaultExpandBatches && onToggleDefaultExpandBatches()}
+                                        className={cn(
+                                            "px-4 py-2 rounded-lg text-xs font-bold transition-all uppercase tracking-tighter",
+                                            !defaultExpandBatches
+                                                ? "bg-dark-700 text-white shadow-lg"
+                                                : "text-gray-500 hover:text-gray-300"
+                                        )}
+                                    >
+                                        Off
                                     </button>
                                 </div>
                             </div>

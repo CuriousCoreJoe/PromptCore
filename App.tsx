@@ -34,6 +34,7 @@ const App: React.FC = () => {
   const [credits, setCredits] = useState(0);
   const [wizardMode, setWizardMode] = useState<'iterative' | 'batch'>('iterative');
   const [defaultModel, setDefaultModel] = useState<AIModel>('gemini-3-pro');
+  const [defaultExpandBatches, setDefaultExpandBatches] = useState(false);
   const [upgradeFocus, setUpgradeFocus] = useState<'subscriptions' | 'credits'>('subscriptions');
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -47,6 +48,7 @@ const App: React.FC = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', actionLabel: '', action: () => { } });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isDev = session?.user?.email === 'dev@promptcore.com';
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -136,7 +138,7 @@ const App: React.FC = () => {
     // Only clear activeChatId when clicking "New Chat" button, not when navigating
     setCurrentView(view);
     if (window.innerWidth < 768) {
-      setSidebarCollapsed(true);
+      setMobileMenuOpen(false);
     }
   };
 
@@ -144,7 +146,7 @@ const App: React.FC = () => {
     setActiveChatId(null);
     setCurrentView('workspace');
     if (window.innerWidth < 768) {
-      setSidebarCollapsed(true);
+      setMobileMenuOpen(false);
     }
   };
 
@@ -194,11 +196,11 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     if (currentView === 'factory') {
-      return <PromptFactory credits={credits} />;
+      return <PromptFactory credits={credits} defaultExpandBatches={defaultExpandBatches} />;
     }
 
     if (currentView === 'dashboard') {
-      return <Dashboard credits={credits} isDev={isDev} />;
+      return <Dashboard credits={credits} isDev={isDev} onNavigate={handleSidebarNavigate} />;
     }
 
     if (currentView === 'history') {
@@ -231,6 +233,8 @@ const App: React.FC = () => {
           onToggleWizardMode={() => updateWizardMode(wizardMode === 'iterative' ? 'batch' : 'iterative')}
           defaultModel={defaultModel}
           onModelChange={updateDefaultModel}
+          defaultExpandBatches={defaultExpandBatches}
+          onToggleDefaultExpandBatches={() => setDefaultExpandBatches(!defaultExpandBatches)}
           isDev={isDev}
           onBack={() => setCurrentView('workspace')}
         />
@@ -306,9 +310,23 @@ const App: React.FC = () => {
         onRenameChat={handleRenameChat}
         onNewChat={handleNewChat}
         refreshKey={chatRefreshKey}
+        isMobileOpen={mobileMenuOpen}
+        onCloseMobile={() => setMobileMenuOpen(false)}
       />
 
       <main className="flex-1 flex flex-col min-w-0 relative h-full transition-all duration-300">
+        {/* Mobile Header */}
+        <div className="md:hidden h-14 bg-dark-900 border-b border-dark-800 flex items-center px-4 justify-between flex-shrink-0 z-30">
+          <button 
+            onClick={() => setMobileMenuOpen(true)}
+            className="p-2 -ml-2 text-gray-400 hover:text-white"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <span className="font-semibold text-white">PromptCore</span>
+          <div className="w-8" /> {/* Spacer for centering */}
+        </div>
+
         {renderContent()}
       </main>
 

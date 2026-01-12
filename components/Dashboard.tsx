@@ -1,8 +1,9 @@
-import React from 'react';
-import { CreditCard, Package, FileText, Clock, TrendingUp, Shield, Trash2, ExternalLink, Plus } from 'lucide-react';
-import { UserProfile, Document, FactoryBatch } from '../types';
+import React, { useState, useEffect } from 'react';
+import { CreditCard, Package, FileText, Clock, TrendingUp, Shield, Trash2, ExternalLink, Plus, X, Upload, Youtube, FileType, File } from 'lucide-react';
+import { UserProfile, Document, AppView } from '../types';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { supabase } from '../lib/supabase';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
     return twMerge(clsx(inputs));
@@ -14,36 +15,178 @@ const MOCK_USER: UserProfile = {
     credits: 850,
     subscriptionTier: 'free',
     wizardMode: 'iterative',
+    defaultModel: 'gemini-3-pro',
+    monthly_usage: 0,
+    last_usage_reset: new Date().toISOString(),
     createdAt: Date.now()
 };
-
-const MOCK_PACKS: Partial<FactoryBatch>[] = [
-    { id: 'b1', topic: 'Keto Recipes', angle: 'Budget Friendly', items: Array(10).fill(''), status: 'completed' },
-    { id: 'b2', topic: 'Python Interview', angle: 'Advanced Algorithms', items: Array(20).fill(''), status: 'completed' },
-    { id: 'b3', topic: 'Email Subject Lines', angle: 'High Urgency', items: Array(50).fill(''), status: 'completed' },
-];
-
-const MOCK_DOCS: Document[] = [
-    { id: 'd1', userId: 'u1', title: 'Q3 Financial Report.pdf', sourceType: 'pdf', content: '', createdAt: Date.now() - 1000000 },
-    { id: 'd2', userId: 'u1', title: 'Alex Hormozi Strategy Video', sourceType: 'youtube', sourceUrl: 'https://youtube.com/watch?v=...', content: '', createdAt: Date.now() - 5000000 },
-];
 
 interface DashboardProps {
     credits: number;
     isDev: boolean;
+    onNavigate: (view: AppView) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate }) => {
+    const [recentPacks, setRecentPacks] = useState<any[]>([]);
+    const [documents, setDocuments] = useState<any[]>([]);
+    const [showAddSource, setShowAddSource] = useState(false);
+    const [newSourceType, setNewSourceType] = useState<'paste' | 'pdf' | 'txt'>('paste');
+    const [newSourceContent, setNewSourceContent] = useState('');
+    const [newSourceTitle, setNewSourceTitle] = useState('');
+    const [isBusinessContext, setIsBusinessContext] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+    const [statMode, setStatMode] = useState<'generations' | 'credits'>('generations');
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            // Fetch Profile
+            const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+            if (profile) setUserProfile(profile);
+
+            // Fetch Packs
+            const { data: packs } = await supabase
+                .from('packs')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(3);
+            if (packs) setRecentPacks(packs);
+
+            // Fetch Documents
+            const { data: docs } = await supabase
+                .from('documents')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false });
+            if (docs) setDocuments(docs);
+        };
+        fetchData();
+    }, []);
+
     const getPlanName = (tier: UserProfile['subscriptionTier']) => {
         switch (tier) {
             case 'pro': return 'Creator Pro';
-            case 'ultimate': return 'Ultimate';
             default: return 'Starter';
         }
     };
 
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Security Check: File Type
+        const allowedTypes = ['text/plain', 'application/pdf'];
+        if (!allowedTypes.includes(file.type)) {
+            alert("Invalid file type. Only .txt and .pdf files are allowed.");
+            return;
+        }
+
+        // Security Check: File Size (e.g., 5MB limit)
+        if (file.size > 5 * 1024 * 1024) {
+            alert("File is too large. Maximum size is 5MB.");
+            return;
+        }
+
+        // For now, we'll just read text files directly. PDF parsing would require a backend function or library.
+        if (file.type === 'text/plain') {
+            const text = await file.text();
+            setNewSourceContent(text);
+            setNewSourceTitle(file.name);
+            setNewSourceType('txt');
+        } else {
+            alert("PDF upload is currently a placeholder. Please copy/paste text for now.");
+            // In a real implementation, you'd upload to storage and trigger a parsing function
+        }
+    };
+
+    const handleAddSource = async () => {
+        if (!userProfile) return;
+        if (!newSourceTitle.trim()) {
+            alert("Please enter a title");
+            return;
+        }
+
+        // Check Limits
+        const isFree = userProfile.subscription_status === 'free';
+        const isLite = userProfile.subscription_status === 'lite';
+        const isPro = userProfile.subscription_status === 'pro';
+        
+        const hasBoughtCredits = credits >= 1500; 
+        
+        let limit = 0;
+        if (isFree) limit = hasBoughtCredits ? 5 : 0;
+        if (isLite) limit = 5;
+        if (isPro) limit = 15;
+
+        // Business Context is +1 extra slot
+        const businessContextDocs = documents.filter(d => d.is_business_context);
+        const regularDocs = documents.filter(d => !d.is_business_context);
+
+        if (isBusinessContext) {
+            if (businessContextDocs.length >= 1) {
+                alert("You already have a Business Context document. Please delete it first to add a new one.");
+                return;
+            }
+        } else {
+            if (regularDocs.length >= limit && !isDev) {
+                alert(`You have reached your document limit (${limit}). Upgrade your plan to add more.`);
+                return;
+            }
+        }
+
+        setIsUploading(true);
+        try {
+            // Sanitize content (basic check)
+            if (newSourceContent.includes('<script>') || newSourceContent.includes('javascript:')) {
+                throw new Error("Invalid content detected.");
+            }
+
+            const { error } = await supabase.from('documents').insert({
+                user_id: userProfile.id,
+                title: newSourceTitle,
+                source_type: newSourceType,
+                content: newSourceContent,
+                is_business_context: isBusinessContext
+            });
+
+            if (error) throw error;
+
+            // Refresh
+            const { data: docs } = await supabase
+                .from('documents')
+                .select('*')
+                .eq('user_id', userProfile.id)
+                .order('created_at', { ascending: false });
+            if (docs) setDocuments(docs);
+            
+            setShowAddSource(false);
+            setNewSourceTitle('');
+            setNewSourceContent('');
+            setIsBusinessContext(false);
+        } catch (err: any) {
+            alert(`Error adding source: ${err.message}`);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleDeleteSource = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this source?")) return;
+        try {
+            await supabase.from('documents').delete().eq('id', id);
+            setDocuments(prev => prev.filter(d => d.id !== id));
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     return (
-        <div className="flex-1 h-full flex flex-col bg-dark-950 text-gray-100 p-4 md:p-8 overflow-y-auto">
+        <div className="flex-1 h-full flex flex-col bg-dark-950 text-gray-100 p-4 md:p-8 overflow-y-auto relative">
             {/* Header */}
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
@@ -65,37 +208,67 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev }) => {
                     value={isDev ? 'Developer' : getPlanName(MOCK_USER.subscriptionTier)}
                     subtext={isDev ? 'Full Access' : 'Upgrade for more power'}
                 />
-                <StatCard
-                    icon={<TrendingUp className="text-green-500" />}
-                    label="Total Generations"
-                    value="1,240"
-                    subtext="Lifetime output"
-                />
+                <div 
+                    className="bg-dark-900 border border-dark-800 p-6 rounded-xl shadow-lg flex items-center gap-4 cursor-pointer hover:border-brand-500/30 transition-colors group"
+                    onClick={() => setStatMode(prev => prev === 'generations' ? 'credits' : 'generations')}
+                >
+                    <div className="w-12 h-12 bg-dark-950 rounded-full flex items-center justify-center border border-dark-800 shadow-sm">
+                        <TrendingUp className="text-green-500" />
+                    </div>
+                    <div>
+                        <p className="text-sm text-gray-400 font-medium group-hover:text-brand-400 transition-colors">
+                            {statMode === 'generations' ? 'Total Generations' : 'Total Credits Spent'}
+                        </p>
+                        <p className="text-2xl font-bold text-white">
+                            {statMode === 'generations' 
+                                ? (userProfile?.lifetime_prompts || 0) 
+                                : (userProfile?.monthly_usage || 0) // Using monthly usage as proxy for now, ideally lifetime_usage
+                            }
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">Click to switch view</p>
+                    </div>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Asset Library */}
+                {/* Prompt Batches */}
                 <div className="bg-dark-900 border border-dark-800 rounded-xl overflow-hidden shadow-lg flex flex-col">
                     <div className="p-4 border-b border-dark-800 flex justify-between items-center bg-dark-950/50">
                         <h2 className="font-semibold text-white flex items-center gap-2">
                             <Package size={18} className="text-brand-400" />
-                            Asset Library (Packs)
+                            Prompt Batches
                         </h2>
-                        <button className="text-xs text-brand-400 hover:text-brand-300 font-medium">View All</button>
+                        <button 
+                            onClick={() => onNavigate('factory')}
+                            className="text-xs text-brand-400 hover:text-brand-300 font-medium"
+                        >
+                            View All
+                        </button>
                     </div>
                     <div className="p-4 space-y-3">
-                        {MOCK_PACKS.map(pack => (
-                            <div key={pack.id} className="flex items-center justify-between p-3 bg-dark-950 border border-dark-800 rounded-lg group hover:border-brand-500/30 transition-colors">
-                                <div className="flex flex-col">
-                                    <span className="font-medium text-gray-200">{pack.topic}</span>
-                                    <span className="text-xs text-gray-500">Focus: {pack.angle} • {pack.items?.length} items</span>
+                        {recentPacks.length === 0 ? (
+                            <div className="text-center text-gray-500 py-4 text-sm">No packs generated yet.</div>
+                        ) : (
+                            recentPacks.map(pack => (
+                                <div key={pack.id} className="flex items-center justify-between p-3 bg-dark-950 border border-dark-800 rounded-lg group hover:border-brand-500/30 transition-colors">
+                                    <div className="flex flex-col">
+                                        <span className="font-medium text-gray-200">{pack.niche}</span>
+                                        <span className="text-xs text-gray-500">
+                                            {new Date(pack.created_at).toLocaleDateString()} • {pack.total_count} items
+                                        </span>
+                                    </div>
+                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button 
+                                            onClick={() => onNavigate('factory')}
+                                            className="p-1.5 text-gray-400 hover:text-white hover:bg-dark-800 rounded" 
+                                            title="View Details"
+                                        >
+                                            <ExternalLink size={14} />
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button className="p-1.5 text-gray-400 hover:text-white hover:bg-dark-800 rounded" title="View Details"><ExternalLink size={14} /></button>
-                                    <button className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-dark-800 rounded" title="Delete"><Trash2 size={14} /></button>
-                                </div>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                 </div>
 
@@ -109,66 +282,138 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev }) => {
                         <button className="text-xs text-brand-400 hover:text-brand-300 font-medium">Manage</button>
                     </div>
                     <div className="p-4 space-y-3">
-                        {MOCK_DOCS.map(doc => (
-                            <div key={doc.id} className="flex items-center justify-between p-3 bg-dark-950 border border-dark-800 rounded-lg group hover:border-orange-500/30 transition-colors">
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                    <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${doc.sourceType === 'youtube' ? 'bg-red-900/20 text-red-500' : 'bg-blue-900/20 text-blue-500'}`}>
-                                        {doc.sourceType === 'youtube' ? 'YT' : 'PDF'}
+                        {documents.length === 0 ? (
+                            <div className="text-center text-gray-500 py-4 text-sm">No documents added.</div>
+                        ) : (
+                            documents.map(doc => (
+                                <div key={doc.id} className={`flex items-center justify-between p-3 bg-dark-950 border rounded-lg group transition-colors ${doc.is_business_context ? 'border-brand-500/30 bg-brand-900/10' : 'border-dark-800 hover:border-orange-500/30'}`}>
+                                    <div className="flex items-center gap-3 overflow-hidden">
+                                        <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${
+                                            doc.is_business_context ? 'bg-brand-500/20 text-brand-400' :
+                                            'bg-blue-900/20 text-blue-500'
+                                        }`}>
+                                            {doc.is_business_context ? <Shield size={14} /> : <FileText size={14} />}
+                                        </div>
+                                        <div className="flex flex-col truncate">
+                                            <span className="font-medium text-gray-200 truncate flex items-center gap-2">
+                                                {doc.title}
+                                                {doc.is_business_context && <span className="text-[10px] bg-brand-500/20 text-brand-300 px-1.5 py-0.5 rounded uppercase tracking-wider">Business Context</span>}
+                                            </span>
+                                            <span className="text-xs text-gray-500">Added {new Date(doc.created_at).toLocaleDateString()}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col truncate">
-                                        <span className="font-medium text-gray-200 truncate">{doc.title}</span>
-                                        <span className="text-xs text-gray-500">Added {new Date(doc.createdAt).toLocaleDateString()}</span>
-                                    </div>
+                                    <button 
+                                        onClick={() => handleDeleteSource(doc.id)}
+                                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-dark-800 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
                                 </div>
-                                <button className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-dark-800 rounded opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
-                            </div>
-                        ))}
-                        <button className="w-full py-2 border border-dashed border-dark-700 text-gray-500 rounded-lg text-sm hover:border-brand-500 hover:text-brand-500 transition-colors flex items-center justify-center gap-2">
-                            <Plus size={14} /> Add New Source
-                        </button>
+                            ))
+                        )}
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => {
+                                    setIsBusinessContext(false);
+                                    setShowAddSource(true);
+                                }}
+                                className="flex-1 py-2 border border-dashed border-dark-700 text-gray-500 rounded-lg text-sm hover:border-brand-500 hover:text-brand-500 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <Plus size={14} /> Add Source
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    setIsBusinessContext(true);
+                                    setShowAddSource(true);
+                                }}
+                                className="flex-1 py-2 border border-dashed border-brand-900/50 text-brand-600 rounded-lg text-sm hover:border-brand-500 hover:text-brand-400 hover:bg-brand-900/10 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <Shield size={14} /> Add Business Context
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Recent History */}
-            <div className="mt-8">
-                <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
-                    <Clock size={18} className="text-gray-400" />
-                    Recent Activity
-                </h2>
-                <div className="bg-dark-900 border border-dark-800 rounded-xl overflow-hidden">
-                    <table className="w-full text-left text-sm text-gray-400">
-                        <thead className="bg-dark-950 text-gray-500 font-medium border-b border-dark-800">
-                            <tr>
-                                <th className="px-6 py-3">Session Name</th>
-                                <th className="px-6 py-3">Mode</th>
-                                <th className="px-6 py-3">Date</th>
-                                <th className="px-6 py-3 text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-dark-800">
-                            <tr className="hover:bg-dark-800/50 transition-colors">
-                                <td className="px-6 py-4 text-white">Project Titan Code Refactor</td>
-                                <td className="px-6 py-4"><span className="px-2 py-1 rounded-full bg-blue-900/20 text-blue-400 text-xs">Vibe Code</span></td>
-                                <td className="px-6 py-4">2 hours ago</td>
-                                <td className="px-6 py-4 text-right"><button className="text-brand-400 hover:underline">Resume</button></td>
-                            </tr>
-                            <tr className="hover:bg-dark-800/50 transition-colors">
-                                <td className="px-6 py-4 text-white">Cyberpunk City Prompts</td>
-                                <td className="px-6 py-4"><span className="px-2 py-1 rounded-full bg-purple-900/20 text-purple-400 text-xs">Media Gen</span></td>
-                                <td className="px-6 py-4">Yesterday</td>
-                                <td className="px-6 py-4 text-right"><button className="text-brand-400 hover:underline">Resume</button></td>
-                            </tr>
-                            <tr className="hover:bg-dark-800/50 transition-colors">
-                                <td className="px-6 py-4 text-white">General Inquiry</td>
-                                <td className="px-6 py-4"><span className="px-2 py-1 rounded-full bg-gray-800 text-gray-300 text-xs">Everyday</span></td>
-                                <td className="px-6 py-4">3 days ago</td>
-                                <td className="px-6 py-4 text-right"><button className="text-brand-400 hover:underline">Resume</button></td>
-                            </tr>
-                        </tbody>
-                    </table>
+            {/* Add Source Modal */}
+            {showAddSource && (
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-dark-900 border border-dark-800 rounded-xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                        <div className="p-4 border-b border-dark-800 flex justify-between items-center">
+                            <h3 className="font-semibold text-white flex items-center gap-2">
+                                {isBusinessContext ? <Shield size={18} className="text-brand-500" /> : <Plus size={18} />}
+                                {isBusinessContext ? 'Add Business Context' : 'Add Knowledge Source'}
+                            </h3>
+                            <button onClick={() => setShowAddSource(false)} className="text-gray-500 hover:text-white"><X size={20} /></button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Title</label>
+                                <input 
+                                    type="text" 
+                                    value={newSourceTitle}
+                                    onChange={e => setNewSourceTitle(e.target.value)}
+                                    className="w-full bg-dark-950 border border-dark-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-brand-500 outline-none"
+                                    placeholder="e.g. Q3 Financial Report"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Source Type</label>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => setNewSourceType('paste')}
+                                        className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${newSourceType === 'paste' ? 'bg-brand-600 border-brand-500 text-white' : 'bg-dark-950 border-dark-700 text-gray-400 hover:bg-dark-800'}`}
+                                    >
+                                        Paste Text
+                                    </button>
+                                    <button 
+                                        onClick={() => setNewSourceType('txt')}
+                                        className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${newSourceType === 'txt' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-dark-950 border-dark-700 text-gray-400 hover:bg-dark-800'}`}
+                                    >
+                                        Upload File
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">
+                                    {newSourceType === 'txt' ? 'Upload File (.txt, .pdf)' : 'Content'}
+                                </label>
+                                {newSourceType === 'txt' ? (
+                                    <div className="border-2 border-dashed border-dark-700 rounded-lg p-8 text-center hover:border-brand-500 transition-colors relative">
+                                        <input 
+                                            type="file" 
+                                            accept=".txt,.pdf"
+                                            onChange={handleFileUpload}
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                        />
+                                        <Upload className="mx-auto text-gray-500 mb-2" />
+                                        <p className="text-sm text-gray-400">Click or drag to upload</p>
+                                        <p className="text-xs text-gray-600 mt-1">Max 5MB. .txt or .pdf</p>
+                                        {newSourceTitle && <p className="text-brand-400 text-sm mt-2 font-medium">{newSourceTitle}</p>}
+                                    </div>
+                                ) : (
+                                    <textarea 
+                                        value={newSourceContent}
+                                        onChange={e => setNewSourceContent(e.target.value)}
+                                        className="w-full h-32 bg-dark-950 border border-dark-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-brand-500 outline-none resize-none"
+                                        placeholder="Paste your text content here..."
+                                    />
+                                )}
+                            </div>
+
+                            <button 
+                                onClick={handleAddSource}
+                                disabled={isUploading}
+                                className="w-full py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                            >
+                                {isUploading ? 'Adding...' : 'Add Source'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };

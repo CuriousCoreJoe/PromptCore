@@ -950,7 +950,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         <div className="flex flex-row h-screen bg-[#131314] text-white overflow-hidden relative">
             {/* Mode Selector - Floating or Top */}
             <div className={clsx(
-                "absolute top-4 -translate-x-1/2 z-50 transition-all duration-300",
+                "absolute top-4 -translate-x-1/2 z-30 transition-all duration-300 w-full max-w-[90%] md:max-w-none md:w-auto flex justify-center",
                 activeArtifact ? "left-1/4" : "left-1/2"
             )}>
                 <ModeSelector
@@ -964,7 +964,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             {/* LEFT PANEL: Chat & Input */}
             <div className={clsx(
                 "flex flex-col h-full transition-all duration-300 ease-in-out relative pt-16",
-                activeArtifact ? "w-1/2 border-r border-dark-800" : "w-full mx-auto"
+                activeArtifact ? "hidden md:flex w-1/2 border-r border-dark-800" : "w-full mx-auto"
             )}>
 
                 {/* Messages Area */}
@@ -1248,7 +1248,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
 
             {/* RIGHT PANEL: Artifact Preview (Split View) */}
             {activeArtifact && (
-                <div className="w-1/2 h-full bg-[#1E1F20] border-l border-dark-800 flex flex-col animate-in fade-in slide-in-from-right duration-300 shadow-2xl z-40">
+                <div className="w-full md:w-1/2 h-full bg-[#1E1F20] border-l border-dark-800 flex flex-col animate-in fade-in slide-in-from-right duration-300 shadow-2xl z-40 absolute md:relative inset-0 md:inset-auto">
                     <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-[#2A2B2C] border-b border-dark-700">
                         <span className="font-semibold text-gray-200 text-sm flex items-center gap-2">
                             <Sparkles size={14} className="text-purple-400" />
@@ -1257,8 +1257,10 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                         <button
                             onClick={handleClosePreview}
                             className="p-1.5 hover:bg-dark-700 rounded-lg text-gray-400 hover:text-white transition-colors"
+                            title="Close Preview"
                         >
-                            <Minimize2 size={16} />
+                            <Minimize2 size={16} className="hidden md:block" />
+                            <span className="md:hidden text-sm font-medium px-2">Close</span>
                         </button>
                     </div>
                     <div className="flex-1 overflow-hidden">
