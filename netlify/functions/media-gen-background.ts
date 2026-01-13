@@ -21,21 +21,27 @@ async function generateImageWithPollinations(prompt: string): Promise<ImageGener
 
         console.log(`[Pollinations.ai] Image URL: ${imageUrl}`);
 
-        const verifyResponse = await fetch(imageUrl, { method: 'HEAD' });
+        // Fetch the image on the backend and convert to Base64 to avoid client-side issues
+        const response = await fetch(imageUrl);
 
-        if (verifyResponse.ok) {
-            console.log(`[Pollinations.ai] Image generation successful`);
+        if (response.ok) {
+            const arrayBuffer = await response.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const base64 = buffer.toString('base64');
+            const dataUrl = `data:image/jpeg;base64,${base64}`;
+
+            console.log(`[Pollinations.ai] Image generation successful (converted to Base64)`);
             return {
                 success: true,
-                imageUrl: imageUrl,
+                imageUrl: dataUrl,
                 service: 'pollinations'
             };
         } else {
-            console.warn(`[Pollinations.ai] HEAD request failed: ${verifyResponse.status}`);
+            console.warn(`[Pollinations.ai] Request failed: ${response.status}`);
             return {
-                success: true,
-                imageUrl: imageUrl,
-                service: 'pollinations'
+                success: false,
+                service: 'pollinations',
+                error: `Pollinations API returned ${response.status}`
             };
         }
     } catch (err: any) {
@@ -82,7 +88,8 @@ async function generateImageWithTogether(prompt: string, togetherKey?: string): 
             const data = JSON.parse(responseText);
 
             if (data.data?.[0]?.b64_json) {
-                const imageUrl = `data:image/png;base64,${data.data[0].b64_json}`;
+                const cleanBase64 = data.data[0].b64_json.replace(/\s/g, '');
+                const imageUrl = `data:image/png;base64,${cleanBase64}`;
                 console.log(`[Together.ai] Image generation successful`);
                 return {
                     success: true,
@@ -180,12 +187,32 @@ async function generateImageWithFallback(prompt: string, options: {
     openRouterKey?: string;
     geminiKey?: string;
     togetherKey?: string;
+    requestedModel?: string;
 }): Promise<ImageGenerationResult> {
-    const { openRouterKey, geminiKey, togetherKey } = options;
+    const { openRouterKey, geminiKey, togetherKey, requestedModel } = options;
 
     console.log(`[ImageGen] Starting fallback chain for prompt: "${prompt.substring(0, 100)}..."`);
+    console.log(`[ImageGen] Requested model: ${requestedModel}`);
 
-    // Try OpenRouter first (Nano Banana)
+    // Priority Execution based on requested model
+    if (requestedModel === 'flux' && togetherKey) {
+        console.log(`[ImageGen] Priority: Together.ai`);
+        const result = await generateImageWithTogether(prompt, togetherKey);
+        if (result.success) return result;
+        console.warn(`[ImageGen] Priority Together.ai failed, falling back...`);
+    } else if (requestedModel === 'gemini' && geminiKey) {
+        console.log(`[ImageGen] Priority: Gemini`);
+        const result = await generateImageWithGemini(prompt, geminiKey);
+        if (result.success) return result;
+        console.warn(`[ImageGen] Priority Gemini failed, falling back...`);
+    } else if (requestedModel === 'pollinations') {
+        console.log(`[ImageGen] Priority: Pollinations`);
+        const result = await generateImageWithPollinations(prompt);
+        if (result.success) return result;
+        console.warn(`[ImageGen] Priority Pollinations failed, falling back...`);
+    }
+
+    // Try OpenRouter first (Nano Banana) - Default
     if (openRouterKey) {
         console.log(`[ImageGen] Trying OpenRouter with model: google/gemini-3-pro-image-preview`);
         try {
@@ -283,7 +310,7 @@ const handler: Handler = async (event, context) => {
 
     try {
         const payload = JSON.parse(event.body || "{}");
-        const { prompt, chatId, userId, conversationHistory = [] } = payload;
+        const { prompt, chatId, userId, conversationHistory = [], model } = payload;
 
         if (!prompt || !chatId || !userId) {
             console.error("Missing required fields");
@@ -410,8 +437,17 @@ const handler: Handler = async (event, context) => {
             const imageResult = await generateImageWithFallback(cleanPrompt, {
                 openRouterKey,
                 geminiKey,
-                togetherKey
+                togetherKey,
+                requestedModel: model
             });
+
+            // Format prompt with line breaks for better readability
+            const formattedPrompt = cleanPrompt
+                .replace(/ATMOSPHERE:/i, '\n\n**ATMOSPHERE:**')
+                .replace(/LIGHTING:/i, '\n**LIGHTING:**')
+                .replace(/COMPOSITION:/i, '\n**COMPOSITION:**')
+                .replace(/STYLE:/i, '\n**STYLE:**')
+                .replace(/SUBJECT:/i, '\n**SUBJECT:**');
 
             let responseText = "### 🎨 Your Media Generation Result\n\n";
 
@@ -419,20 +455,23 @@ const handler: Handler = async (event, context) => {
                 console.log(`[Media Gen Background] Image generation successful via ${imageResult.service}`);
 
                 responseText += `✓ Successfully generated using **${imageResult.service}**\n\n`;
-                responseText += `**Prompt Used:**\n${cleanPrompt}\n\n`;
+                responseText += `**Prompt Used:**\n${formattedPrompt}\n\n`;
 
-                // For base64 images, use special markers to avoid ReactMarkdown issues
-                if (imageResult.imageUrl.startsWith('data:')) {
-                    responseText += `<!-- IMAGE_DATA_START -->\n${imageResult.imageUrl}\n<!-- IMAGE_DATA_END -->`;
-                } else {
-                    // For URL-based images (Pollinations.ai), use markdown
-                    responseText += `![Generated Image](${imageResult.imageUrl})`;
-                }
+                // Use custom block for robust image passing (Base64 or URL)
+                // We use a custom block to avoid ReactMarkdown issues and allow frontend to handle large data
+                responseText += `\n\n<!-- IMAGE_DATA_START -->\n${imageResult.imageUrl}\n<!-- IMAGE_DATA_END -->`;
             } else {
                 console.log(`[Media Gen Background] Image generation failed: ${imageResult.error}`);
                 responseText += `❌ Image generation failed: ${imageResult.error || 'Unknown error'}\n\n`;
-                responseText += `**Prompt:** ${cleanPrompt}`;
+                responseText += `**Prompt:** ${formattedPrompt}`;
             }
+
+            // Map service to display name for execution result
+            let displayModel = modelId;
+            if (imageResult.service === 'pollinations') displayModel = 'Pollinations.ai';
+            else if (imageResult.service === 'together') displayModel = 'Flux (Together.ai)';
+            else if (imageResult.service === 'gemini') displayModel = 'Gemini Imagen';
+            else if (imageResult.service === 'openrouter') displayModel = 'Nano Banana';
 
             // 3. Update the Message with Result
             const { error: updateError } = await supabase
@@ -440,6 +479,7 @@ const handler: Handler = async (event, context) => {
                 .update({
                     content: responseText,
                     status: imageResult.success ? 'completed' : 'failed',
+                    execution_model: displayModel,
                     metadata: {
                         duration: Date.now() - Date.now(),
                         service: imageResult.service,

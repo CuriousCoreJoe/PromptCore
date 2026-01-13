@@ -23,22 +23,26 @@ async function generateImageWithPollinations(prompt: string): Promise<ImageGener
         
         console.log(`[Pollinations.ai] Image URL: ${imageUrl}`);
         
-        // Verify the URL is accessible by making a HEAD request
-        const verifyResponse = await fetch(imageUrl, { method: 'HEAD' });
+        // Fetch the image on the backend and convert to Base64 to avoid client-side issues
+        const response = await fetch(imageUrl);
         
-        if (verifyResponse.ok) {
-            console.log(`[Pollinations.ai] Image generation successful`);
+        if (response.ok) {
+            const arrayBuffer = await response.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const base64 = buffer.toString('base64');
+            const dataUrl = `data:image/jpeg;base64,${base64}`;
+
+            console.log(`[Pollinations.ai] Image generation successful (converted to Base64)`);
             return {
                 success: true,
-                imageUrl: imageUrl,
+                imageUrl: dataUrl,
                 service: 'pollinations'
             };
         } else {
-            console.warn(`[Pollinations.ai] HEAD request failed: ${verifyResponse.status}`);
-            // Even if HEAD fails, return the URL as it may still work
+            console.warn(`[Pollinations.ai] Request failed: ${response.status}`);
             return {
-                success: true,
-                imageUrl: imageUrl,
+                success: true, // Fallback to URL if fetch fails? No, better to fail or return URL.
+                imageUrl: imageUrl, // Return URL as last resort
                 service: 'pollinations'
             };
         }
@@ -87,7 +91,8 @@ async function generateImageWithTogether(prompt: string, togetherKey?: string): 
             console.log(`[Together.ai] Response data keys:`, Object.keys(data));
             
             if (data.data?.[0]?.b64_json) {
-                const imageUrl = `data:image/png;base64,${data.data[0].b64_json}`;
+                const cleanBase64 = data.data[0].b64_json.replace(/\s/g, '');
+                const imageUrl = `data:image/png;base64,${cleanBase64}`;
                 console.log(`[Together.ai] Image generation successful, data URL length: ${imageUrl.length}`);
                 return {
                     success: true,
@@ -543,13 +548,8 @@ const handler: Handler = async (event, context) => {
                     if (imageResult.success && imageResult.imageUrl) {
                         console.log(`[OpenRouter path] Image generation successful via ${imageResult.service}, URL length: ${imageResult.imageUrl.length}`);
                         
-                        // For base64 images, use special markers to avoid ReactMarkdown issues
-                        if (imageResult.imageUrl.startsWith('data:')) {
-                            responseText += `\n\n<!-- IMAGE_DATA_START -->\n${imageResult.imageUrl}\n<!-- IMAGE_DATA_END -->`;
-                        } else {
-                            // For URL-based images (Pollinations.ai), use markdown
-                            responseText += `\n\n![Generated Image](${imageResult.imageUrl})`;
-                        }
+                        // Use custom block for robust image passing (Base64 or URL)
+                        responseText += `\n\n<!-- IMAGE_DATA_START -->\n${imageResult.imageUrl}\n<!-- IMAGE_DATA_END -->`;
                         console.log(`Total response text length: ${responseText.length}`);
                     } else {
                         console.log(`[OpenRouter path] All image generation methods failed: ${imageResult.error}`);

@@ -101,6 +101,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
     const [uploadedSource, setUploadedSource] = useState<string | null>(null);
     const [activeArtifact, setActiveArtifact] = useState<{ content: string; title?: string } | null>(null);
     const [loadedChatId, setLoadedChatId] = useState<string | null>(null);
+    const [selectedModel, setSelectedModel] = useState<string | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -179,9 +180,14 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             setMessages([{ id: '0', role: 'system', content: '', timestamp: Date.now(), mode: currentMode }]);
             setWizardStage('IDLE');
             setLoadedChatId(null);
-            setInput('');
+            // Don't clear input here, as it causes clearing on re-renders (e.g. mode switch or toast)
         }
     }, [activeChatId, loadHistory]);
+
+    // Clear input only when switching chats
+    useEffect(() => {
+        setInput('');
+    }, [activeChatId]);
 
     // Message Real-time Subscription (to catch Background Builder updates)
     useEffect(() => {
@@ -590,6 +596,22 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         if (isLoading) return;
         const processedOption = option.replace(/^\d+\.\s*/, ''); // Remove numbering if present
 
+        // Detect Model Selection in Media Gen Mode
+        if (currentMode === AppMode.MEDIA_GEN) {
+            const MODEL_MAPPING: Record<string, string> = {
+                'Nano Banana': 'nano-banana',
+                'Flux': 'flux',
+                'Gemini': 'gemini',
+                'Pollinations': 'pollinations',
+                'Default': 'nano-banana'
+            };
+            
+            const modelKey = Object.keys(MODEL_MAPPING).find(key => processedOption.includes(key));
+            if (modelKey) {
+                setSelectedModel(MODEL_MAPPING[modelKey]);
+            }
+        }
+
         // Detect if this is a "Build App" click in Vibe Code mode
         if (currentMode === AppMode.VIBE_CODE && (processedOption.includes('Build App') || processedOption === 'build-app')) {
             // Trigger background builder instead of sync chat to avoid timeouts
@@ -704,7 +726,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                     userId: session.user.id,
                     chatId: activeChatId, // Required for background processes
                     conversationHistory: executionHistory,
-                    model: defaultModel,
+                    model: selectedModel || defaultModel,
                     mode: currentMode
                 })
             });

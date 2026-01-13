@@ -59,11 +59,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const match = message.content.match(optionsRegex);
   const options = match ? match[1].split(',').map(o => o.trim()).filter(o => o.length > 0) : [];
 
-  // Extract embedded image data (sent separately to avoid ReactMarkdown issues)
-  // Now supports both Base64 and standard URLs
-  const imageDataRegex = /<!-- IMAGE_DATA_START -->\n([^\n]+)\n<!-- IMAGE_DATA_END -->/;
+  // Extract embedded image data (custom block)
+  // Use [\s\S] to match across newlines, and trim whitespace
+  const imageDataRegex = /<!-- IMAGE_DATA_START -->\s*([\s\S]+?)\s*<!-- IMAGE_DATA_END -->/;
   const imageMatch = message.content.match(imageDataRegex);
-  const embeddedImageData = imageMatch ? imageMatch[1] : null;
+  const embeddedImageData = imageMatch ? imageMatch[1].trim() : null;
 
   // Extract HTML content for Vibe Code Preview
   let artifactContent: string | null = null;
@@ -195,9 +195,45 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const EmbeddedImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
     const [imgError, setImgError] = React.useState(false);
     const [imgLoaded, setImgLoaded] = React.useState(false);
+    const [blobUrl, setBlobUrl] = React.useState<string | null>(null);
+    const [debugInfo, setDebugInfo] = React.useState<string>("");
 
     React.useEffect(() => {
-      console.log(`EmbeddedImage rendering, src length: ${src?.length || 0}`);
+      let active = true;
+      if (src && src.startsWith('data:')) {
+        try {
+            // Manual Base64 to Blob conversion to avoid fetch() limits/issues
+            const [header, base64Data] = src.split(',');
+            const mimeMatch = header.match(/:(.*?);/);
+            const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+            
+            const byteCharacters = atob(base64Data);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], {type: mimeType});
+            const url = URL.createObjectURL(blob);
+            
+            if (active) setBlobUrl(url);
+        } catch (e: any) {
+            console.error("Failed to convert base64 to blob", e);
+            if (active) {
+                setBlobUrl(src); // Fallback to direct src
+                setDebugInfo(`Blob conversion failed: ${e.message}`);
+            }
+        }
+      } else {
+        setBlobUrl(src);
+      }
+      
+      return () => {
+          active = false;
+          if (blobUrl && blobUrl.startsWith('blob:')) {
+              URL.revokeObjectURL(blobUrl);
+          }
+      };
     }, [src]);
 
     if (!src) return null;
@@ -210,23 +246,25 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           </div>
         )}
         {imgError && (
-          <div className="w-full h-64 bg-dark-800 flex items-center justify-center">
-            <span className="text-red-400 text-sm">Failed to load generated image</span>
+          <div className="w-full h-64 bg-dark-800 flex items-center justify-center flex-col gap-2 p-4 text-center">
+            <span className="text-red-400 text-sm font-bold">Failed to load generated image</span>
+            <span className="text-xs text-gray-500 font-mono break-all">{debugInfo || "Unknown error"}</span>
+            <span className="text-xs text-gray-600 font-mono mt-2">Source start: {src.substring(0, 50)}...</span>
           </div>
         )}
-        <img
-          src={src}
-          alt={alt}
-          className={`w-full h-auto object-cover ${imgLoaded ? '' : 'hidden'}`}
-          onLoad={() => {
-            console.log('EmbeddedImage loaded successfully');
-            setImgLoaded(true);
-          }}
-          onError={(e) => {
-            console.error('EmbeddedImage failed to load:', e);
-            setImgError(true);
-          }}
-        />
+        {blobUrl && (
+            <img
+              src={blobUrl}
+              alt={alt}
+              className={`w-full h-auto object-cover ${imgLoaded ? '' : 'hidden'}`}
+              onLoad={() => setImgLoaded(true)}
+              onError={(e: any) => {
+                console.error('EmbeddedImage failed to load:', e);
+                setImgError(true);
+                setDebugInfo("Image tag onError event fired");
+              }}
+            />
+        )}
         {alt && imgLoaded && (
           <p className="px-4 py-2 text-xs text-gray-400 bg-dark-900/50 italic border-t border-dark-800">{alt}</p>
         )}
