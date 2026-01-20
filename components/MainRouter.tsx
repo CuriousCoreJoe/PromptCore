@@ -15,20 +15,18 @@ const MainRouter: React.FC = () => {
             <Routes>
                 {/* 1. App Subdomain Logic */}
                 {isAppSubdomain ? (
-                    <>
-                        <Route path="/*" element={<App />} />
-                    </>
+                    <Route path="/*" element={<App />} />
                 ) : (
                     /* 2. Main Domain / Localhost Logic */
                     <>
                         <Route path="/" element={<LandingPage />} />
                         <Route path="/app/*" element={<App />} />
 
-                        {/* Convenience routes */}
+                        {/* Convenience routes for legacy paths */}
                         <Route path="/login" element={<Navigate to="/app" replace />} />
                         <Route path="/signup" element={<Navigate to="/app" replace />} />
 
-                        {/* Catch-all for main domain - Redirect to Landing unless already there */}
+                        {/* Catch-all for main domain - Redirect to Landing */}
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </>
                 )}

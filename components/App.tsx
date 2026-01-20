@@ -15,6 +15,7 @@ import { sendMessageToGemini } from '../services/geminiService';
 import { Send, Paperclip, Mic, Youtube, Coins } from 'lucide-react';
 import { Workspace } from './Workspace';
 import { HistoryPage } from './HistoryPage';
+import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
 import { Session } from '@supabase/supabase-js';
 import { Auth } from './Auth';
 import { supabase } from '../lib/supabase';
@@ -25,10 +26,35 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 }
 
 const App: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [currentView, setCurrentView] = useState<AppView>('workspace');
+
+  // currentView is derived from location
+  const getViewFromPath = (): AppView => {
+    const path = location.pathname;
+    const hostname = window.location.hostname;
+    const isAppSubdomain = hostname.startsWith('app.');
+
+    // Remove the /app prefix if on main domain
+    let base = path;
+    if (!isAppSubdomain && path.startsWith('/app')) {
+      base = path.substring(4) || '/';
+    }
+
+    if (base === '/' || base === '') return 'dashboard'; // Default to dashboard as requested
+    if (base.includes('/history')) return 'history';
+    if (base.includes('/factory')) return 'factory';
+    if (base.includes('/settings')) return 'settings';
+    if (base.includes('/upgrade')) return 'upgrade';
+    if (base.includes('/legal')) return 'legal';
+    if (base.includes('/workspace')) return 'workspace';
+    return 'workspace';
+  };
+
+  const currentView = getViewFromPath();
   const [currentMode, setCurrentMode] = useState<AppMode>(AppMode.EVERYDAY);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [credits, setCredits] = useState(0);
@@ -135,8 +161,12 @@ const App: React.FC = () => {
   };
 
   const handleSidebarNavigate = (view: AppView) => {
-    // Only clear activeChatId when clicking "New Chat" button, not when navigating
-    setCurrentView(view);
+    const hostname = window.location.hostname;
+    const isAppSubdomain = hostname.startsWith('app.');
+    const prefix = isAppSubdomain ? '' : '/app';
+
+    navigate(`${prefix}/${view === 'dashboard' ? '' : view}`);
+
     if (window.innerWidth < 768) {
       setMobileMenuOpen(false);
     }
@@ -144,7 +174,10 @@ const App: React.FC = () => {
 
   const handleNewChat = () => {
     setActiveChatId(null);
-    setCurrentView('workspace');
+    const hostname = window.location.hostname;
+    const isAppSubdomain = hostname.startsWith('app.');
+    const prefix = isAppSubdomain ? '' : '/app';
+    navigate(`${prefix}/workspace`);
     if (window.innerWidth < 768) {
       setMobileMenuOpen(false);
     }
@@ -194,89 +227,73 @@ const App: React.FC = () => {
     return <Auth onAuthSuccess={() => { }} />;
   }
 
+  const hostname = window.location.hostname;
+  const isAppSubdomain = hostname.startsWith('app.');
+  const appPrefix = isAppSubdomain ? '' : '/app';
+
   const renderContent = () => {
-    if (currentView === 'factory') {
-      return <PromptFactory credits={credits} defaultExpandBatches={defaultExpandBatches} />;
-    }
-
-    if (currentView === 'dashboard') {
-      return <Dashboard credits={credits} isDev={isDev} onNavigate={handleSidebarNavigate} />;
-    }
-
-    if (currentView === 'history') {
-      return (
-        <HistoryPage
-          onBack={() => setCurrentView('workspace')}
-          onLoadChat={async (chatId) => {
-            // Load the chat to get its mode
-            const { data } = await supabase
-              .from('chats')
-              .select('mode')
-              .eq('id', chatId)
-              .single();
-
-            if (data?.mode) {
-              setCurrentMode(data.mode as AppMode);
-            }
-            setActiveChatId(chatId);
-            setCurrentView('workspace');
-          }}
-          userProfile={profile}
-          userId={session?.user?.id}
-        />
-      );
-    }
-
-    if (currentView === 'settings') {
-      return (
-        <SettingsPage
-          wizardMode={wizardMode}
-          onToggleWizardMode={() => updateWizardMode(wizardMode === 'iterative' ? 'batch' : 'iterative')}
-          defaultModel={defaultModel}
-          onModelChange={updateDefaultModel}
-          defaultExpandBatches={defaultExpandBatches}
-          onToggleDefaultExpandBatches={() => setDefaultExpandBatches(!defaultExpandBatches)}
-          isDev={isDev}
-          onBack={() => setCurrentView('workspace')}
-        />
-      );
-    }
-
-    if (currentView === 'upgrade') {
-      return (
-        <UpgradePage
-          userId={session.user.id}
-          credits={credits}
-          onBack={() => setCurrentView('workspace')}
-          initialFocus={upgradeFocus}
-        />
-      );
-    }
-
-    if (currentView === 'legal') {
-      return <Legal onBack={() => setCurrentView('workspace')} />;
-    }
-
-    // Default: Workspace Chat
     return (
-      <Workspace
-        currentMode={currentMode}
-        session={session}
-        credits={credits}
-        userProfile={profile}
-        onShowToast={(message, actionLabel, action) => setToast({
-          visible: true,
-          message,
-          actionLabel: actionLabel || '',
-          action: action || (() => { })
-        })}
-        onUpgrade={() => setCurrentView('upgrade')}
-        wizardMode={wizardMode}
-        defaultModel={defaultModel}
-        onSelectMode={setCurrentMode}
-        activeChatId={activeChatId}
-        onLoadChat={setActiveChatId}
-      />
+      <Routes>
+        <Route path="/" element={<Dashboard credits={credits} isDev={isDev} onNavigate={handleSidebarNavigate} />} />
+        <Route path="/factory" element={<PromptFactory credits={credits} defaultExpandBatches={defaultExpandBatches} />} />
+        <Route path="/dashboard" element={<Navigate to={appPrefix || "/"} replace />} />
+        <Route path="/history" element={
+          <HistoryPage
+            onBack={() => handleSidebarNavigate('workspace')}
+            onLoadChat={async (chatId) => {
+              const { data } = await supabase.from('chats').select('mode').eq('id', chatId).single();
+              if (data?.mode) setCurrentMode(data.mode as AppMode);
+              setActiveChatId(chatId);
+              handleSidebarNavigate('workspace');
+            }}
+            userProfile={profile}
+            userId={session?.user?.id}
+          />
+        } />
+        <Route path="/settings" element={
+          <SettingsPage
+            wizardMode={wizardMode}
+            onToggleWizardMode={() => updateWizardMode(wizardMode === 'iterative' ? 'batch' : 'iterative')}
+            defaultModel={defaultModel}
+            onModelChange={updateDefaultModel}
+            defaultExpandBatches={defaultExpandBatches}
+            onToggleDefaultExpandBatches={() => setDefaultExpandBatches(!defaultExpandBatches)}
+            isDev={isDev}
+            onBack={() => handleSidebarNavigate('workspace')}
+          />
+        } />
+        <Route path="/upgrade" element={
+          <UpgradePage
+            userId={session.user.id}
+            credits={credits}
+            onBack={() => handleSidebarNavigate('workspace')}
+            initialFocus={upgradeFocus}
+          />
+        } />
+        <Route path="/legal" element={<Legal onBack={() => handleSidebarNavigate('workspace')} />} />
+        <Route path="/workspace" element={
+          <Workspace
+            currentMode={currentMode}
+            session={session}
+            credits={credits}
+            userProfile={profile}
+            onShowToast={(message, actionLabel, action) => setToast({
+              visible: true,
+              message,
+              actionLabel: actionLabel || '',
+              action: action || (() => { })
+            })}
+            onUpgrade={() => handleSidebarNavigate('upgrade')}
+            wizardMode={wizardMode}
+            defaultModel={defaultModel}
+            onSelectMode={setCurrentMode}
+            activeChatId={activeChatId}
+            onLoadChat={setActiveChatId}
+          />
+        } />
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to={appPrefix || "/"} replace />} />
+      </Routes>
     );
   };
 
@@ -304,7 +321,7 @@ const App: React.FC = () => {
             setCurrentMode(data.mode as AppMode);
           }
           setActiveChatId(chatId);
-          setCurrentView('workspace');
+          handleSidebarNavigate('workspace');
         }}
         userId={session.user.id}
         onDeleteChat={handleDeleteChat}
