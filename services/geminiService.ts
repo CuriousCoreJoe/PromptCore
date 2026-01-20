@@ -15,7 +15,7 @@ const ai = new GoogleGenerativeAI(geminiKey);
 
 // Ported from Python Script: "CONSUMER-FIRST" Brain
 const MASTER_FACTORY_SYSTEM_PROMPT = `
-You are 'PromptCore', the world's best AI curriculum designer. Your goal is to build helpful, high-value prompt assets for everyday users (B2C) and professionals (B2B).
+You are 'PromptOrigin', the world's best AI curriculum designer. Your goal is to build helpful, high-value prompt assets for everyday users (B2C) and professionals (B2B).
 
 THE OBJECTIVE:
 You must generate a structured AI Prompt Pack based on the User's Request.
@@ -38,10 +38,10 @@ QUALITY RULES:
 `;
 
 const SYSTEM_INSTRUCTIONS: Record<AppMode, string> = {
-    [AppMode.EVERYDAY]: `You are PromptCore's Everyday Assistant. Optimize for clarity, helpfulness, and concise answers. Be friendly but professional.`,
-    [AppMode.VIBE_CODE]: `You are PromptCore's Vibe Code Assistant. Expert Full-Stack Engineer.React/Tailwind focus.`,
-    [AppMode.MEDIA_GEN]: `You are PromptCore's Media Gen Assistant. Help generate prompts for Midjourney/Suno. Part 1: Direction. Part 2: Prompt Code Block.`,
-    [AppMode.TALK_TO_SOURCE]: `You are PromptCore's Source Analyst. Answer based on documents provided.`
+    [AppMode.EVERYDAY]: `You are PromptOrigin's Everyday Assistant. Optimize for clarity, helpfulness, and concise answers. Be friendly but professional.`,
+    [AppMode.VIBE_CODE]: `You are PromptOrigin's Vibe Code Assistant. Expert Full-Stack Engineer.React/Tailwind focus.`,
+    [AppMode.MEDIA_GEN]: `You are PromptOrigin's Media Gen Assistant. Help generate prompts for Midjourney/Suno. Part 1: Direction. Part 2: Prompt Code Block.`,
+    [AppMode.TALK_TO_SOURCE]: `You are PromptOrigin's Source Analyst. Answer based on documents provided.`
 };
 
 export const sendMessageToGemini = async (
@@ -51,7 +51,7 @@ export const sendMessageToGemini = async (
 ): Promise<string> => {
     try {
         const model = ai.getGenerativeModel({
-            model: 'gemini-3-pro-preview',
+            model: 'google/gemini-3-pro-preview',
             systemInstruction: SYSTEM_INSTRUCTIONS[mode]
         });
 
@@ -78,7 +78,7 @@ export const STYLES = ["Strict & Organized", "Creative & Loose", "Step-by-Step T
 export const generateFactoryAngles = async (topic: string, count: number): Promise<string[]> => {
     try {
         const model = ai.getGenerativeModel({
-            model: 'gemini-3-pro-preview',
+            model: 'google/gemini-3-pro-preview',
             generationConfig: {
                 responseMimeType: "application/json",
                 responseSchema: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } }
@@ -104,7 +104,7 @@ export const generateBatchItems = async (topic: string, angle: string, count: nu
 
         try {
             const model = ai.getGenerativeModel({
-                model: 'gemini-3-pro-preview',
+                model: 'google/gemini-3-pro-preview',
                 systemInstruction: MASTER_FACTORY_SYSTEM_PROMPT,
                 generationConfig: {
                     responseMimeType: "application/json",

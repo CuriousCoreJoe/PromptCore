@@ -10,7 +10,7 @@ interface ArtifactPreviewProps {
     isExpanded?: boolean;
 }
 
-export const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({ content, title = "Application Preview" }) => {
+export const ArtifactPreview: React.FC<ArtifactPreviewProps> = React.memo(({ content, title = "Application Preview" }) => {
     const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
     const [viewport, setViewport] = useState<'desktop' | 'mobile'>('desktop');
     const [copied, setCopied] = useState(false);
@@ -165,4 +165,4 @@ export const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({ content, title
             </div>
         </div>
     );
-};
+});

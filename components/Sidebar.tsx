@@ -1,8 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { clsx } from 'clsx';
-import { LayoutDashboard, MessageSquare, Layers, Settings, Zap, User, ChevronRight, PanelLeftClose, PanelLeftOpen, Clock, Trash2, Pencil, Check, X, Plus } from 'lucide-react';
-import { AppView, ChatSession } from '../types';
+import {
+  LayoutDashboard, MessageSquare, Layers, Settings, Zap,
+  User, ChevronRight, PanelLeftClose, PanelLeftOpen,
+  Clock, Trash2, Pencil, Check, X, Plus,
+  MoreHorizontal, Bookmark, Pin, Copy, Filter,
+  Folder as FolderIcon, ChevronDown, FolderPlus
+} from 'lucide-react';
+import { AppView, ChatSession, AppMode, Folder } from '../types';
 import { supabase } from '../lib/supabase';
+import { FolderModal } from './FolderModal';
+import { createPortal } from 'react-dom';
 
 interface SidebarProps {
   currentView: AppView;
@@ -17,267 +25,397 @@ interface SidebarProps {
   onDeleteChat?: (chatId: string) => void;
   onRenameChat?: (chatId: string, newTitle: string) => void;
   onNewChat?: () => void;
+  onNewChatInFolder?: (folderId: string) => void;
   refreshKey?: number;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, profile, isDev, isCollapsed, onToggleCollapse, activeChatId, onLoadChat, userId, onDeleteChat, onRenameChat, onNewChat, refreshKey, isMobileOpen, onCloseMobile }) => {
-  const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
+type FilterType = 'recent' | 'bookmarked' | 'mode';
+
+export const Sidebar: React.FC<SidebarProps> = ({
+  currentView, onNavigate, profile, isDev, isCollapsed,
+  onToggleCollapse, activeChatId, onLoadChat, userId,
+  onDeleteChat, onRenameChat, onNewChat, onNewChatInFolder, refreshKey,
+  isMobileOpen, onCloseMobile
+}) => {
+  const [chats, setChats] = useState<ChatSession[]>([]);
+  const [filter, setFilter] = useState<FilterType>('recent');
+  const [activeModeFilter, setActiveModeFilter] = useState<AppMode | 'all'>('all');
+
+  // Folders state
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
+  const [isRecentsCollapsed, setIsRecentsCollapsed] = useState(false);
+  const [isFoldersCollapsed, setIsFoldersCollapsed] = useState(false);
 
   useEffect(() => {
     const fetchId = userId || profile?.id;
     if (fetchId) {
-      const fetchRecent = async () => {
-        const { data } = await supabase
+      const fetchChats = async () => {
+        let query = supabase
           .from('chats')
           .select('*')
           .eq('user_id', fetchId)
-          .order('updated_at', { ascending: false })
-          .limit(10);
+          .is('folder_id', null) // Only fetch chats NOT in a folder for "Recents"
+          .order('updated_at', { ascending: false });
 
-        if (data) setRecentChats(data as unknown as ChatSession[]);
+        if (filter === 'bookmarked') {
+          query = supabase.from('chats').select('*').eq('user_id', fetchId).eq('is_bookmarked', true).order('updated_at', { ascending: false });
+        } else if (filter === 'mode' && activeModeFilter !== 'all') {
+          query = supabase.from('chats').select('*').eq('user_id', fetchId).eq('mode', activeModeFilter).order('updated_at', { ascending: false });
+        }
+
+        const { data } = await query.limit(20);
+        if (data) setChats(data as unknown as ChatSession[]);
       };
 
-      fetchRecent();
+      const fetchFolders = async () => {
+        const { data } = await supabase
+          .from('folders')
+          .select('*')
+          .eq('user_id', fetchId)
+          .order('name', { ascending: true });
+        if (data) setFolders(data as Folder[]);
+      };
 
-      // Create unique channel name to avoid conflicts (without Date.now() to prevent infinite re-renders)
-      const channelName = `sidebar-history-${fetchId}`;
-      const channel = supabase
-        .channel(channelName)
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chats',
-          filter: `user_id=eq.${fetchId}`
-        }, (payload) => {
-          console.log('Chat inserted:', payload);
-          fetchRecent();
-        })
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'chats',
-          filter: `user_id=eq.${fetchId}`
-        }, (payload) => {
-          console.log('Chat updated:', payload);
-          fetchRecent();
-        })
-        .on('postgres_changes', {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'chats'
-        }, (payload) => {
-          console.log('Chat deleted:', payload);
-          // Immediately remove from local state for instant feedback
-          setRecentChats(prev => prev.filter(chat => chat.id !== (payload.old as any)?.id));
-          // Also refetch to ensure consistency
-          fetchRecent();
-        })
-        .subscribe((status) => {
-          console.log('Sidebar subscription status:', status);
-        });
+      fetchChats();
+      fetchFolders();
+
+      const chatChannel = supabase.channel(`sidebar-chats-${fetchId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'chats', filter: `user_id=eq.${fetchId}` }, () => { fetchChats(); fetchFolders(); }).subscribe();
+      const folderChannel = supabase.channel(`sidebar-folders-${fetchId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'folders', filter: `user_id=eq.${fetchId}` }, () => { fetchFolders(); }).subscribe();
 
       return () => {
-        supabase.removeChannel(channel);
+        supabase.removeChannel(chatChannel);
+        supabase.removeChannel(folderChannel);
       };
     }
-  }, [profile?.id, userId, refreshKey]);
+  }, [profile?.id, userId, refreshKey, filter, activeModeFilter]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.reload();
   };
 
+  const handleToggleBookmark = async (chatId: string, currentState: boolean) => {
+    await supabase.from('chats').update({ is_bookmarked: !currentState }).eq('id', chatId);
+  };
+
+  const handleTogglePin = async (chatId: string, currentState: boolean) => {
+    await supabase.from('chats').update({ is_pinned: !currentState }).eq('id', chatId);
+  };
+
+  const handleMoveToFolder = async (chatId: string, folderId: string | null) => {
+    await supabase.from('chats').update({ folder_id: folderId }).eq('id', chatId);
+  };
+
+  const handleDeleteFolder = async (folderId: string) => {
+    if (window.confirm('Delete this folder? Chats inside will be moved to Recents.')) {
+      await supabase.from('folders').delete().eq('id', folderId);
+    }
+  };
+
+  const toggleFolderExpand = (folderId: string) => {
+    setExpandedFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(folderId)) next.delete(folderId);
+      else next.add(folderId);
+      return next;
+    });
+  };
+
+  const handleCloneChat = async (chat: ChatSession) => {
+    const { data } = await supabase.from('chats').insert({
+      user_id: userId || profile?.id,
+      title: `${chat.title} (Clone)`,
+      mode: chat.mode
+    }).select().single();
+
+    if (data) {
+      // Also clone messages for high-fidelity cloning
+      const { data: messages } = await supabase.from('messages').select('*').eq('chat_id', chat.id);
+      if (messages && messages.length > 0) {
+        const clonedMessages = messages.map(m => ({
+          chat_id: data.id,
+          role: m.role,
+          content: m.content,
+          msg_type: m.msg_type,
+          execution_model: m.execution_model,
+          metadata: m.metadata
+        }));
+        await supabase.from('messages').insert(clonedMessages);
+      }
+      onLoadChat?.(data.id);
+    }
+  };
+
+  const pinnedChats = chats.filter(c => c.is_pinned);
+  const otherChats = chats.filter(c => !c.is_pinned);
+
   return (
     <>
-      {/* Mobile Overlay Backdrop */}
       {isMobileOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
           onClick={onCloseMobile}
         />
       )}
 
       <div className={clsx(
-        "bg-dark-900 border-r border-dark-800 flex flex-col h-full transition-all duration-300",
-        // Mobile: Fixed drawer
+        "bg-[#0a0a0a] border-r border-white/5 flex flex-col h-full transition-all duration-300",
         "fixed inset-y-0 left-0 z-50 md:relative md:z-0",
-        // Mobile: Slide in/out
         isMobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0",
-        // Width
         isCollapsed ? "w-16" : "w-64"
       )}>
         {/* Logo Area */}
-        <div className="h-16 flex items-center px-4 border-b border-dark-800 justify-between">
+        <div className="h-16 flex items-center px-4 border-b border-white/5 justify-between bg-[#131314]">
           <div className="flex items-center flex-1 overflow-hidden">
-            <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+            <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-[0_0_15px_rgba(37,99,235,0.4)]">
               P
             </div>
-            {!isCollapsed && <span className="ml-3 font-semibold text-lg text-white truncate">PromptCore</span>}
+            {!isCollapsed && <span className="ml-3 font-semibold text-lg text-white truncate">PromptOrigin</span>}
           </div>
-          
-          {/* Mobile Close Button */}
-          <button
-            onClick={onCloseMobile}
-            className="md:hidden p-1.5 text-gray-400 hover:text-white rounded-md"
-          >
-            <X size={20} />
-          </button>
 
-          {/* Desktop Collapse Button */}
           <button
             onClick={onToggleCollapse}
-            className="hidden md:block p-1.5 text-gray-500 hover:text-white hover:bg-dark-800 rounded-md transition-all ml-1"
-            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            className="hidden md:block p-1.5 text-gray-500 hover:text-white hover:bg-white/5 rounded-md transition-all ml-1"
           >
             {isCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>
         </div>
 
-      {/* Nav Items */}
-      <nav className="flex-1 py-4 px-2 md:px-4 space-y-2 overflow-y-auto">
-        <button
-          onClick={() => onNewChat ? onNewChat() : onNavigate('workspace')}
-          className={clsx(
-            "w-full flex items-center gap-3 px-3 py-3 mb-6 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-brand-600/20 active:scale-[0.98] group",
-            isCollapsed ? "justify-center px-0 h-10 w-10 mx-auto" : "justify-start"
-          )}
-          title={isCollapsed ? "New Chat" : ""}
-        >
-          <Plus size={20} className="flex-shrink-0" />
-          {!isCollapsed && <span>New Chat</span>}
-        </button>
+        {/* Nav Items */}
+        <nav className="flex-1 py-4 px-2 md:px-3 space-y-1.5 overflow-y-auto custom-scrollbar">
+          <button
+            onClick={() => onNewChat ? onNewChat() : onNavigate('workspace')}
+            className={clsx(
+              "w-full flex items-center gap-3 px-3 py-3 mb-6 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-brand-600/20 active:scale-[0.98] group",
+              isCollapsed ? "justify-center px-0 h-10 w-10 mx-auto" : "justify-start"
+            )}
+          >
+            <Plus size={20} className="flex-shrink-0" />
+            {!isCollapsed && <span>New Chat</span>}
+          </button>
 
-        <NavItem
-          icon={<MessageSquare size={20} />}
-          label="Workspace"
-          active={currentView === 'workspace'}
-          onClick={() => onNavigate('workspace')}
-          isCollapsed={isCollapsed}
-        />
-        <NavItem
-          icon={<Layers size={20} />}
-          label="Prompt Factory"
-          active={currentView === 'factory'}
-          onClick={() => onNavigate('factory')}
-          isCollapsed={isCollapsed}
-        />
-        <NavItem
-          icon={<LayoutDashboard size={20} />}
-          label="Dashboard"
-          active={currentView === 'dashboard'}
-          onClick={() => onNavigate('dashboard')}
-          isCollapsed={isCollapsed}
-        />
-        <NavItem
-          icon={<Settings size={20} />}
-          label="Settings"
-          active={currentView === 'settings'}
-          onClick={() => onNavigate('settings')}
-          isCollapsed={isCollapsed}
-        />
-        <NavItem
-          icon={<Clock size={20} />}
-          label="History"
-          active={currentView === 'history'}
-          onClick={() => onNavigate('history')}
-          isCollapsed={isCollapsed}
-        />
+          <NavItem icon={<MessageSquare size={18} />} label="Workspace" active={currentView === 'workspace'} onClick={() => onNavigate('workspace')} isCollapsed={isCollapsed} />
+          <NavItem icon={<Layers size={18} />} label="Prompt Factory" active={currentView === 'factory'} onClick={() => onNavigate('factory')} isCollapsed={isCollapsed} />
+          <NavItem icon={<LayoutDashboard size={18} />} label="Dashboard" active={currentView === 'dashboard'} onClick={() => onNavigate('dashboard')} isCollapsed={isCollapsed} />
+          <NavItem icon={<Clock size={18} />} label="History" active={currentView === 'history'} onClick={() => onNavigate('history')} isCollapsed={isCollapsed} />
 
-        {!isCollapsed && (
-          <div className="pt-6 pb-2">
-            <div className="h-px bg-dark-800 mx-2 mb-4"></div>
-            <p className="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-              Recents
-            </p>
-            <div className="space-y-0.5">
-              {recentChats.map(chat => (
-                <HistoryItem
-                  key={chat.id}
-                  label={chat.title || 'Untitled Chat'}
-                  isActive={activeChatId === chat.id}
-                  onClick={() => {
-                    if (onLoadChat) onLoadChat(chat.id);
-                    onNavigate('workspace');
-                  }}
-                  onDelete={() => onDeleteChat?.(chat.id)}
-                  onRename={(newTitle) => onRenameChat?.(chat.id, newTitle)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-      </nav>
-
-      {/* User / Settings */}
-      <div className="p-4 border-t border-dark-800">
-        <div
-          onClick={() => onNavigate('settings')}
-          className="flex items-center p-2 rounded-lg hover:bg-dark-800 cursor-pointer text-gray-400 hover:text-white transition-colors group mb-2"
-          title="Click to Logout"
-        >
-          {profile?.avatar_url ? (
-            <img src={profile.avatar_url} className="w-8 h-8 rounded-full" />
-          ) : (
-            <User size={20} />
-          )}
           {!isCollapsed && (
-            <div className="ml-3 flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{profile?.full_name || 'User'}</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <p className="text-xs text-gray-500 capitalize">{isDev ? 'Developer' : (profile?.subscription_status || 'Free')} Tier</p>
-                {!isDev && profile?.subscription_status === 'free' && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-yellow-900/30 text-yellow-400 border border-yellow-700/30" title="Costs increase 3x after 100 credits/month. Upgrade for consistent rates.">
-                    3x Rate
-                  </span>
+            <div className="pt-6 space-y-6">
+              {/* Folders Section */}
+              <div className="pt-2">
+                <div className="w-full flex items-center justify-between px-2 mb-3 group">
+                  <button
+                    onClick={() => setIsFoldersCollapsed(!isFoldersCollapsed)}
+                    className="flex items-center gap-1.5 hover:bg-white/5 rounded px-1 py-0.5 transition-colors"
+                  >
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
+                      <FolderIcon size={12} /> Folders
+                    </p>
+                    <ChevronDown size={12} className={clsx("text-gray-600 transition-transform", isFoldersCollapsed && "-rotate-90")} />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setEditingFolder(null); setShowFolderModal(true); }}
+                    className="p-1 text-gray-600 hover:text-white hover:bg-white/10 rounded transition-colors"
+                    title="New Folder"
+                  >
+                    <FolderPlus size={12} />
+                  </button>
+                </div>
+
+                {!isFoldersCollapsed && (
+                  <div className="space-y-1 px-1">
+                    {folders.map(folder => (
+                      <FolderItem
+                        key={folder.id}
+                        folder={folder}
+                        isExpanded={expandedFolders.has(folder.id)}
+                        onToggleExpand={() => toggleFolderExpand(folder.id)}
+                        activeChatId={activeChatId}
+                        onLoadChat={(chatId) => { onLoadChat?.(chatId); onNavigate('workspace'); }}
+                        onDeleteChat={onDeleteChat}
+                        onRenameChat={onRenameChat}
+                        onEditFolder={() => { setEditingFolder(folder); setShowFolderModal(true); }}
+                        onDeleteFolder={() => handleDeleteFolder(folder.id)}
+                        onNewChatInFolder={() => onNewChatInFolder?.(folder.id)}
+                        onMoveToRecents={(chatId) => handleMoveToFolder(chatId, null)}
+                      />
+                    ))}
+
+                    {folders.length === 0 && (
+                      <p className="px-4 py-4 text-center text-[11px] text-gray-600">
+                        No folders yet
+                      </p>
+                    )}
+                  </div>
                 )}
-                {!isDev && (profile?.subscription_status === 'lite' || profile?.subscription_status === 'pro') && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-900/30 text-green-400 border border-green-700/30" title="Preferred Rate: No usage penalties">
-                    Preferred
-                  </span>
+              </div>
+
+              {/* Library Section */}
+              <div className="pt-0">
+                <button
+                  onClick={() => setIsRecentsCollapsed(!isRecentsCollapsed)}
+                  className="w-full flex items-center justify-between px-2 mb-3 hover:bg-white/5 rounded-lg transition-colors py-1"
+                >
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                    Library
+                  </p>
+                  <ChevronDown size={12} className={clsx("text-gray-600 transition-transform", isRecentsCollapsed && "-rotate-90")} />
+                </button>
+
+                {!isRecentsCollapsed && (
+                  <>
+                    <div className="flex bg-[#1E1F20] rounded-md p-0.5 border border-white/5 mb-3 mx-2">
+                      <button
+                        onClick={() => setFilter('recent')}
+                        className={clsx("p-1 rounded transition-colors", filter === 'recent' ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300")}
+                        title="Recent"
+                      >
+                        <Clock size={12} />
+                      </button>
+                      <button
+                        onClick={() => setFilter('bookmarked')}
+                        className={clsx("p-1 rounded transition-colors", filter === 'bookmarked' ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300")}
+                        title="Bookmarks"
+                      >
+                        <Bookmark size={12} />
+                      </button>
+                      <button
+                        onClick={() => setFilter('mode')}
+                        className={clsx("p-1 rounded transition-colors", filter === 'mode' ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300")}
+                        title="By Mode"
+                      >
+                        <Filter size={12} />
+                      </button>
+                    </div>
+
+                    {filter === 'mode' && (
+                      <div className="px-2 mb-4 flex flex-wrap gap-1">
+                        {Object.values(AppMode).map(m => (
+                          <button
+                            key={m}
+                            onClick={() => setActiveModeFilter(activeModeFilter === m ? 'all' : m)}
+                            className={clsx(
+                              "text-[9px] px-2 py-0.5 rounded-full border transition-all",
+                              activeModeFilter === m
+                                ? "bg-brand-500/20 border-brand-500/50 text-brand-400"
+                                : "bg-dark-900 border-white/5 text-gray-500 hover:text-gray-300"
+                            )}
+                          >
+                            {m}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="space-y-0.5 px-1">
+                      {pinnedChats.length > 0 && (
+                        <div className="mb-4">
+                          <p className="px-2 text-[9px] font-semibold text-gray-600 uppercase mb-1 flex items-center gap-1">
+                            <Pin size={10} /> Pinned
+                          </p>
+                          {pinnedChats.map(chat => (
+                            <HistoryItem
+                              key={chat.id}
+                              chat={chat}
+                              folders={folders}
+                              isActive={activeChatId === chat.id}
+                              onLoad={() => { onLoadChat?.(chat.id); onNavigate('workspace'); }}
+                              onDelete={() => onDeleteChat?.(chat.id)}
+                              onRename={(newTitle) => onRenameChat?.(chat.id, newTitle)}
+                              onToggleBookmark={() => handleToggleBookmark(chat.id, !!chat.is_bookmarked)}
+                              onTogglePin={() => handleTogglePin(chat.id, !!chat.is_pinned)}
+                              onClone={() => handleCloneChat(chat)}
+                              onMoveToFolder={(folderId) => handleMoveToFolder(chat.id, folderId)}
+                            />
+                          ))}
+                        </div>
+                      )}
+
+                      {otherChats.map(chat => (
+                        <HistoryItem
+                          key={chat.id}
+                          chat={chat}
+                          folders={folders}
+                          isActive={activeChatId === chat.id}
+                          onLoad={() => { onLoadChat?.(chat.id); onNavigate('workspace'); }}
+                          onDelete={() => onDeleteChat?.(chat.id)}
+                          onRename={(newTitle) => onRenameChat?.(chat.id, newTitle)}
+                          onToggleBookmark={() => handleToggleBookmark(chat.id, !!chat.is_bookmarked)}
+                          onTogglePin={() => handleTogglePin(chat.id, !!chat.is_pinned)}
+                          onClone={() => handleCloneChat(chat)}
+                          onMoveToFolder={(folderId) => handleMoveToFolder(chat.id, folderId)}
+                        />
+                      ))}
+
+                      {chats.length === 0 && (
+                        <p className="px-4 py-8 text-center text-xs text-gray-600">
+                          No chats found
+                        </p>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
           )}
-          {!isCollapsed && (
-            <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-              <ChevronRight size={16} />
-            </div>
-          )}
-        </div>
+        </nav>
 
-        <button
-          onClick={handleLogout}
-          className={clsx(
-            "w-full flex items-center justify-center py-2 px-4 text-xs font-medium text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all border border-transparent hover:border-red-400/20",
-            isCollapsed && "px-0"
-          )}
-        >
-          {isCollapsed ? "Exit" : "Logout"}
-        </button>
+        {/* Folder Modal */}
+        <FolderModal
+          isOpen={showFolderModal}
+          onClose={() => { setShowFolderModal(false); setEditingFolder(null); }}
+          userId={userId || profile?.id}
+          existingFolder={editingFolder}
+        />
 
-        <button
-          onClick={() => onNavigate('upgrade')}
-          className={clsx(
-            "mt-4 w-full flex items-center justify-center py-2 px-4 bg-brand-600 hover:bg-brand-500 text-white rounded-md text-sm font-medium transition-colors",
-            isCollapsed && "px-0"
-          )}
-        >
-          <Zap size={16} className={isCollapsed ? "" : "mr-2"} />
-          {!isCollapsed && <span>Upgrade Plan</span>}
-        </button>
-
-        {!isCollapsed && (
-          <button
-            onClick={() => onNavigate('legal')}
-            className="mt-2 w-full flex items-center justify-center py-1 text-xs text-gray-600 hover:text-gray-400 transition-colors"
+        {/* User / Settings Footer */}
+        <div className="p-4 border-t border-white/5 bg-[#131314]" >
+          <div
+            onClick={() => onNavigate('settings')}
+            className="flex items-center p-2 rounded-xl hover:bg-white/5 cursor-pointer group mb-4 transition-all"
           >
-            Legal & Privacy
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-600 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-lg overflow-hidden border border-white/10 group-hover:scale-105 transition-transform">
+              {profile?.avatar_url ? <img src={profile.avatar_url} className="w-full h-full object-cover" /> : profile?.full_name?.charAt(0) || 'U'}
+            </div>
+            {!isCollapsed && (
+              <div className="ml-3 flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white truncate">{profile?.full_name || 'User'}</p>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold text-brand-500 uppercase tracking-wider">{profile?.subscription_status || 'Free'}</span>
+                </div>
+              </div>
+            )}
+            {!isCollapsed && <Settings size={16} className="text-gray-600 group-hover:text-white transition-colors" />}
+          </div>
+
+          {
+            !isCollapsed && (
+              <button
+                onClick={() => onNavigate('upgrade')}
+                className="w-full mb-3 flex items-center justify-center gap-2 py-2 px-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl text-xs font-semibold transition-all group"
+              >
+                <Zap size={14} className="text-yellow-500 group-hover:animate-pulse" />
+                Upgrade Plan
+              </button>
+            )
+          }
+
+          <button
+            onClick={handleLogout}
+            className={clsx(
+              "w-full flex items-center justify-center py-2 text-[11px] font-bold uppercase tracking-widest text-gray-600 hover:text-red-400 transition-colors",
+              isCollapsed && "px-0 text-[8px]"
+            )}
+          >
+            {isCollapsed ? "EXIT" : "Logout"}
           </button>
-        )}
+        </div>
       </div>
-    </div>
     </>
   );
 };
@@ -294,105 +432,303 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, active, onClick, isColla
   <button
     onClick={onClick}
     className={clsx(
-      "w-full flex items-center px-3 py-2.5 rounded-lg transition-colors group",
-      active ? 'bg-dark-800 text-brand-500' : 'text-gray-400 hover:bg-dark-800 hover:text-white',
+      "w-full flex items-center px-4 py-2.5 rounded-xl transition-all group relative",
+      active
+        ? "bg-brand-500/10 text-brand-400 font-bold"
+        : "text-gray-400 hover:bg-white/5 hover:text-white",
       isCollapsed ? "justify-center px-0" : "justify-start"
     )}
-    title={isCollapsed ? label : ""}
   >
-    <span className={active ? 'text-brand-500' : 'group-hover:text-white'}>{icon}</span>
-    {!isCollapsed && <span className="ml-3 font-medium">{label}</span>}
+    {active && <div className="absolute left-0 top-2 bottom-2 w-1 bg-brand-500 rounded-r-full" />}
+    <span className={clsx("transition-transform", active ? "scale-110" : "group-hover:scale-110")}>{icon}</span>
+    {!isCollapsed && <span className="ml-3 text-sm">{label}</span>}
   </button>
 );
 
 const HistoryItem: React.FC<{
-  label: string,
+  chat: ChatSession,
+  folders: Folder[],
   isActive?: boolean,
-  onClick?: () => void,
-  onDelete?: () => void,
-  onRename?: (title: string) => void
-}> = ({ label, isActive, onClick, onDelete, onRename }) => {
+  onLoad: () => void,
+  onDelete: () => void,
+  onRename: (title: string) => void,
+  onToggleBookmark: () => void,
+  onTogglePin: () => void,
+  onClone: () => void,
+  onMoveToFolder: (folderId: string | null) => void
+}> = ({ chat, folders, isActive, onLoad, onDelete, onRename, onToggleBookmark, onTogglePin, onClone, onMoveToFolder }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(label);
+  const [editValue, setEditValue] = useState(chat.title);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showFolderSubmenu, setShowFolderSubmenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const touchTimer = useRef<any>(null);
 
   useEffect(() => {
-    setEditValue(label);
-  }, [label]);
+    setEditValue(chat.title);
+  }, [chat.title]);
 
-  const handleRename = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (isEditing) {
-      if (editValue.trim() && editValue !== label) {
-        onRename?.(editValue.trim());
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
       }
-      setIsEditing(false);
-    } else {
-      setIsEditing(true);
-    }
+    };
+    if (showMenu) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMenu]);
+
+  const handleTouchStart = () => {
+    touchTimer.current = setTimeout(() => setShowMenu(true), 800);
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this chat?')) {
-      onDelete?.();
-    }
+  const handleTouchEnd = () => {
+    if (touchTimer.current) clearTimeout(touchTimer.current);
   };
 
   return (
-    <div className="group relative">
+    <div
+      className="group relative"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {isEditing ? (
         <div className="flex items-center gap-1 px-2 py-1.5 w-full">
           <input
             autoFocus
-            className="flex-1 bg-dark-800 text-white text-sm rounded px-1 outline-none ring-1 ring-brand-500 min-w-0"
+            className="flex-1 bg-dark-800 text-white text-sm rounded-lg px-2 py-1 outline-none ring-1 ring-brand-500 min-w-0"
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
-                if (editValue.trim() && editValue !== label) onRename?.(editValue.trim());
+                if (editValue.trim() && editValue !== chat.title) onRename(editValue.trim());
                 setIsEditing(false);
               }
               if (e.key === 'Escape') {
-                setEditValue(label);
+                setEditValue(chat.title);
                 setIsEditing(false);
               }
             }}
           />
-          <button onClick={handleRename} className="p-1 text-green-500 hover:bg-green-500/10 rounded flex-shrink-0">
-            <Check size={14} />
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); setIsEditing(false); setEditValue(label); }} className="p-1 text-red-500 hover:bg-red-500/10 rounded flex-shrink-0">
-            <X size={14} />
-          </button>
         </div>
       ) : (
         <button
-          onClick={onClick}
+          onClick={onLoad}
           className={clsx(
-            "w-full text-left px-2 py-1.5 text-sm rounded truncate transition-colors pr-12",
-            isActive ? "text-brand-400 bg-brand-500/10 font-medium" : "text-gray-400 hover:text-white hover:bg-dark-800"
+            "w-full text-left px-3 py-2 text-xs rounded-xl truncate transition-all pr-10",
+            isActive
+              ? "text-brand-400 bg-brand-500/10 font-bold border border-brand-500/20 shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
+              : "text-gray-500 hover:text-gray-200 hover:bg-white/5 border border-transparent"
           )}
         >
-          {label}
+          {chat.title || 'Untitled'}
         </button>
       )}
 
-      {!isEditing && (
-        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-dark-900/80 backdrop-blur-sm rounded pl-1">
+      {/* More Button */}
+      <button
+        ref={moreButtonRef}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!showMenu && moreButtonRef.current) {
+            const rect = moreButtonRef.current.getBoundingClientRect();
+            const menuHeight = 280; // Approximate menu height
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const top = spaceBelow < menuHeight ? rect.top - menuHeight + 40 : rect.bottom + 4;
+            setMenuPosition({ top: top + window.scrollY, left: rect.left + window.scrollX });
+          }
+          setShowMenu(!showMenu);
+        }}
+        className={clsx(
+          "absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-gray-500 hover:text-white transition-all rounded-md",
+          showMenu ? "opacity-100 bg-white/10" : "opacity-0 group-hover:opacity-100"
+        )}
+      >
+        <MoreHorizontal size={14} />
+      </button>
+
+      {/* Context Menu - Portaled to body */}
+      {showMenu && menuPosition && createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: 'absolute', top: menuPosition.top, left: menuPosition.left }}
+          className="w-48 bg-[#1e1f20] border border-white/10 rounded-xl shadow-2xl z-[100] overflow-hidden py-1.5 animate-in fade-in zoom-in-95 duration-100"
+        >
+          <MenuBtn icon={<Pin size={14} className={chat.is_pinned ? "text-brand-400" : ""} />} label={chat.is_pinned ? "Unpin" : "Pin"} onClick={() => { onTogglePin(); setShowMenu(false); }} />
+          <MenuBtn icon={<Bookmark size={14} className={chat.is_bookmarked ? "text-brand-400" : ""} />} label={chat.is_bookmarked ? "Return from Saved" : "Bookmark"} onClick={() => { onToggleBookmark(); setShowMenu(false); }} />
+          <div className="h-px bg-white/5 my-1" />
+
           <button
-            onClick={handleRename}
-            className="p-1 text-gray-400 hover:text-white hover:bg-dark-700 rounded transition-colors"
-            title="Rename"
+            onClick={(e) => { e.stopPropagation(); setShowFolderSubmenu(!showFolderSubmenu); }}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white transition-colors group/folder"
           >
-            <Pencil size={14} />
+            <div className="flex items-center gap-3">
+              <FolderIcon size={14} />
+              <span>Move to Folder</span>
+            </div>
+            <ChevronRight size={12} className={clsx("transition-transform", showFolderSubmenu && "rotate-90")} />
           </button>
-          <button
-            onClick={handleDelete}
-            className="p-1 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
-            title="Delete"
-          >
-            <Trash2 size={14} />
-          </button>
+
+          {showFolderSubmenu && (
+            <div className="bg-black/20 py-1 max-h-32 overflow-y-auto">
+              <button
+                onClick={() => { onMoveToFolder(null); setShowMenu(false); setShowFolderSubmenu(false); }}
+                className="w-full flex items-center gap-3 px-6 py-1.5 text-[11px] text-gray-400 hover:text-white transition-colors"
+              >
+                Recents (Uncategorized)
+              </button>
+              {folders.map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => { onMoveToFolder(f.id); setShowMenu(false); setShowFolderSubmenu(false); }}
+                  className="w-full flex items-center gap-3 px-6 py-1.5 text-[11px] text-gray-400 hover:text-white transition-colors"
+                >
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: f.color }} />
+                  <span className="truncate">{f.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="h-px bg-white/5 my-1" />
+          <MenuBtn icon={<Pencil size={14} />} label="Rename" onClick={() => { setIsEditing(true); setShowMenu(false); }} />
+          <div className="h-px bg-white/5 my-1" />
+          <MenuBtn icon={<Trash2 size={14} />} label="Delete" onClick={() => { if (window.confirm('Delete this chat?')) onDelete(); setShowMenu(false); }} className="text-red-400 hover:bg-red-400/10" />
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+};
+
+const MenuBtn: React.FC<{ icon: React.ReactNode, label: string, onClick: () => void, className?: string }> = ({ icon, label, onClick, className }) => (
+  <button
+    onClick={(e) => { e.stopPropagation(); onClick(); }}
+    className={clsx(
+      "w-full flex items-center gap-3 px-3 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white transition-colors",
+      className
+    )}
+  >
+    {icon}
+    <span>{label}</span>
+  </button>
+);
+
+// FolderItem component with nested chats
+interface FolderItemProps {
+  folder: Folder;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  activeChatId?: string | null;
+  onLoadChat: (chatId: string) => void;
+  onDeleteChat?: (chatId: string) => void;
+  onRenameChat?: (chatId: string, newTitle: string) => void;
+  onEditFolder: () => void;
+  onDeleteFolder: () => void;
+  onNewChatInFolder: () => void;
+  onMoveToRecents: (chatId: string) => void;
+}
+
+const FolderItem: React.FC<FolderItemProps> = ({
+  folder, isExpanded, onToggleExpand, activeChatId, onLoadChat,
+  onDeleteChat, onRenameChat, onEditFolder, onDeleteFolder, onNewChatInFolder, onMoveToRecents
+}) => {
+  const [folderChats, setFolderChats] = useState<ChatSession[]>([]);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isExpanded) {
+      const fetchChats = async () => {
+        const { data } = await supabase
+          .from('chats')
+          .select('*')
+          .eq('folder_id', folder.id)
+          .order('updated_at', { ascending: false });
+        if (data) setFolderChats(data as ChatSession[]);
+      };
+      fetchChats();
+    }
+  }, [isExpanded, folder.id]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    if (showMenu) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMenu]);
+
+  return (
+    <div className="relative group">
+      <button
+        onClick={onToggleExpand}
+        className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-xl transition-all hover:bg-white/5"
+      >
+        <ChevronDown
+          size={12}
+          className={clsx("text-gray-500 transition-transform", !isExpanded && "-rotate-90")}
+        />
+        <FolderIcon size={14} style={{ color: folder.color }} />
+        <span className="text-gray-300 truncate flex-1 text-left">{folder.name}</span>
+      </button>
+
+      {/* Folder Menu Button */}
+      <button
+        onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
+        className={clsx(
+          "absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-gray-500 hover:text-white transition-all rounded-md",
+          showMenu ? "opacity-100 bg-white/10" : "opacity-0 group-hover:opacity-100"
+        )}
+      >
+        <MoreHorizontal size={12} />
+      </button>
+
+      {/* Folder Context Menu */}
+      {showMenu && (
+        <div
+          ref={menuRef}
+          className="absolute left-8 top-full mt-1 w-44 bg-[#1e1f20] border border-white/10 rounded-xl shadow-2xl z-[60] overflow-hidden py-1.5 animate-in fade-in zoom-in-95 duration-100"
+        >
+          <MenuBtn icon={<Plus size={14} />} label="New Chat in Folder" onClick={() => { onNewChatInFolder(); setShowMenu(false); }} />
+          <MenuBtn icon={<Pencil size={14} />} label="Edit Folder" onClick={() => { onEditFolder(); setShowMenu(false); }} />
+          <div className="h-px bg-white/5 my-1" />
+          <MenuBtn icon={<Trash2 size={14} />} label="Delete Folder" onClick={() => { onDeleteFolder(); setShowMenu(false); }} className="text-red-400 hover:bg-red-400/10" />
+        </div>
+      )}
+
+      {/* Nested Chats */}
+      {isExpanded && (
+        <div className="pl-5 mt-1 space-y-0.5 border-l border-white/5 ml-3">
+          {folderChats.map(chat => (
+            <div key={chat.id} className="flex items-center group/chat">
+              <button
+                onClick={() => onLoadChat(chat.id)}
+                className={clsx(
+                  "flex-1 text-left px-2 py-1.5 text-[11px] rounded-lg truncate transition-all",
+                  activeChatId === chat.id
+                    ? "text-brand-400 bg-brand-500/10 font-bold"
+                    : "text-gray-500 hover:text-gray-200 hover:bg-white/5"
+                )}
+              >
+                {chat.title || 'Untitled'}
+              </button>
+              <button
+                onClick={() => onMoveToRecents(chat.id)}
+                className="opacity-0 group-hover/chat:opacity-100 p-1 text-gray-600 hover:text-white transition-all"
+                title="Move to Recents"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+          {folderChats.length === 0 && (
+            <p className="text-[10px] text-gray-600 py-2 px-2">Empty folder</p>
+          )}
         </div>
       )}
     </div>

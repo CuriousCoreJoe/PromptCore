@@ -88,7 +88,7 @@ export const UpgradePage: React.FC<UpgradePageProps> = ({ initialFocus, onBack, 
                 <span className="text-4xl font-extrabold text-white">$0</span>
                 <span className="ml-1 text-xl text-gray-500">/mo</span>
               </div>
-              <p className="mt-4 text-gray-400 text-sm">Get started with core features. Perfect for trying out PromptCore.</p>
+              <p className="mt-4 text-gray-400 text-sm">Get started with core features. Perfect for trying out PromptOrigin.</p>
               <ul className="mt-8 space-y-4 flex-1">
                 <FeatureItem text="50 Monthly Credits (Renews)" />
                 <FeatureItem text="Unlimited Prompt Factory Access" highlighted />

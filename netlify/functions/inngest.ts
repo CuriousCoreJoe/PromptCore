@@ -16,7 +16,7 @@ if (!process.env.INNGEST_SIGNING_KEY) {
 }
 
 const inngest = new Inngest({
-    id: "promptcore-app",
+    id: "promptorigin-app",
     signingKey: process.env.INNGEST_SIGNING_KEY
 });
 
@@ -31,7 +31,7 @@ const DIFFICULTY_LEVELS = ["Beginner", "Intermediate", "Advanced"];
 const STYLES = ["Strict & Organized", "Creative & Loose", "Step-by-Step Tutor", "Socratic Method"];
 
 const MASTER_SYSTEM_PROMPT = `
-You are 'PromptCore', the world's best AI curriculum designer. Your goal is to build helpful, high-value prompt assets for everyday users (B2C) and professionals (B2B).
+You are 'PromptOrigin', the world's best AI curriculum designer. Your goal is to build helpful, high-value prompt assets for everyday users (B2C) and professionals (B2B).
 
 THE OBJECTIVE:
 You must generate a structured AI Prompt Pack based on the User's Request.
@@ -110,7 +110,7 @@ const generatePack = inngest.createFunction(
                 const style = STYLES[Math.floor(Math.random() * STYLES.length)];
 
                 const model = ai.getGenerativeModel({
-                    model: "gemini-3-pro-preview",
+                    model: "google/gemini-3-pro-preview",
                     systemInstruction: MASTER_SYSTEM_PROMPT,
                     generationConfig: {
                         responseMimeType: "application/json",

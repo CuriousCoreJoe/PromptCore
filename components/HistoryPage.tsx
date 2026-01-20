@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { ChatSession, UserProfile, AppMode } from '../types';
-import { ArrowLeft, Clock, Bookmark, Search, MoreHorizontal, MessageSquare, Trash2, Edit2, Calendar, Layers } from 'lucide-react';
+import { ChatSession, UserProfile, AppMode, Folder } from '../types';
+import { ArrowLeft, Clock, Bookmark, Search, MoreHorizontal, MessageSquare, Trash2, Edit2, Calendar, Layers, Pin, Folder as FolderIcon, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import { BatchList } from './BatchList';
 
@@ -9,45 +9,40 @@ interface HistoryPageProps {
     onBack: () => void;
     onLoadChat: (chatId: string) => void;
     userProfile: UserProfile | null;
+    userId?: string;
 }
 
-export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, userProfile }) => {
+export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, userProfile, userId }) => {
     const [chats, setChats] = useState<ChatSession[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [folders, setFolders] = useState<Folder[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'chat' | 'batches' | 'bookmarks'>('chat');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [openFolderMenuId, setOpenFolderMenuId] = useState<string | null>(null);
+
+    const fetchId = userId || userProfile?.id;
 
     useEffect(() => {
-        if (activeTab === 'chat') {
-            fetchChats();
+        console.log('HistoryPage fetch:', { fetchId, hasProfile: !!userProfile?.id, userId });
+
+        if (fetchId) {
+            fetchChats(fetchId);
+            fetchFolders(fetchId);
+        } else {
+            setIsLoading(false);
         }
 
-        if (userProfile?.id && activeTab === 'chat') {
+        if (userProfile?.id) {
             const channelName = `history-page-${userProfile.id}-${Date.now()}`;
             const channel = supabase
                 .channel(channelName)
                 .on('postgres_changes', {
-                    event: 'INSERT',
+                    event: '*',
                     schema: 'public',
                     table: 'chats',
                     filter: `user_id=eq.${userProfile.id}`
                 }, () => {
-                    fetchChats();
-                })
-                .on('postgres_changes', {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'chats',
-                    filter: `user_id=eq.${userProfile.id}`
-                }, () => {
-                    fetchChats();
-                })
-                .on('postgres_changes', {
-                    event: 'DELETE',
-                    schema: 'public',
-                    table: 'chats'
-                }, (payload) => {
-                    // Immediately update local state for instant feedback
-                    setChats(prev => prev.filter(chat => chat.id !== (payload.old as any)?.id));
+                    if (fetchId) fetchChats(fetchId);
                 })
                 .subscribe();
 
@@ -57,15 +52,60 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, us
         }
     }, [userProfile?.id, activeTab]);
 
-    const fetchChats = async () => {
-        setIsLoading(true);
-        const { data } = await supabase
-            .from('chats')
-            .select('*')
-            .order('updated_at', { ascending: false });
+    const fetchFolders = async (id: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('folders')
+                .select('*')
+                .eq('user_id', id)
+                .order('name');
+            if (error) throw error;
+            if (data) setFolders(data);
+        } catch (err) {
+            console.error('Error fetching folders:', err);
+        }
+    };
 
-        if (data) setChats(data as unknown as ChatSession[]);
-        setIsLoading(false);
+    const fetchChats = async (id: string) => {
+        setIsLoading(true);
+        try {
+            let query = supabase
+                .from('chats')
+                .select('*')
+                .eq('user_id', id)
+                .order('updated_at', { ascending: false });
+
+            if (activeTab === 'bookmarks') {
+                query = query.eq('is_bookmarked', true);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+            if (data) setChats(data as unknown as ChatSession[]);
+        } catch (err) {
+            console.error('Error fetching chats:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleMoveToFolder = async (chatId: string, folderId: string | null) => {
+        await supabase
+            .from('chats')
+            .update({ folder_id: folderId })
+            .eq('id', chatId);
+        setOpenFolderMenuId(null);
+        if (fetchId) fetchChats(fetchId);
+    };
+
+    const handleToggleBookmark = async (e: React.MouseEvent, chatId: string, currentState: boolean) => {
+        e.stopPropagation();
+        await supabase.from('chats').update({ is_bookmarked: !currentState }).eq('id', chatId);
+    };
+
+    const handleTogglePin = async (e: React.MouseEvent, chatId: string, currentState: boolean) => {
+        e.stopPropagation();
+        await supabase.from('chats').update({ is_pinned: !currentState }).eq('id', chatId);
     };
 
     const handleDeleteChat = async (e: React.MouseEvent, chatId: string) => {
@@ -88,8 +128,16 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, us
         }
     };
 
+    // Filter chats based on search query
+    const filteredChats = chats.filter(chat => {
+        if (!searchQuery) return true;
+        const searchLower = searchQuery.toLowerCase();
+        return (chat.title?.toLowerCase().includes(searchLower) ||
+            chat.mode?.toLowerCase().includes(searchLower));
+    });
+
     // Group chats by date
-    const groupedChats = chats.reduce((acc, chat) => {
+    const groupedChats = filteredChats.reduce((acc, chat) => {
         const date = new Date(chat.updated_at);
         const today = new Date();
         const yesterday = new Date(today);
@@ -161,6 +209,20 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, us
                         Bookmark
                     </button>
                 </div>
+
+                {/* Search Bar */}
+                <div className="mt-8 w-full max-w-md relative px-6">
+                    <div className="absolute left-10 top-1/2 -translate-y-1/2 text-gray-500">
+                        <Search size={18} />
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Search your history..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-[#1E1F20] border border-white/5 rounded-full py-3 pl-12 pr-6 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-all text-white"
+                    />
+                </div>
             </div>
 
             {/* List Content */}
@@ -171,7 +233,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, us
                     ) : (
                         <div className="text-center text-gray-500 mt-20">Please log in to view batches.</div>
                     )
-                ) : activeTab === 'chat' ? (
+                ) : (activeTab === 'chat' || activeTab === 'bookmarks') ? (
                     isLoading ? (
                         <div className="text-center text-gray-500 mt-20">Loading history...</div>
                     ) : chats.length === 0 ? (
@@ -209,6 +271,63 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, us
 
                                                 <div className="opacity-0 group-hover:opacity-100 flex items-center gap-2 transition-opacity">
                                                     <button
+                                                        onClick={(e) => handleTogglePin(e, chat.id, !!chat.is_pinned)}
+                                                        className={clsx(
+                                                            "p-2 rounded-lg transition-colors",
+                                                            chat.is_pinned ? "text-yellow-500 bg-yellow-500/10" : "text-gray-500 hover:text-white hover:bg-white/10"
+                                                        )}
+                                                        title={chat.is_pinned ? "Unpin" : "Pin"}
+                                                    >
+                                                        <Pin size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleToggleBookmark(e, chat.id, !!chat.is_bookmarked)}
+                                                        className={clsx(
+                                                            "p-2 rounded-lg transition-colors",
+                                                            chat.is_bookmarked ? "text-blue-500 bg-blue-500/10" : "text-gray-500 hover:text-white hover:bg-white/10"
+                                                        )}
+                                                        title={chat.is_bookmarked ? "Remove Bookmark" : "Bookmark"}
+                                                    >
+                                                        <Bookmark size={16} />
+                                                    </button>
+
+                                                    <div className="relative">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setOpenFolderMenuId(openFolderMenuId === chat.id ? null : chat.id);
+                                                            }}
+                                                            className={clsx(
+                                                                "p-2 rounded-lg transition-colors",
+                                                                chat.folder_id ? "text-brand-400 bg-brand-400/10" : "text-gray-500 hover:text-white hover:bg-white/10"
+                                                            )}
+                                                            title="Move to Folder"
+                                                        >
+                                                            <FolderIcon size={16} />
+                                                        </button>
+
+                                                        {openFolderMenuId === chat.id && (
+                                                            <div className="absolute right-0 bottom-full mb-2 w-48 bg-[#1e1f20] border border-white/10 rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in slide-in-from-bottom-2 max-h-40 overflow-y-auto">
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); handleMoveToFolder(chat.id, null); }}
+                                                                    className="w-full text-left px-4 py-2 text-xs text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
+                                                                >
+                                                                    Recents (Uncategorized)
+                                                                </button>
+                                                                {folders.map(f => (
+                                                                    <button
+                                                                        key={f.id}
+                                                                        onClick={(e) => { e.stopPropagation(); handleMoveToFolder(chat.id, f.id); }}
+                                                                        className="w-full text-left px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2"
+                                                                    >
+                                                                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: f.color }} />
+                                                                        <span className="truncate">{f.name}</span>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <button
                                                         onClick={(e) => handleRenameChat(e, chat.id, chat.title || '')}
                                                         className="p-2 text-gray-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                                                         title="Rename Chat"
@@ -231,7 +350,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, us
                         </div>
                     )
                 ) : (
-                    <div className="text-center text-gray-500 mt-20">Bookmarks coming soon.</div>
+                    <div className="text-center text-gray-500 mt-20">No items found.</div>
                 )}
             </div>
         </div>

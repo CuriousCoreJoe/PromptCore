@@ -89,7 +89,7 @@ const handler: Handler = async (event, context) => {
         // Use Gemini 3 Pro Preview as requested for powerful building
         // Map common model names to the specific OpenRouter ID
         const modelMapping: Record<string, string> = {
-            'gemini-3-pro': 'google/gemini-3-pro-preview',
+            'google/gemini-3-pro-preview': 'google/gemini-3-pro-preview',
             'gpt-5': 'openai/gpt-5', // Fallback if user selected this
             'claude-sonnet-4.5': 'anthropic/claude-sonnet-4.5'
         };
@@ -151,8 +151,8 @@ IF THE USER ASKS TO "GET INSTRUCTIONS":
                 headers: {
                     'Authorization': `Bearer ${openRouterKey}`,
                     'Content-Type': 'application/json',
-                    'HTTP-Referer': 'https://promptcore.app',
-                    'X-Title': 'PromptCore'
+                    'HTTP-Referer': 'https://promptorigin.app',
+                    'X-Title': 'PromptOrigin'
                 },
                 body: JSON.stringify({
                     model: modelId,
@@ -188,7 +188,12 @@ IF THE USER ASKS TO "GET INSTRUCTIONS":
                 console.log(`[Background Builder] Job completed successfully for ${messageId}`);
 
                 // 4. Decrement Credits & Update Monthly Usage
-                if (!isDev) {
+                // REFUND/PROTECTION LOGIC: Only charge if the response contains substantial code or plan
+                const isResponseValid = generatedText.length > 100 &&
+                    !generatedText.toLowerCase().includes('### ❌ build failed') &&
+                    (generatedText.includes('```html') || generatedText.includes('### 💎 Final Prompt') || generatedText.includes('1.'));
+
+                if (!isDev && isResponseValid) {
                     const updateData: any = {
                         credits: Math.max(0, currentCredits - finalCost),
                         monthly_usage: monthlyUsage + finalCost
@@ -203,6 +208,10 @@ IF THE USER ASKS TO "GET INSTRUCTIONS":
                         .from('profiles')
                         .update(updateData)
                         .eq('id', userId);
+                } else if (!isDev && !isResponseValid) {
+                    console.log(`[Background Builder] Skipping credit deduction for low-quality or failed build. Text length: ${generatedText.length}`);
+                    // We don't deduct credits, but we already updated the message status to 'failed' in the catch block if it crashed,
+                    // or it might just be a very short/poor response here.
                 }
             }
 

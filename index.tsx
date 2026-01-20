@@ -37,16 +37,22 @@ window.onunhandledrejection = function (event) {
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+import './index.css';
+import MainRouter from './components/MainRouter';
+
+console.log('[Entry] index.tsx starting...');
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
+  console.error('[Entry] Root element not found!');
   throw new Error("Could not find root element to mount to");
 }
 
+console.log('[Entry] Mounting React app...');
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <MainRouter />
   </React.StrictMode>
 );
+console.log('[Entry] Mount command issued.');

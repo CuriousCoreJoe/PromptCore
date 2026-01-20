@@ -34,7 +34,7 @@ const ActionButton: React.FC<{ icon: React.ReactNode, title: string, onClick?: (
   </button>
 );
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({
+export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   message,
   onOptionSelect,
   onRunPrompt,
@@ -174,7 +174,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     h3: ({ children }: any) => <h3 className="text-base md:text-lg font-medium text-gray-100 mb-2 mt-4">{children}</h3>,
     img: ({ src, alt }: any) => {
       if (!src) return null;
-      
+
       return (
         <div className="my-2 max-w-md">
           <img
@@ -202,37 +202,37 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       let active = true;
       if (src && src.startsWith('data:')) {
         try {
-            // Manual Base64 to Blob conversion to avoid fetch() limits/issues
-            const [header, base64Data] = src.split(',');
-            const mimeMatch = header.match(/:(.*?);/);
-            const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
-            
-            const byteCharacters = atob(base64Data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], {type: mimeType});
-            const url = URL.createObjectURL(blob);
-            
-            if (active) setBlobUrl(url);
+          // Manual Base64 to Blob conversion to avoid fetch() limits/issues
+          const [header, base64Data] = src.split(',');
+          const mimeMatch = header.match(/:(.*?);/);
+          const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: mimeType });
+          const url = URL.createObjectURL(blob);
+
+          if (active) setBlobUrl(url);
         } catch (e: any) {
-            console.error("Failed to convert base64 to blob", e);
-            if (active) {
-                setBlobUrl(src); // Fallback to direct src
-                setDebugInfo(`Blob conversion failed: ${e.message}`);
-            }
+          console.error("Failed to convert base64 to blob", e);
+          if (active) {
+            setBlobUrl(src); // Fallback to direct src
+            setDebugInfo(`Blob conversion failed: ${e.message}`);
+          }
         }
       } else {
         setBlobUrl(src);
       }
-      
+
       return () => {
-          active = false;
-          if (blobUrl && blobUrl.startsWith('blob:')) {
-              URL.revokeObjectURL(blobUrl);
-          }
+        active = false;
+        if (blobUrl && blobUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(blobUrl);
+        }
       };
     }, [src]);
 
@@ -253,17 +253,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           </div>
         )}
         {blobUrl && (
-            <img
-              src={blobUrl}
-              alt={alt}
-              className={`w-full h-auto object-cover ${imgLoaded ? '' : 'hidden'}`}
-              onLoad={() => setImgLoaded(true)}
-              onError={(e: any) => {
-                console.error('EmbeddedImage failed to load:', e);
-                setImgError(true);
-                setDebugInfo("Image tag onError event fired");
-              }}
-            />
+          <img
+            src={blobUrl}
+            alt={alt}
+            className={`w-full h-auto object-cover ${imgLoaded ? '' : 'hidden'}`}
+            onLoad={() => setImgLoaded(true)}
+            onError={(e: any) => {
+              console.error('EmbeddedImage failed to load:', e);
+              setImgError(true);
+              setDebugInfo("Image tag onError event fired");
+            }}
+          />
         )}
         {alt && imgLoaded && (
           <p className="px-4 py-2 text-xs text-gray-400 bg-dark-900/50 italic border-t border-dark-800">{alt}</p>
@@ -468,4 +468,4 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       </div>
     </div>
   );
-};
+});

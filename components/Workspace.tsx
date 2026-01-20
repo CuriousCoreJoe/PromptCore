@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Message, AppMode, ChatSession } from '../types';
 import { supabase } from '../lib/supabase';
+import { MessageActionBar } from './MessageActionBar';
 import { MessageBubble } from './MessageBubble';
-import { Send, Mic, Sparkles, ChevronRight, Minimize2, Maximize2, Briefcase, Coffee, List, FileText, Plus, ChevronDown, LayoutGrid, Clock, Upload, Link, Image, Video, Music, Code, Zap, Bug, Palette, Type, MessageSquare, Youtube, AlertCircle } from 'lucide-react';
+import { Search, Send, Mic, Sparkles, ChevronRight, Minimize2, Maximize2, Briefcase, Coffee, List, FileText, Plus, ChevronDown, LayoutGrid, Clock, Upload, Link, Image, Video, Music, Code, Zap, Bug, Palette, Type, MessageSquare, Youtube, AlertCircle } from 'lucide-react';
 import { ArtifactPreview } from './ArtifactPreview';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -340,7 +341,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
     // Check if user can use premium mode (trial limit check)
     const checkPremiumModeAccess = useCallback((): { canAccess: boolean; message: string | null } => {
         const subscriptionStatus = userProfile?.subscription_status || 'free';
-        
+
         // Subscribers have unlimited access
         if (subscriptionStatus !== 'free') {
             return { canAccess: true, message: null };
@@ -354,7 +355,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         };
 
         const check = hasExceededTrialLimit(currentMode, subscriptionStatus, monthlyUsage);
-        
+
         if (check.exceeded) {
             return {
                 canAccess: false,
@@ -375,18 +376,18 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
 
     const handleInitialSubmit = async () => {
         if (!input.trim()) return;
-        
+
         // Check premium mode access before proceeding
         const accessCheck = checkPremiumModeAccess();
         if (!accessCheck.canAccess) {
             onShowToast(accessCheck.message!, 'Upgrade', onUpgrade);
             return;
         }
-        
+
         if (accessCheck.message) {
             onShowToast(accessCheck.message);
         }
-        
+
         setDraftPrompt(input);
 
         let chatId = activeChatId;
@@ -525,6 +526,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                         input: isHiddenInstruction ? content : content,
                         mode: currentMode,
                         userId: session.user.id,
+                        chatId: activeChatId,
                         wizardMode,
                         defaultModel: defaultModel || 'claude-sonnet-4.5'
                     })
@@ -605,7 +607,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 'Pollinations': 'pollinations',
                 'Default': 'nano-banana'
             };
-            
+
             const modelKey = Object.keys(MODEL_MAPPING).find(key => processedOption.includes(key));
             if (modelKey) {
                 setSelectedModel(MODEL_MAPPING[modelKey]);
@@ -714,8 +716,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             const useBackgroundBuilder = currentMode === AppMode.VIBE_CODE;
             const useBackgroundMediaGen = currentMode === AppMode.MEDIA_GEN;
             const endpoint = useBackgroundBuilder ? '/api/builder-background' :
-                           useBackgroundMediaGen ? '/api/media-gen-background' :
-                           '/api/execute';
+                useBackgroundMediaGen ? '/api/media-gen-background' :
+                    '/api/execute';
 
             const response = await fetch(endpoint, {
                 method: 'POST',
@@ -1014,7 +1016,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                             };
                                             const check = hasExceededTrialLimit(currentMode, 'free', monthlyUsage);
                                             const cost = calculateModeCost(currentMode, 'free');
-                                            
+
                                             if (check.exceeded) {
                                                 return (
                                                     <div className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
@@ -1023,7 +1025,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                                     </div>
                                                 );
                                             }
-                                            
+
                                             return (
                                                 <div className="flex items-center gap-3 px-4 py-2 bg-dark-800/50 border border-dark-700 rounded-lg text-gray-400 text-sm">
                                                     <span>{check.remaining} free uses remaining</span>
@@ -1262,7 +1264,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                         </div>
 
                         <div className="text-center mt-3 text-xs text-gray-500 font-medium">
-                            PromptCore can make mistakes. Consider checking important information.
+                            PromptOrigin can make mistakes. Consider checking important information.
                         </div>
                     </div>
                 </div>

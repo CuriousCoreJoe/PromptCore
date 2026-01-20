@@ -172,7 +172,7 @@ const handler: Handler = async (event, context) => {
     }
 
     try {
-        const { messages, input, userId, wizardMode = 'iterative', defaultModel = 'claude-sonnet-4.5', mode = 'Everyday', sourceContent } = JSON.parse(event.body || "{}");
+        const { messages, input, userId, wizardMode = 'iterative', defaultModel = 'claude-sonnet-4.5', mode = 'Everyday', sourceContent, chatId } = JSON.parse(event.body || "{}");
 
         const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -189,7 +189,9 @@ const handler: Handler = async (event, context) => {
         const supabase = createClient(supabaseUrl, supabaseKey);
 
         // 1. Model Selection - Map user's selected model to actual API model
-        const modelName = "google/gemini-3-pro-preview";
+        const modelName = defaultModel?.includes('flash')
+            ? "google/gemini-flash-3-preview"
+            : (defaultModel === 'gemini-3-pro' ? "google/gemini-3-pro-preview" : (defaultModel || "google/gemini-3-pro-preview"));
 
         // 2. Check Credits & Handle Monthly Usage Reset
         const { data: profiles, error: profileError } = await supabase
@@ -249,7 +251,7 @@ const handler: Handler = async (event, context) => {
                 'Talk to Source': 10,
                 'Media Gen': 10
             };
-            
+
             const currentUses: Record<string, number> = {
                 'Vibe Code': profile?.vibe_code_uses_monthly || 0,
                 'Talk to Source': profile?.talk_to_source_uses_monthly || 0,
@@ -279,14 +281,30 @@ const handler: Handler = async (event, context) => {
 
         // 3. Get Mode-Specific System Prompt
         const isIterative = wizardMode === 'iterative';
-        const systemInstruction = getModeSystemPrompt(mode, isIterative);
+        let systemInstruction = getModeSystemPrompt(mode, isIterative);
+
+        // Inject Folder Context if chat belongs to a folder
+        if (chatId) {
+            const { data: chatData } = await supabase.from('chats').select('folder_id').eq('id', chatId).single();
+            if (chatData?.folder_id) {
+                const { data: folderData } = await supabase.from('folders').select('name, context_summary').eq('id', chatData.folder_id).single();
+                if (folderData?.context_summary) {
+                    const folderContextPreamble = `\n\n[FOLDER CONTEXT: This chat is part of the "${folderData.name}" project. Here is relevant context from other chats in this folder that may inform your response:]\n${folderData.context_summary}\n[END FOLDER CONTEXT]\n\n`;
+                    systemInstruction = folderContextPreamble + systemInstruction;
+                    console.log(`[Chat] Injected folder context for folder "${folderData.name}"`);
+                }
+            }
+        }
 
         console.log(`Chat: Mode="${mode}", WizardMode="${wizardMode}"`);
 
-        // Prepare messages for OpenRouter
+        // Prepare messages for OpenRouter with history capping to prevent timeouts
+        const maxHistory = 10;
+        const historySlice = (messages || []).slice(-maxHistory);
+
         const openRouterMessages = [
             { role: 'system', content: systemInstruction },
-            ...(messages || []).filter((m: any) => m.role !== 'system' && m.content && m.content.trim() !== "").map((m: any) => ({
+            ...historySlice.filter((m: any) => m.role !== 'system' && m.content && m.content.trim() !== "").map((m: any) => ({
                 role: m.role === 'model' ? 'assistant' : 'user',
                 content: m.content
             })),
@@ -298,8 +316,8 @@ const handler: Handler = async (event, context) => {
             headers: {
                 'Authorization': `Bearer ${openRouterKey}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://promptcore.app',
-                'X-Title': 'PromptCore'
+                'HTTP-Referer': 'https://promptorigin.app',
+                'X-Title': 'PromptOrigin'
             },
             body: JSON.stringify({
                 model: modelName,
@@ -365,10 +383,23 @@ const handler: Handler = async (event, context) => {
         }
 
         // Decrement Credits (if not dev) & Track Usage
-        if (!isDev) {
+        // REFUND/PROTECTION LOGIC: Only charge if the response is substantial and not an error
+        const isResponseValid = responseText.length > 20 &&
+            !responseText.toLowerCase().includes('error') &&
+            !responseText.toLowerCase().includes('failed to generate') &&
+            !responseText.toLowerCase().includes('insufficient credits');
+
+        if (!isDev && isResponseValid) {
             await supabase
                 .from("profiles")
                 .update(updateData)
+                .eq("id", userId);
+        } else if (!isDev && !isResponseValid) {
+            console.log(`[Chat] Skipping credit deduction for low-quality or error response. Text length: ${responseText.length}`);
+            // Still track lifetime prompts but don't take credits
+            await supabase
+                .from("profiles")
+                .update({ lifetime_prompts: (profile?.lifetime_prompts || 0) + 1 })
                 .eq("id", userId);
         }
 
@@ -389,7 +420,7 @@ const handler: Handler = async (event, context) => {
             headers,
             body: JSON.stringify({
                 text: responseText,
-                msgType: 'meta_helper',
+                msgType: isIterative ? 'meta_helper' : 'final_response',
                 rateTierInfo: Object.keys(rateTierInfo).length > 0 ? rateTierInfo : undefined
             }),
         };

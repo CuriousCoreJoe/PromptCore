@@ -15,17 +15,17 @@ interface ImageGenerationResult {
 async function generateImageWithPollinations(prompt: string): Promise<ImageGenerationResult> {
     try {
         console.log(`[Pollinations.ai] Generating image with prompt: "${prompt.substring(0, 100)}..."`);
-        
+
         // Pollinations.ai uses a simple URL-based API
         // Format: https://image.pollinations.ai/prompt/{encoded_prompt}
         const encodedPrompt = encodeURIComponent(prompt);
         const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true`;
-        
+
         console.log(`[Pollinations.ai] Image URL: ${imageUrl}`);
-        
+
         // Fetch the image on the backend and convert to Base64 to avoid client-side issues
         const response = await fetch(imageUrl);
-        
+
         if (response.ok) {
             const arrayBuffer = await response.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
@@ -64,7 +64,7 @@ async function generateImageWithTogether(prompt: string, togetherKey?: string): 
 
     try {
         console.log(`[Together.ai] Generating image with prompt: "${prompt.substring(0, 100)}..."`);
-        
+
         const response = await fetch('https://api.together.xyz/v1/images/generations', {
             method: 'POST',
             headers: {
@@ -89,7 +89,7 @@ async function generateImageWithTogether(prompt: string, togetherKey?: string): 
         if (response.ok) {
             const data = await response.json();
             console.log(`[Together.ai] Response data keys:`, Object.keys(data));
-            
+
             if (data.data?.[0]?.b64_json) {
                 const cleanBase64 = data.data[0].b64_json.replace(/\s/g, '');
                 const imageUrl = `data:image/png;base64,${cleanBase64}`;
@@ -103,7 +103,7 @@ async function generateImageWithTogether(prompt: string, togetherKey?: string): 
                 console.warn(`[Together.ai] No b64_json in response:`, JSON.stringify(data));
             }
         }
-        
+
         return {
             success: false,
             service: 'together',
@@ -127,7 +127,7 @@ async function generateImageWithGemini(prompt: string, geminiKey: string): Promi
 
     try {
         console.log(`[Gemini] Generating image with prompt: "${prompt.substring(0, 100)}..."`);
-        
+
         const { GoogleGenerativeAI } = require("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(geminiKey);
 
@@ -215,9 +215,9 @@ async function generateImageWithFallback(prompt: string, options: {
     requestedModel?: string;
 }): Promise<ImageGenerationResult> {
     const { openRouterKey, geminiKey, togetherKey, requestedModel } = options;
-    
+
     console.log(`[ImageGen] Starting fallback chain for prompt: "${prompt.substring(0, 100)}..."`);
-    
+
     // 1. Try Gemini Native (Primary - High Quality)
     if (geminiKey) {
         console.log(`[ImageGen] Trying Gemini native`);
@@ -247,8 +247,8 @@ async function generateImageWithFallback(prompt: string, options: {
                 headers: {
                     'Authorization': `Bearer ${openRouterKey}`,
                     'Content-Type': 'application/json',
-                    'HTTP-Referer': 'https://promptcore.app',
-                    'X-Title': 'PromptCore'
+                    'HTTP-Referer': 'https://promptorigin.app',
+                    'X-Title': 'PromptOrigin'
                 },
                 body: JSON.stringify({
                     model: 'google/gemini-3-pro-image-preview',
@@ -265,7 +265,7 @@ async function generateImageWithFallback(prompt: string, options: {
                 console.log(`[ImageGen] OpenRouter response:`, JSON.stringify(data).substring(0, 500));
 
                 const messageContent = data.choices?.[0]?.message?.content;
-                
+
                 // Handle multimodal responses
                 if (Array.isArray(messageContent)) {
                     for (const part of messageContent) {
@@ -429,7 +429,7 @@ const handler: Handler = async (event, context) => {
             // For Media Gen mode, always use the image preview model (nano banana)
             const modelMapping: Record<string, string> = {
                 'gpt-5': 'openai/gpt-5',
-                'gemini-3-pro': 'google/gemini-3-pro-preview',
+                'google/gemini-3-pro-preview': 'google/gemini-3-pro-preview',
                 'claude-sonnet-4.5': 'anthropic/claude-sonnet-4.5',
                 'gemini-3-flash': 'google/gemini-3-flash-preview',
                 'nano-banana': 'google/gemini-3-pro-image-preview',
@@ -458,8 +458,8 @@ const handler: Handler = async (event, context) => {
                 headers: {
                     'Authorization': `Bearer ${openRouterKey}`,
                     'Content-Type': 'application/json',
-                    'HTTP-Referer': 'https://promptcore.app',
-                    'X-Title': 'PromptCore'
+                    'HTTP-Referer': 'https://promptorigin.app',
+                    'X-Title': 'PromptOrigin'
                 },
                 body: JSON.stringify({
                     model: modelId,
@@ -547,7 +547,7 @@ const handler: Handler = async (event, context) => {
 
                     if (imageResult.success && imageResult.imageUrl) {
                         console.log(`[OpenRouter path] Image generation successful via ${imageResult.service}, URL length: ${imageResult.imageUrl.length}`);
-                        
+
                         // Use custom block for robust image passing (Base64 or URL)
                         responseText += `\n\n<!-- IMAGE_DATA_START -->\n${imageResult.imageUrl}\n<!-- IMAGE_DATA_END -->`;
                         console.log(`Total response text length: ${responseText.length}`);
@@ -591,7 +591,7 @@ const handler: Handler = async (event, context) => {
 
         // For Media Gen mode, use image-capable model
         const geminiModelMapping: Record<string, string> = {
-            'gemini-3-pro': 'gemini-3-pro-preview',
+            'google/gemini-3-pro-preview': 'gemini-3-pro-preview',
             'gemini-3-flash': 'gemini-3-flash-preview',
             'gpt-5': 'gemini-3-pro-preview',
             'claude-sonnet-4.5': 'gemini-3-pro-preview'
@@ -655,7 +655,7 @@ const handler: Handler = async (event, context) => {
 
             if (imageResult.success && imageResult.imageUrl) {
                 console.log(`[Gemini path] Image generation successful via ${imageResult.service}`);
-                
+
                 // For base64 images, use special markers to avoid ReactMarkdown issues
                 if (imageResult.imageUrl.startsWith('data:')) {
                     responseText += `\n\n<!-- IMAGE_DATA_START -->\n${imageResult.imageUrl}\n<!-- IMAGE_DATA_END -->`;

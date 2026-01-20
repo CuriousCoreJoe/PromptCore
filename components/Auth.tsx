@@ -31,7 +31,7 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
                     <div className="w-16 h-16 bg-brand-600 rounded-2xl flex items-center justify-center text-white font-bold text-3xl mx-auto shadow-lg shadow-brand-900/40">
                         P
                     </div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight">PromptCore</h1>
+                    <h1 className="text-3xl font-bold text-white tracking-tight">PromptOrigin</h1>
                     <p className="text-gray-400">Secure entry to the world's best AI curriculum designer.</p>
                 </div>
 

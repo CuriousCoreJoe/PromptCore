@@ -56,7 +56,7 @@ CREATE TABLE profiles (
   last_daily_bonus TIMESTAMPTZ DEFAULT NOW(),
   lifetime_prompts INTEGER DEFAULT 0,
   wizard_mode TEXT DEFAULT 'iterative', -- 'iterative' or 'batch'
-  default_model TEXT DEFAULT 'gemini-3-pro', -- 'gpt-5', 'gemini-3-pro', 'claude-sonnet-4.5', 'gemini-3-flash'
+  default_model TEXT DEFAULT 'google/gemini-3-pro-preview', -- 'gpt-5', 'google/gemini-3-pro-preview', 'claude-sonnet-4.5', 'gemini-3-flash'
   stripe_customer_id TEXT,
   subscription_status TEXT DEFAULT 'free', -- free, lite, pro
   monthly_usage INTEGER DEFAULT 0,

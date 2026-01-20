@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Layers, Play, CheckCircle, Loader2, Copy, Download, Star, Info, AlertCircle, 
+import {
+  Layers, Play, CheckCircle, Loader2, Copy, Download, Star, Info, AlertCircle,
   History, FileText, FileSpreadsheet, ChevronDown, ChevronUp, HelpCircle, Plus, Minus, X,
   Check
 } from 'lucide-react';
@@ -21,15 +21,15 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
   const [generatedItems, setGeneratedItems] = useState<any[]>([]);
   const [currentPackId, setCurrentPackId] = useState<string | null>(null);
   const [progressStatus, setProgressStatus] = useState<string>('');
-  
+
   // New State
   const [showHistory, setShowHistory] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
-  
+
   const promptRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
@@ -158,7 +158,7 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
 
   // Copy & Export Handlers
   const handleCopyAll = (items: BatchItem[]) => {
-    const text = items.map(item => 
+    const text = items.map(item =>
       `### ${item.title}\n**Difficulty:** ${item.difficulty}\n**Prompt:**\n${item.prompt_content}`
     ).join('\n\n---\n\n');
     navigator.clipboard.writeText(text);
@@ -192,7 +192,7 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
   };
 
   const handleExportTXT = (items: BatchItem[], filename: string) => {
-    const text = items.map(item => 
+    const text = items.map(item =>
       `Title: ${item.title}\nDifficulty: ${item.difficulty}\nStyle: ${item.style_var}\nDescription: ${item.description}\n\nPrompt:\n${item.prompt_content}\n\n========================================\n`
     ).join('\n');
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8;' });
@@ -209,14 +209,13 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
   const estimatedCost = Math.ceil(count / 5) * CREDIT_COSTS.promptFactoryBatch;
 
   const renderPromptCard = (item: BatchItem) => (
-    <div 
-      key={item.id} 
+    <div
+      key={item.id}
       ref={el => { if (el) promptRefs.current[item.id] = el; }}
-      className={`bg-dark-950 border rounded-xl overflow-hidden transition-all group animate-in fade-in slide-in-from-bottom-4 duration-500 ${
-        selectedPromptId === item.id 
-          ? 'border-brand-500 shadow-lg shadow-brand-900/20' 
-          : 'border-dark-700/50 hover:border-white'
-      }`}
+      className={`bg-dark-950 border rounded-xl overflow-hidden transition-all group animate-in fade-in slide-in-from-bottom-4 duration-500 ${selectedPromptId === item.id
+        ? 'border-brand-500 shadow-lg shadow-brand-900/20'
+        : 'border-dark-700/50 hover:border-white'
+        }`}
       onClick={() => setSelectedPromptId(item.id)}
     >
       <div className="p-4 border-b border-dark-800/50 flex justify-between items-start bg-dark-900/30">
@@ -225,11 +224,10 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
             {item.title}
           </h4>
           <div className="flex flex-wrap items-center gap-2 mt-2">
-            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-              item.difficulty === 'Advanced' ? 'bg-red-900/30 text-red-400' :
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${item.difficulty === 'Advanced' ? 'bg-red-900/30 text-red-400' :
               item.difficulty === 'Intermediate' ? 'bg-yellow-900/30 text-yellow-400' :
-              'bg-green-900/30 text-green-400'
-            }`}>
+                'bg-green-900/30 text-green-400'
+              }`}>
               {item.difficulty}
             </span>
             <span className="bg-dark-800 text-gray-400 px-2 py-0.5 rounded text-[10px] font-mono">
@@ -237,27 +235,26 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
             </span>
           </div>
         </div>
-        <button 
+        <button
           onClick={(e) => {
             e.stopPropagation();
             handleCopySingle(item.prompt_content, item.id);
           }}
-          className={`p-2 rounded transition-colors ${
-            copiedId === item.id 
-              ? 'text-green-400 bg-green-900/20' 
-              : 'text-gray-500 hover:text-white hover:bg-dark-800'
-          }`}
+          className={`p-2 rounded transition-colors ${copiedId === item.id
+            ? 'text-green-400 bg-green-900/20'
+            : 'text-gray-500 hover:text-white hover:bg-dark-800'
+            }`}
           title="Copy Prompt"
         >
           {copiedId === item.id ? <Check size={16} /> : <Copy size={16} />}
         </button>
       </div>
-      
+
       <div className="p-5 space-y-4">
         <p className="text-sm text-gray-400 italic border-l-2 border-dark-700 pl-3">
           "{item.description}"
         </p>
-        
+
         <div className="relative">
           <div className="absolute top-0 left-0 px-2 py-1 bg-dark-800 rounded-br text-[10px] text-gray-500 font-mono uppercase">Prompt</div>
           <div className="bg-dark-900 p-4 pt-8 rounded-lg border border-dark-800 font-mono text-sm text-brand-100 whitespace-pre-wrap leading-relaxed">
@@ -281,13 +278,12 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
             Build high-value prompt curriculums.
           </p>
         </div>
-        <button 
+        <button
           onClick={() => setShowHistory(!showHistory)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-            showHistory 
-              ? 'bg-brand-900/20 border-brand-500 text-brand-400' 
-              : 'bg-dark-900 border-dark-700 text-gray-300 hover:bg-dark-800'
-          }`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${showHistory
+            ? 'bg-brand-900/20 border-brand-500 text-brand-400'
+            : 'bg-dark-900 border-dark-700 text-gray-300 hover:bg-dark-800'
+            }`}
         >
           <History size={18} />
           {showHistory ? 'Back to Factory' : 'History'}
@@ -302,7 +298,7 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
             <div className="bg-dark-900 border border-dark-800 p-6 rounded-xl shadow-lg">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-white">Factory Setup</h2>
-                <button 
+                <button
                   onClick={() => setShowHelp(!showHelp)}
                   className="text-gray-500 hover:text-brand-400 transition-colors"
                 >
@@ -320,6 +316,56 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
                   <p>2. Select the number of prompts to generate.</p>
                   <p>3. Click "Generate Pack" to start.</p>
                   <p>4. Use the Copy/Export buttons to save your prompts.</p>
+
+                  <div className="mt-4 pt-4 border-t border-dark-800">
+                    <h5 className="text-white text-xs font-bold mb-3 uppercase tracking-wider">Difficulty Tiers</h5>
+                    <div className="space-y-3">
+                      {/* Beginner tier */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
+                        <div className="flex-1">
+                          <div className="flex justify-between text-[11px] mb-0.5">
+                            <span className="text-green-400 font-bold">Beginner (Foundation)</span>
+                            <span className="text-gray-500">&lt; 100 words</span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 mb-1 leading-tight italic">Focus: Goal + Context. Best for simple one-off tasks.</p>
+                          <div className="h-1 bg-dark-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-green-500 w-1/3"></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Intermediate tier */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]"></div>
+                        <div className="flex-1">
+                          <div className="flex justify-between text-[11px] mb-0.5">
+                            <span className="text-yellow-400 font-bold">Intermediate (Expansion)</span>
+                            <span className="text-gray-500">100-300 words</span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 mb-1 leading-tight italic">Focus: Persona, Tone + Constraints. Reliable creative results.</p>
+                          <div className="h-1 bg-dark-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-yellow-500 w-2/3"></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Advanced tier */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"></div>
+                        <div className="flex-1">
+                          <div className="flex justify-between text-[11px] mb-0.5">
+                            <span className="text-red-400 font-bold">Advanced (Expert)</span>
+                            <span className="text-gray-500">300+ words</span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 mb-1 leading-tight italic">Focus: Multi-section Specs + Variables. Professional-grade output.</p>
+                          <div className="h-1 bg-dark-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-red-500 w-full"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -338,7 +384,7 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-2">Pack Size</label>
                   <div className="flex items-center gap-3">
-                    <button 
+                    <button
                       onClick={() => setCount(Math.max(5, count - 5))}
                       className="p-2 bg-dark-800 hover:bg-dark-700 rounded-lg border border-dark-700 text-gray-300 transition-colors"
                     >
@@ -355,7 +401,7 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
                         className="w-full bg-dark-950 border border-dark-700 rounded-lg px-4 py-2 text-center text-white font-mono focus:ring-2 focus:ring-brand-500 outline-none"
                       />
                     </div>
-                    <button 
+                    <button
                       onClick={() => setCount(Math.min(200, count + 5))}
                       className="p-2 bg-dark-800 hover:bg-dark-700 rounded-lg border border-dark-700 text-gray-300 transition-colors"
                     >
@@ -402,23 +448,23 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
                   </div>
                 )}
               </div>
-              
+
               <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                <button 
+                <button
                   onClick={() => handleCopyAll(generatedItems)}
                   disabled={generatedItems.length === 0}
                   className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-300 bg-dark-800 hover:bg-dark-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Copy size={14} /> Copy All
                 </button>
-                <button 
+                <button
                   onClick={() => handleExportCSV(generatedItems, `prompts-${topic.replace(/\s+/g, '-')}`)}
                   disabled={generatedItems.length === 0}
                   className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-300 bg-dark-800 hover:bg-dark-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <FileSpreadsheet size={14} /> CSV
                 </button>
-                <button 
+                <button
                   onClick={() => handleExportTXT(generatedItems, `prompts-${topic.replace(/\s+/g, '-')}`)}
                   disabled={generatedItems.length === 0}
                   className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-300 bg-dark-800 hover:bg-dark-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

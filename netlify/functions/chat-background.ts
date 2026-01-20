@@ -127,7 +127,7 @@ const handler: Handler = async (event, context) => {
                 'Talk to Source': 10,
                 'Media Gen': 10
             };
-            
+
             const currentUses: Record<string, number> = {
                 'Vibe Code': profile?.vibe_code_uses_monthly || 0,
                 'Talk to Source': profile?.talk_to_source_uses_monthly || 0,
@@ -235,8 +235,8 @@ const handler: Handler = async (event, context) => {
                 headers: {
                     'Authorization': `Bearer ${openRouterKey}`,
                     'Content-Type': 'application/json',
-                    'HTTP-Referer': 'https://promptcore.app',
-                    'X-Title': 'PromptCore'
+                    'HTTP-Referer': 'https://promptorigin.app',
+                    'X-Title': 'PromptOrigin'
                 },
                 body: JSON.stringify({
                     model: modelId,

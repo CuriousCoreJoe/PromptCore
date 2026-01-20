@@ -1,23 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { Sidebar } from './components/Sidebar';
-import { ModeSelector } from './components/ModeSelector';
-import { MessageBubble } from './components/MessageBubble';
-import { Toast } from './components/Toast';
-import { PromptFactory } from './components/PromptFactory';
-import { Dashboard } from './components/Dashboard';
-import { UpgradePage } from './components/UpgradePage';
-import { Legal } from './components/Legal';
-import { SettingsPage } from './components/SettingsPage';
-import { AppMode, AppView, Message, UserProfile, AIModel } from './types';
-import { sendMessageToGemini } from './services/geminiService';
+import { Sidebar } from './Sidebar';
+import { ModeSelector } from './ModeSelector';
+import { MessageBubble } from './MessageBubble';
+import { Toast } from './Toast';
+import { PromptFactory } from './PromptFactory';
+import { Dashboard } from './Dashboard';
+import { UpgradePage } from './UpgradePage';
+import { Legal } from './Legal';
+import { SettingsPage } from './SettingsPage';
+import { AppMode, AppView, Message, UserProfile, AIModel } from '../types';
+import { sendMessageToGemini } from '../services/geminiService';
 import { Send, Paperclip, Mic, Youtube, Coins } from 'lucide-react';
-import { Workspace } from './components/Workspace';
-import { HistoryPage } from './components/HistoryPage';
+import { Workspace } from './Workspace';
+import { HistoryPage } from './HistoryPage';
 import { Session } from '@supabase/supabase-js';
-import { Auth } from './components/Auth';
-import { supabase } from './lib/supabase';
+import { Auth } from './Auth';
+import { supabase } from '../lib/supabase';
 
 // Helper for classes
 function cn(...inputs: (string | undefined | null | false)[]) {
@@ -33,14 +33,14 @@ const App: React.FC = () => {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [credits, setCredits] = useState(0);
   const [wizardMode, setWizardMode] = useState<'iterative' | 'batch'>('iterative');
-  const [defaultModel, setDefaultModel] = useState<AIModel>('gemini-3-pro');
+  const [defaultModel, setDefaultModel] = useState<AIModel>('google/gemini-3-pro-preview');
   const [defaultExpandBatches, setDefaultExpandBatches] = useState(false);
   const [upgradeFocus, setUpgradeFocus] = useState<'subscriptions' | 'credits'>('subscriptions');
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'system',
-      content: 'Welcome to PromptCore. Select a mode to begin.',
+      content: 'Welcome to PromptOrigin. Select a mode to begin.',
       timestamp: Date.now(),
       mode: AppMode.EVERYDAY
     }
@@ -85,7 +85,7 @@ const App: React.FC = () => {
           setProfile(payload.new as UserProfile);
           setCredits(payload.new.credits);
           setWizardMode(payload.new.wizard_mode || 'iterative');
-          setDefaultModel(payload.new.default_model || 'gemini-3-pro');
+          setDefaultModel(payload.new.default_model || 'google/gemini-3-pro-preview');
         })
         .subscribe();
 
@@ -106,7 +106,7 @@ const App: React.FC = () => {
       setProfile(data[0]);
       setCredits(data[0].credits);
       setWizardMode(data[0].wizard_mode || 'iterative');
-      setDefaultModel(data[0].default_model || 'gemini-3-pro');
+      setDefaultModel(data[0].default_model || 'google/gemini-3-pro-preview');
     }
   };
 
@@ -214,7 +214,7 @@ const App: React.FC = () => {
               .select('mode')
               .eq('id', chatId)
               .single();
-            
+
             if (data?.mode) {
               setCurrentMode(data.mode as AppMode);
             }
@@ -222,6 +222,7 @@ const App: React.FC = () => {
             setCurrentView('workspace');
           }}
           userProfile={profile}
+          userId={session?.user?.id}
         />
       );
     }
@@ -298,7 +299,7 @@ const App: React.FC = () => {
             .select('mode')
             .eq('id', chatId)
             .single();
-          
+
           if (data?.mode) {
             setCurrentMode(data.mode as AppMode);
           }
@@ -317,13 +318,13 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col min-w-0 relative h-full transition-all duration-300">
         {/* Mobile Header */}
         <div className="md:hidden h-14 bg-dark-900 border-b border-dark-800 flex items-center px-4 justify-between flex-shrink-0 z-30">
-          <button 
+          <button
             onClick={() => setMobileMenuOpen(true)}
             className="p-2 -ml-2 text-gray-400 hover:text-white"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
           </button>
-          <span className="font-semibold text-white">PromptCore</span>
+          <span className="font-semibold text-white">PromptOrigin</span>
           <div className="w-8" /> {/* Spacer for centering */}
         </div>
 

@@ -15,7 +15,7 @@ const MOCK_USER: UserProfile = {
     credits: 850,
     subscriptionTier: 'free',
     wizardMode: 'iterative',
-    defaultModel: 'gemini-3-pro',
+    defaultModel: 'google/gemini-3-pro-preview',
     monthly_usage: 0,
     last_usage_reset: new Date().toISOString(),
     createdAt: Date.now()
@@ -115,9 +115,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
         const isFree = userProfile.subscription_status === 'free';
         const isLite = userProfile.subscription_status === 'lite';
         const isPro = userProfile.subscription_status === 'pro';
-        
-        const hasBoughtCredits = credits >= 1500; 
-        
+
+        const hasBoughtCredits = credits >= 1500;
+
         let limit = 0;
         if (isFree) limit = hasBoughtCredits ? 5 : 0;
         if (isLite) limit = 5;
@@ -163,7 +163,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                 .eq('user_id', userProfile.id)
                 .order('created_at', { ascending: false });
             if (docs) setDocuments(docs);
-            
+
             setShowAddSource(false);
             setNewSourceTitle('');
             setNewSourceContent('');
@@ -208,7 +208,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                     value={isDev ? 'Developer' : getPlanName(MOCK_USER.subscriptionTier)}
                     subtext={isDev ? 'Full Access' : 'Upgrade for more power'}
                 />
-                <div 
+                <div
                     className="bg-dark-900 border border-dark-800 p-6 rounded-xl shadow-lg flex items-center gap-4 cursor-pointer hover:border-brand-500/30 transition-colors group"
                     onClick={() => setStatMode(prev => prev === 'generations' ? 'credits' : 'generations')}
                 >
@@ -220,8 +220,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                             {statMode === 'generations' ? 'Total Generations' : 'Total Credits Spent'}
                         </p>
                         <p className="text-2xl font-bold text-white">
-                            {statMode === 'generations' 
-                                ? (userProfile?.lifetime_prompts || 0) 
+                            {statMode === 'generations'
+                                ? (userProfile?.lifetime_prompts || 0)
                                 : (userProfile?.monthly_usage || 0) // Using monthly usage as proxy for now, ideally lifetime_usage
                             }
                         </p>
@@ -238,7 +238,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                             <Package size={18} className="text-brand-400" />
                             Prompt Batches
                         </h2>
-                        <button 
+                        <button
                             onClick={() => onNavigate('factory')}
                             className="text-xs text-brand-400 hover:text-brand-300 font-medium"
                         >
@@ -258,9 +258,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                                         </span>
                                     </div>
                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button 
+                                        <button
                                             onClick={() => onNavigate('factory')}
-                                            className="p-1.5 text-gray-400 hover:text-white hover:bg-dark-800 rounded" 
+                                            className="p-1.5 text-gray-400 hover:text-white hover:bg-dark-800 rounded"
                                             title="View Details"
                                         >
                                             <ExternalLink size={14} />
@@ -288,10 +288,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                             documents.map(doc => (
                                 <div key={doc.id} className={`flex items-center justify-between p-3 bg-dark-950 border rounded-lg group transition-colors ${doc.is_business_context ? 'border-brand-500/30 bg-brand-900/10' : 'border-dark-800 hover:border-orange-500/30'}`}>
                                     <div className="flex items-center gap-3 overflow-hidden">
-                                        <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${
-                                            doc.is_business_context ? 'bg-brand-500/20 text-brand-400' :
-                                            'bg-blue-900/20 text-blue-500'
-                                        }`}>
+                                        <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${doc.is_business_context ? 'bg-brand-500/20 text-brand-400' :
+                                                'bg-blue-900/20 text-blue-500'
+                                            }`}>
                                             {doc.is_business_context ? <Shield size={14} /> : <FileText size={14} />}
                                         </div>
                                         <div className="flex flex-col truncate">
@@ -302,7 +301,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                                             <span className="text-xs text-gray-500">Added {new Date(doc.created_at).toLocaleDateString()}</span>
                                         </div>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => handleDeleteSource(doc.id)}
                                         className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-dark-800 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                                     >
@@ -312,7 +311,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                             ))
                         )}
                         <div className="flex gap-2">
-                            <button 
+                            <button
                                 onClick={() => {
                                     setIsBusinessContext(false);
                                     setShowAddSource(true);
@@ -321,7 +320,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                             >
                                 <Plus size={14} /> Add Source
                             </button>
-                            <button 
+                            <button
                                 onClick={() => {
                                     setIsBusinessContext(true);
                                     setShowAddSource(true);
@@ -349,8 +348,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                         <div className="p-6 space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-400 mb-1">Title</label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     value={newSourceTitle}
                                     onChange={e => setNewSourceTitle(e.target.value)}
                                     className="w-full bg-dark-950 border border-dark-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-brand-500 outline-none"
@@ -361,13 +360,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                             <div>
                                 <label className="block text-sm font-medium text-gray-400 mb-1">Source Type</label>
                                 <div className="flex gap-2">
-                                    <button 
+                                    <button
                                         onClick={() => setNewSourceType('paste')}
                                         className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${newSourceType === 'paste' ? 'bg-brand-600 border-brand-500 text-white' : 'bg-dark-950 border-dark-700 text-gray-400 hover:bg-dark-800'}`}
                                     >
                                         Paste Text
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => setNewSourceType('txt')}
                                         className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${newSourceType === 'txt' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-dark-950 border-dark-700 text-gray-400 hover:bg-dark-800'}`}
                                     >
@@ -382,8 +381,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                                 </label>
                                 {newSourceType === 'txt' ? (
                                     <div className="border-2 border-dashed border-dark-700 rounded-lg p-8 text-center hover:border-brand-500 transition-colors relative">
-                                        <input 
-                                            type="file" 
+                                        <input
+                                            type="file"
                                             accept=".txt,.pdf"
                                             onChange={handleFileUpload}
                                             className="absolute inset-0 opacity-0 cursor-pointer"
@@ -394,7 +393,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                                         {newSourceTitle && <p className="text-brand-400 text-sm mt-2 font-medium">{newSourceTitle}</p>}
                                     </div>
                                 ) : (
-                                    <textarea 
+                                    <textarea
                                         value={newSourceContent}
                                         onChange={e => setNewSourceContent(e.target.value)}
                                         className="w-full h-32 bg-dark-950 border border-dark-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-brand-500 outline-none resize-none"
@@ -403,7 +402,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                                 )}
                             </div>
 
-                            <button 
+                            <button
                                 onClick={handleAddSource}
                                 disabled={isUploading}
                                 className="w-full py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"

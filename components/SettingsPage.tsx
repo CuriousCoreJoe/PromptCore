@@ -42,7 +42,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 }) => {
     const modelDisplayNames: Record<AIModel, string> = {
         'gpt-5': 'ChatGPT 5',
-        'gemini-3-pro': 'Gemini 3 Pro',
+        'google/gemini-3-pro-preview': 'Gemini 3 Pro',
         'claude-sonnet-4.5': 'Claude Sonnet 4.5',
         'gemini-3-flash': 'Gemini 3 Flash'
     };
@@ -225,10 +225,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         ChatGPT 5
                                     </button>
                                     <button
-                                        onClick={() => onModelChange('gemini-3-pro')}
+                                        onClick={() => onModelChange('google/gemini-3-pro-preview')}
                                         className={cn(
                                             "px-4 py-2 rounded-lg text-xs font-bold transition-all tracking-tight whitespace-nowrap",
-                                            defaultModel === 'gemini-3-pro'
+                                            defaultModel === 'google/gemini-3-pro-preview'
                                                 ? "bg-blue-600 text-white shadow-lg"
                                                 : "text-gray-500 hover:text-gray-300"
                                         )}

@@ -12,6 +12,20 @@ export interface ChatSession {
   mode: AppMode;
   created_at: string;
   updated_at: string;
+  is_pinned?: boolean;
+  is_bookmarked?: boolean;
+  folder_id?: string | null;
+}
+
+export interface Folder {
+  id: string;
+  user_id: string;
+  name: string;
+  description?: string;
+  color: string;
+  context_summary?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export type AppView = 'workspace' | 'factory' | 'dashboard' | 'upgrade' | 'legal' | 'settings' | 'history';
@@ -29,7 +43,7 @@ export interface Message {
   metadata?: any;
 }
 
-export type AIModel = 'gpt-5' | 'gemini-3-pro' | 'claude-sonnet-4.5' | 'gemini-3-flash';
+export type AIModel = 'gpt-5' | 'google/gemini-3-pro-preview' | 'claude-sonnet-4.5' | 'gemini-3-flash';
 
 export interface UserProfile {
   id: string;

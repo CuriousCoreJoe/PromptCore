@@ -35,7 +35,7 @@ const handler: Handler = async (event, context) => {
         }
 
         const supabase = createClient(supabaseUrl, supabaseKey);
-        const inngest = new Inngest({ id: "promptcore-app", eventKey: inngestKey });
+        const inngest = new Inngest({ id: "promptorigin-app", eventKey: inngestKey });
 
         // 1. Check Credits & Calculate Cost
         const { data: profiles, error: profileError } = await supabase

@@ -221,8 +221,8 @@ async function generateImageWithFallback(prompt: string, options: {
                 headers: {
                     'Authorization': `Bearer ${openRouterKey}`,
                     'Content-Type': 'application/json',
-                    'HTTP-Referer': 'https://promptcore.app',
-                    'X-Title': 'PromptCore'
+                    'HTTP-Referer': 'https://promptorigin.app',
+                    'X-Title': 'PromptOrigin'
                 },
                 body: JSON.stringify({
                     model: 'google/gemini-3-pro-image-preview',
