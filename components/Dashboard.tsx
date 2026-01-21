@@ -4,10 +4,13 @@ import { UserProfile, Document, AppView } from '../types';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { supabase } from '../lib/supabase';
+import { Helmet } from 'react-helmet-async';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
     return twMerge(clsx(inputs));
 }
+
+
 
 // Mock Data for Display Purposes
 const MOCK_USER: UserProfile = {
@@ -187,6 +190,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
 
     return (
         <div className="flex-1 h-full flex flex-col bg-dark-950 text-gray-100 p-4 md:p-8 overflow-y-auto relative">
+            <Helmet>
+                <title>Dashboard | Prompt Origin</title>
+                <meta name="robots" content="noindex" />
+            </Helmet>
             {/* Header */}
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
@@ -289,7 +296,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                                 <div key={doc.id} className={`flex items-center justify-between p-3 bg-dark-950 border rounded-lg group transition-colors ${doc.is_business_context ? 'border-brand-500/30 bg-brand-900/10' : 'border-dark-800 hover:border-orange-500/30'}`}>
                                     <div className="flex items-center gap-3 overflow-hidden">
                                         <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${doc.is_business_context ? 'bg-brand-500/20 text-brand-400' :
-                                                'bg-blue-900/20 text-blue-500'
+                                            'bg-blue-900/20 text-blue-500'
                                             }`}>
                                             {doc.is_business_context ? <Shield size={14} /> : <FileText size={14} />}
                                         </div>

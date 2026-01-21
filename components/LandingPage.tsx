@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Helmet } from 'react-helmet-async'; // <--- NEW IMPORT
 import { MessageSquare, Sparkles, Cpu, Code2, LayoutGrid, Hammer, FileSearch, ScanText, Check, ArrowRight, PlayCircle } from 'lucide-react';
 
-// --- Sub-components for cleaner code ---
+// --- Sub-components (FeatureCard, PricingCard) remain exactly the same as before ---
+// (I am omitting them here to save space, but keep your existing FeatureCard and PricingCard code!)
+// ... [Paste your existing FeatureCard and PricingCard components here] ...
 
 const FeatureCard = ({ title, subtitle, desc, cost, icon: Icon, subIcon: SubIcon, color, delay }) => (
     <motion.div
@@ -44,7 +47,6 @@ const PricingCard = ({ tier, index }) => {
                     </span>
                 </div>
             )}
-
             <div className="text-center mb-6">
                 <h3 className="text-2xl font-bold mb-2 text-white">{tier.name}</h3>
                 <div className="flex items-baseline justify-center mb-2">
@@ -54,7 +56,6 @@ const PricingCard = ({ tier, index }) => {
                 <p className={`font-semibold mb-2 ${tier.accentColor}`}>{tier.credits}</p>
                 <p className="text-slate-300 text-sm">{tier.description}</p>
             </div>
-
             <ul className="space-y-3 mb-8">
                 {tier.features.map((feature, idx) => (
                     <li key={idx} className="flex items-start gap-2 text-slate-300">
@@ -63,7 +64,6 @@ const PricingCard = ({ tier, index }) => {
                     </li>
                 ))}
             </ul>
-
             <button className={`w-full font-semibold py-4 text-lg rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg text-white ${tier.buttonColor}`}>
                 {tier.cta}
             </button>
@@ -83,7 +83,6 @@ export default function LandingPage() {
         return 'https://app.usepromptorigin.com';
     };
 
-    // Auto-play the mockup animation
     useEffect(() => {
         const modes = ['everyday', 'vibe', 'factory', 'source'];
         const interval = setInterval(() => {
@@ -95,6 +94,7 @@ export default function LandingPage() {
         return () => clearInterval(interval);
     }, []);
 
+    // ... [Keep your existing pricingTiers array exactly as it is] ...
     const pricingTiers = [
         {
             name: "Starter",
@@ -140,6 +140,27 @@ export default function LandingPage() {
     return (
         <div className="min-h-screen bg-[#020617] text-slate-200 font-sans overflow-x-hidden selection:bg-cyan-500/30">
 
+            {/* --- METADATA SECTION START --- */}
+            <Helmet>
+                <title>Prompt Origin | Don't just chat. Start at the Origin.</title>
+                <meta name="description" content="The staging ground for your best ideas. Refine prompts, build specs for Cursor, and generate assets before you open ChatGPT." />
+
+                {/* Facebook / Discord / LinkedIn */}
+                <meta property="og:type" content="website" />
+                <meta property="og:url" content="https://usepromptorigin.com/" />
+                <meta property="og:title" content="Prompt Origin | Vibe Coding & Prompt Management" />
+                <meta property="og:description" content="Stop staring at a blinking cursor. Generate Specs, refine prompts, and manage your AI workflow." />
+                <meta property="og:image" content="https://usepromptorigin.com/og-image.jpg" />
+
+                {/* Twitter */}
+                <meta property="twitter:card" content="summary_large_image" />
+                <meta property="twitter:url" content="https://usepromptorigin.com/" />
+                <meta property="twitter:title" content="Prompt Origin | Vibe Coding & Prompt Management" />
+                <meta property="twitter:description" content="Stop staring at a blinking cursor. Generate Specs, refine prompts, and manage your AI workflow." />
+                <meta property="twitter:image" content="https://usepromptorigin.com/og-image.jpg" />
+            </Helmet>
+            {/* --- METADATA SECTION END --- */}
+
             {/* Background Grid */}
             <div className="fixed inset-0 z-0 pointer-events-none opacity-15" style={{ backgroundImage: 'radial-gradient(#334155 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
 
@@ -155,13 +176,13 @@ export default function LandingPage() {
                         <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
                     </div>
                     <div className="flex gap-4">
-                        {/* Link to your existing LOGIN route */}
                         <a href={getAppUrl()} className="text-sm font-medium text-slate-300 hover:text-white pt-2">Login</a>
                         <a href={getAppUrl()} className="text-sm font-medium bg-white text-slate-950 px-4 py-2 rounded hover:bg-slate-200 transition-colors">Get Started</a>
                     </div>
                 </div>
             </nav>
 
+            {/* ... [Rest of your main content remains unchanged] ... */}
             <main className="relative z-10">
                 {/* Hero Section */}
                 <section className="pt-32 pb-20 lg:pt-48 lg:pb-32 px-6">
@@ -300,7 +321,6 @@ export default function LandingPage() {
                         </div>
                     </div>
                 </section>
-
             </main>
 
             <footer className="border-t border-white/5 bg-[#020617] py-12 text-center text-slate-600 text-sm">

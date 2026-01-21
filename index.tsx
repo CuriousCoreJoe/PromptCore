@@ -40,6 +40,8 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import MainRouter from './components/MainRouter';
 
+import { HelmetProvider } from 'react-helmet-async';
+
 console.log('[Entry] index.tsx starting...');
 
 const rootElement = document.getElementById('root');
@@ -52,7 +54,9 @@ console.log('[Entry] Mounting React app...');
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <MainRouter />
+    <HelmetProvider>
+      <MainRouter />
+    </HelmetProvider>
   </React.StrictMode>
 );
 console.log('[Entry] Mount command issued.');

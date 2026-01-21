@@ -19,6 +19,7 @@ import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-
 import { Session } from '@supabase/supabase-js';
 import { Auth } from './Auth';
 import { supabase } from '../lib/supabase';
+import { Helmet } from 'react-helmet-async';
 
 // Helper for classes
 function cn(...inputs: (string | undefined | null | false)[]) {
@@ -300,6 +301,9 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-dark-950 text-gray-100 font-sans overflow-hidden selection:bg-brand-500/30">
+      <Helmet>
+        <title>Prompt Origin | App</title>
+      </Helmet>
 
       <Sidebar
         currentView={currentView}
