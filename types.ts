@@ -97,3 +97,25 @@ export interface FactoryBatch {
   topic: string;
   angle: string;
 }
+
+export interface FeedbackItem {
+  id: string;
+  user_id: string;
+  type: 'bug' | 'suggestion' | 'feedback' | 'complaint';
+  content: string;
+  tags?: string[];
+  status: 'open' | 'in_progress' | 'closed';
+  created_at: string;
+  vote_count?: number; // Virtual field from join or separate count
+  user_has_voted?: boolean; // Virtual field
+  user_email?: string; // Virtual, joined from profile/auth?
+}
+
+export interface FeedbackComment {
+  id: string;
+  feedback_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  user_email?: string; // Virtual
+}

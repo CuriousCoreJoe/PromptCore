@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Package, FileText, Clock, TrendingUp, Shield, Trash2, ExternalLink, Plus, X, Upload, Youtube, FileType, File } from 'lucide-react';
+import { CreditCard, Package, FileText, Clock, TrendingUp, Shield, Trash2, ExternalLink, Plus, X, Upload, Youtube, FileType, File, MessageSquare } from 'lucide-react';
 import { UserProfile, Document, AppView } from '../types';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { supabase } from '../lib/supabase';
 import { Helmet } from 'react-helmet-async';
+import { FeedbackBoard } from './FeedbackBoard';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
     return twMerge(clsx(inputs));
@@ -41,6 +42,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
     const [isUploading, setIsUploading] = useState(false);
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [statMode, setStatMode] = useState<'generations' | 'credits'>('generations');
+    const [activeTab, setActiveTab] = useState<'overview' | 'feedback'>('overview');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -201,159 +203,199 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                 <meta name="robots" content="noindex" />
             </Helmet>
             {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-                <p className="text-gray-400">Manage your credits, generated assets, and knowledge sources.</p>
-            </div>
-
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <StatCard
-                    icon={<CreditCard className="text-brand-500" />}
-                    label="Credits Available"
-                    value={isDev ? 'Unlimited' : credits}
-                    subtext={isDev ? 'Developer Account' : 'Top up to generate more'}
-                />
-                <StatCard
-                    icon={<Shield className="text-purple-500" />}
-                    label="Current Plan"
-                    value={isDev ? 'Developer' : getPlanName(MOCK_USER.subscriptionTier)}
-                    subtext={isDev ? 'Full Access' : 'Upgrade for more power'}
-                />
-                <div
-                    className="bg-dark-900 border border-dark-800 p-6 rounded-xl shadow-lg flex items-center gap-4 cursor-pointer hover:border-brand-500/30 transition-colors group"
-                    onClick={() => setStatMode(prev => prev === 'generations' ? 'credits' : 'generations')}
-                >
-                    <div className="w-12 h-12 bg-dark-950 rounded-full flex items-center justify-center border border-dark-800 shadow-sm">
-                        <TrendingUp className="text-green-500" />
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-400 font-medium group-hover:text-brand-400 transition-colors">
-                            {statMode === 'generations' ? 'Total Generations' : 'Total Credits Spent'}
-                        </p>
-                        <p className="text-2xl font-bold text-white">
-                            {statMode === 'generations'
-                                ? (userProfile?.lifetime_prompts || 0)
-                                : (userProfile?.monthly_usage || 0) // Using monthly usage as proxy for now, ideally lifetime_usage
-                            }
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">Click to switch view</p>
-                    </div>
+            <div className="mb-8 flex justify-between items-end">
+                <div>
+                    <h1 className="text-3xl font-bold text-white mb-2">
+                        {activeTab === 'overview' ? 'Dashboard' : 'Feedback Board'}
+                    </h1>
+                    <p className="text-gray-300">
+                        {activeTab === 'overview'
+                            ? 'Manage your credits, generated assets, and knowledge sources.'
+                            : 'Help us improve Prompt Origin by sharing your thoughts, feature requests or reporting bugs.'
+                        }
+                    </p>
                 </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* PDF Library (Talk to Source Mode Only) */}
-                <div className="bg-dark-900 border border-dark-800 rounded-xl overflow-hidden shadow-lg flex flex-col">
-                    <div className="p-4 border-b border-dark-800 flex justify-between items-center bg-dark-950/50">
-                        <div className="flex flex-col">
-                            <h2 className="font-semibold text-white flex items-center gap-2">
-                                <FileText size={18} className="text-orange-400" />
-                                PDF Library (Talk to Source)
-                            </h2>
-                            <span className="text-[10px] text-gray-500 uppercase tracking-widest mt-0.5">
-                                {documents.filter(d => d.source_type === 'pdf' && !d.is_business_context).length} / {
-                                    (userProfile?.subscription_status === 'pro' ? 100 :
-                                        userProfile?.subscription_status === 'lite' ? 30 : 10)
-                                } PDFs Used
-                            </span>
-                        </div>
-                        <button
-                            onClick={() => {
-                                setIsBusinessContext(false);
-                                setShowAddSource(true);
-                                setNewSourceType('pdf');
-                            }}
-                            className="px-3 py-1.5 bg-dark-800 hover:bg-dark-700 border border-dark-700 text-gray-300 rounded-lg text-xs font-medium transition-all flex items-center gap-2"
-                        >
-                            <Plus size={14} /> Upload
-                        </button>
-                    </div>
-                    <div className="p-4">
-                        {documents.filter(d => d.source_type === 'pdf' && !d.is_business_context).length === 0 ? (
-                            <div className="text-center text-gray-500 py-12 bg-dark-950/30 rounded-lg border border-dashed border-dark-800">
-                                <FileText size={32} className="mx-auto mb-3 opacity-20" />
-                                <p className="text-sm">Your Talk to Source library is empty.</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                {documents.filter(d => d.source_type === 'pdf' && !d.is_business_context).map(doc => (
-                                    <div key={doc.id} className="flex items-center justify-between p-3 bg-dark-950 border border-dark-800 rounded-xl group transition-all hover:border-orange-500/30">
-                                        <div className="flex items-center gap-3 overflow-hidden">
-                                            <div className="w-8 h-8 rounded-lg bg-orange-900/10 text-orange-500 flex items-center justify-center flex-shrink-0">
-                                                <FileText size={14} />
-                                            </div>
-                                            <div className="flex flex-col truncate">
-                                                <span className="font-medium text-gray-200 text-sm truncate">{doc.title}</span>
-                                                <span className="text-[10px] text-gray-500">{new Date(doc.created_at).toLocaleDateString()}</span>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => handleDeleteSource(doc.id)}
-                                            className="p-1.5 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
+                <div className="flex bg-dark-900 rounded-full p-1 border border-dark-800 shadow-inner">
+                    <button
+                        onClick={() => setActiveTab('overview')}
+                        className={clsx(
+                            "px-6 py-2 rounded-full text-sm font-bold transition-all",
+                            activeTab === 'overview'
+                                ? "bg-brand-600 text-white shadow-lg"
+                                : "text-gray-400 hover:text-white"
                         )}
-                    </div>
-                </div>
-
-                {/* Knowledge Base (Global Platform Enrichment) */}
-                <div className="bg-dark-900 border border-dark-800 rounded-xl overflow-hidden shadow-lg flex flex-col">
-                    <div className="p-4 border-b border-dark-800 flex justify-between items-center bg-dark-950/50">
-                        <div className="flex flex-col">
-                            <h2 className="font-semibold text-white flex items-center gap-2">
-                                <Shield size={18} className="text-brand-400" />
-                                Knowledge Base
-                            </h2>
-                            <span className="text-[10px] text-gray-500 uppercase tracking-widest mt-0.5">Enriches Prompt Origin Context</span>
-                        </div>
-                        <button
-                            onClick={() => {
-                                setIsBusinessContext(true);
-                                setShowAddSource(true);
-                            }}
-                            className="px-3 py-1.5 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/30 text-brand-400 rounded-lg text-xs font-medium transition-all flex items-center gap-2"
-                        >
-                            <Plus size={14} /> Add Context
-                        </button>
-                    </div>
-                    <div className="p-4 overflow-y-auto max-h-[400px]">
-                        {documents.filter(d => d.is_business_context).length === 0 ? (
-                            <div className="text-center text-gray-500 py-12 bg-dark-950/30 rounded-lg border border-dashed border-dark-800">
-                                <Shield size={32} className="mx-auto mb-3 opacity-20" />
-                                <p className="text-sm">No business context added yet.</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                {documents.filter(d => d.is_business_context).map(doc => (
-                                    <div key={doc.id} className="flex items-center justify-between p-3 bg-dark-950 border border-brand-500/30 rounded-xl group transition-all">
-                                        <div className="flex items-center gap-3 overflow-hidden">
-                                            <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-400 flex items-center justify-center flex-shrink-0">
-                                                <Shield size={14} />
-                                            </div>
-                                            <div className="flex flex-col truncate">
-                                                <span className="font-medium text-gray-200 text-sm truncate">{doc.title}</span>
-                                                <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Business Context</span>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => handleDeleteSource(doc.id)}
-                                            className="p-1.5 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
+                    >
+                        Overview
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('feedback')}
+                        className={clsx(
+                            "px-6 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2",
+                            activeTab === 'feedback'
+                                ? "bg-brand-600 text-white shadow-lg"
+                                : "text-gray-400 hover:text-white"
                         )}
-                    </div>
+                    >
+                        <MessageSquare size={14} /> Feedback
+                    </button>
                 </div>
             </div>
+
+            {activeTab === 'feedback' ? (
+                <div className="flex-1 min-h-0 bg-dark-900 border border-dark-800 rounded-xl overflow-hidden shadow-lg">
+                    {userProfile && <FeedbackBoard userId={userProfile.id} />}
+                </div>
+            ) : (
+                <>
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <StatCard
+                            icon={<CreditCard className="text-brand-500" />}
+                            label="Credits Available"
+                            value={isDev ? 'Unlimited' : credits}
+                            subtext={isDev ? 'Developer Account' : 'Top up to generate more'}
+                        />
+                        <StatCard
+                            icon={<Shield className="text-purple-500" />}
+                            label="Current Plan"
+                            value={isDev ? 'Developer' : getPlanName(MOCK_USER.subscriptionTier)}
+                            subtext={isDev ? 'Full Access' : 'Upgrade for more power'}
+                        />
+                        <div
+                            className="bg-dark-900 border border-dark-800 p-6 rounded-xl shadow-lg flex items-center gap-4 cursor-pointer hover:border-brand-500/30 transition-colors group"
+                            onClick={() => setStatMode(prev => prev === 'generations' ? 'credits' : 'generations')}
+                        >
+                            <div className="w-12 h-12 bg-dark-950 rounded-full flex items-center justify-center border border-dark-800 shadow-sm">
+                                <TrendingUp className="text-green-500" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-400 font-medium group-hover:text-brand-400 transition-colors">
+                                    {statMode === 'generations' ? 'Total Generations' : 'Total Credits Spent'}
+                                </p>
+                                <p className="text-2xl font-bold text-white">
+                                    {statMode === 'generations'
+                                        ? (userProfile?.lifetime_prompts || 0)
+                                        : (userProfile?.monthly_usage || 0) // Using monthly usage as proxy for now, ideally lifetime_usage
+                                    }
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">Click to switch view</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* PDF Library (Talk to Source Mode Only) */}
+                        <div className="bg-dark-900 border border-dark-800 rounded-xl overflow-hidden shadow-lg flex flex-col">
+                            <div className="p-4 border-b border-dark-800 flex justify-between items-center bg-dark-950/50">
+                                <div className="flex flex-col">
+                                    <h2 className="font-semibold text-white flex items-center gap-2">
+                                        <FileText size={18} className="text-orange-400" />
+                                        PDF Library (Talk to Source)
+                                    </h2>
+                                    <span className="text-[10px] text-gray-500 uppercase tracking-widest mt-0.5">
+                                        {documents.filter(d => d.source_type === 'pdf' && !d.is_business_context).length} / {
+                                            (userProfile?.subscription_status === 'pro' ? 100 :
+                                                userProfile?.subscription_status === 'lite' ? 30 : 10)
+                                        } PDFs Used
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setIsBusinessContext(false);
+                                        setShowAddSource(true);
+                                        setNewSourceType('pdf');
+                                    }}
+                                    className="px-3 py-1.5 bg-dark-800 hover:bg-dark-700 border border-dark-700 text-gray-300 rounded-lg text-xs font-medium transition-all flex items-center gap-2"
+                                >
+                                    <Plus size={14} /> Upload
+                                </button>
+                            </div>
+                            <div className="p-4">
+                                {documents.filter(d => d.source_type === 'pdf' && !d.is_business_context).length === 0 ? (
+                                    <div className="text-center text-gray-500 py-12 bg-dark-950/30 rounded-lg border border-dashed border-dark-800">
+                                        <FileText size={32} className="mx-auto mb-3 opacity-20" />
+                                        <p className="text-sm">Your Talk to Source library is empty.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {documents.filter(d => d.source_type === 'pdf' && !d.is_business_context).map(doc => (
+                                            <div key={doc.id} className="flex items-center justify-between p-3 bg-dark-950 border border-dark-800 rounded-xl group transition-all hover:border-orange-500/30">
+                                                <div className="flex items-center gap-3 overflow-hidden">
+                                                    <div className="w-8 h-8 rounded-lg bg-orange-900/10 text-orange-500 flex items-center justify-center flex-shrink-0">
+                                                        <FileText size={14} />
+                                                    </div>
+                                                    <div className="flex flex-col truncate">
+                                                        <span className="font-medium text-gray-200 text-sm truncate">{doc.title}</span>
+                                                        <span className="text-[10px] text-gray-500">{new Date(doc.created_at).toLocaleDateString()}</span>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDeleteSource(doc.id)}
+                                                    className="p-1.5 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Knowledge Base (Global Platform Enrichment) */}
+                        <div className="bg-dark-900 border border-dark-800 rounded-xl overflow-hidden shadow-lg flex flex-col">
+                            <div className="p-4 border-b border-dark-800 flex justify-between items-center bg-dark-950/50">
+                                <div className="flex flex-col">
+                                    <h2 className="font-semibold text-white flex items-center gap-2">
+                                        <Shield size={18} className="text-brand-400" />
+                                        Knowledge Base
+                                    </h2>
+                                    <span className="text-[10px] text-gray-500 uppercase tracking-widest mt-0.5">Enriches Prompt Origin Context</span>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setIsBusinessContext(true);
+                                        setShowAddSource(true);
+                                    }}
+                                    className="px-3 py-1.5 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/30 text-brand-400 rounded-lg text-xs font-medium transition-all flex items-center gap-2"
+                                >
+                                    <Plus size={14} /> Add Context
+                                </button>
+                            </div>
+                            <div className="p-4 overflow-y-auto max-h-[400px]">
+                                {documents.filter(d => d.is_business_context).length === 0 ? (
+                                    <div className="text-center text-gray-500 py-12 bg-dark-950/30 rounded-lg border border-dashed border-dark-800">
+                                        <Shield size={32} className="mx-auto mb-3 opacity-20" />
+                                        <p className="text-sm">No business context added yet.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {documents.filter(d => d.is_business_context).map(doc => (
+                                            <div key={doc.id} className="flex items-center justify-between p-3 bg-dark-950 border border-brand-500/30 rounded-xl group transition-all">
+                                                <div className="flex items-center gap-3 overflow-hidden">
+                                                    <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-400 flex items-center justify-center flex-shrink-0">
+                                                        <Shield size={14} />
+                                                    </div>
+                                                    <div className="flex flex-col truncate">
+                                                        <span className="font-medium text-gray-200 text-sm truncate">{doc.title}</span>
+                                                        <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Business Context</span>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDeleteSource(doc.id)}
+                                                    className="p-1.5 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
 
             {/* Add Source Modal */}
             {showAddSource && (
@@ -434,7 +476,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                     </div>
                 </div>
             )}
-        </div>
+        </div >
     );
 };
 

@@ -11,6 +11,8 @@ import { AppView, ChatSession, AppMode, Folder } from '../types';
 import { supabase } from '../lib/supabase';
 import { FolderModal } from './FolderModal';
 import { createPortal } from 'react-dom';
+import { LogoTypefaceWhite } from './icons/LogoTypefaceWhite';
+import { BrandIcon } from './icons/BrandIcon';
 
 interface SidebarProps {
   currentView: AppView;
@@ -172,10 +174,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Logo Area */}
         <div className="h-16 flex items-center px-4 border-b border-white/5 justify-between bg-[#131314]">
           <div className="flex items-center flex-1 overflow-hidden">
-            <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-[0_0_15px_rgba(37,99,235,0.4)]">
-              P
-            </div>
-            {!isCollapsed && <span className="ml-3 font-semibold text-lg text-white truncate">PromptOrigin</span>}
+            {isCollapsed ? (
+              <div className="w-8 h-8 mx-auto flex items-center justify-center">
+                <BrandIcon className="w-full h-full" />
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 pl-1">
+                <LogoTypefaceWhite className="h-6 w-auto" />
+              </div>
+            )}
           </div>
 
           <button
@@ -191,7 +198,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             onClick={() => onNewChat ? onNewChat() : onNavigate('workspace')}
             className={clsx(
-              "w-full flex items-center gap-3 px-3 py-3 mb-6 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-brand-600/20 active:scale-[0.98] group",
+              "w-full flex items-center gap-3 px-3 py-3 mb-6 bg-gradient-to-r from-cyan-400 to-violet-500 hover:opacity-90 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-cyan-500/20 active:scale-[0.98] group",
               isCollapsed ? "justify-center px-0 h-10 w-10 mx-auto" : "justify-start"
             )}
           >
@@ -213,7 +220,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => setIsFoldersCollapsed(!isFoldersCollapsed)}
                     className="flex items-center gap-1.5 hover:bg-white/5 rounded px-1 py-0.5 transition-colors"
                   >
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
                       <FolderIcon size={12} /> Folders
                     </p>
                     <ChevronDown size={12} className={clsx("text-gray-600 transition-transform", isFoldersCollapsed && "-rotate-90")} />
@@ -261,7 +268,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => setIsRecentsCollapsed(!isRecentsCollapsed)}
                   className="w-full flex items-center justify-between px-2 mb-3 hover:bg-white/5 rounded-lg transition-colors py-1"
                 >
-                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                     Library
                   </p>
                   <ChevronDown size={12} className={clsx("text-gray-600 transition-transform", isRecentsCollapsed && "-rotate-90")} />
@@ -315,7 +322,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className="space-y-0.5 px-1">
                       {pinnedChats.length > 0 && (
                         <div className="mb-4">
-                          <p className="px-2 text-[9px] font-semibold text-gray-600 uppercase mb-1 flex items-center gap-1">
+                          <p className="px-2 text-[9px] font-semibold text-gray-400 uppercase mb-1 flex items-center gap-1">
                             <Pin size={10} /> Pinned
                           </p>
                           {pinnedChats.map(chat => (
@@ -432,16 +439,15 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, active, onClick, isColla
   <button
     onClick={onClick}
     className={clsx(
-      "w-full flex items-center px-4 py-2.5 rounded-xl transition-all group relative",
+      "w-full flex items-center px-4 py-2.5 rounded-full transition-all group relative",
       active
-        ? "bg-brand-500/10 text-brand-400 font-bold"
-        : "text-gray-400 hover:bg-white/5 hover:text-white",
+        ? "bg-brand-600 text-white font-bold shadow-lg shadow-brand-600/20"
+        : "text-gray-300 hover:bg-white/5 hover:text-white",
       isCollapsed ? "justify-center px-0" : "justify-start"
     )}
   >
-    {active && <div className="absolute left-0 top-2 bottom-2 w-1 bg-brand-500 rounded-r-full" />}
     <span className={clsx("transition-transform", active ? "scale-110" : "group-hover:scale-110")}>{icon}</span>
-    {!isCollapsed && <span className="ml-3 text-sm">{label}</span>}
+    {!isCollapsed && <span className="ml-3 text-[15px]">{label}</span>}
   </button>
 );
 
@@ -517,10 +523,10 @@ const HistoryItem: React.FC<{
         <button
           onClick={onLoad}
           className={clsx(
-            "w-full text-left px-3 py-2 text-xs rounded-xl truncate transition-all pr-10",
+            "w-full text-left px-4 py-2.5 text-[13px] rounded-full truncate transition-all pr-10",
             isActive
-              ? "text-brand-400 bg-brand-500/10 font-bold border border-brand-500/20 shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
-              : "text-gray-500 hover:text-gray-200 hover:bg-white/5 border border-transparent"
+              ? "text-white bg-brand-600 font-bold shadow-lg shadow-brand-600/20"
+              : "text-gray-300 hover:text-white hover:bg-white/5 border border-transparent"
           )}
         >
           {chat.title || 'Untitled'}
@@ -674,7 +680,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
           className={clsx("text-gray-500 transition-transform", !isExpanded && "-rotate-90")}
         />
         <FolderIcon size={14} style={{ color: folder.color }} />
-        <span className="text-gray-300 truncate flex-1 text-left">{folder.name}</span>
+        <span className="text-gray-200 truncate flex-1 text-left font-medium">{folder.name}</span>
       </button>
 
       {/* Folder Menu Button */}
@@ -709,10 +715,10 @@ const FolderItem: React.FC<FolderItemProps> = ({
               <button
                 onClick={() => onLoadChat(chat.id)}
                 className={clsx(
-                  "flex-1 text-left px-2 py-1.5 text-[11px] rounded-lg truncate transition-all",
+                  "flex-1 text-left px-3 py-2 text-[12px] rounded-full truncate transition-all",
                   activeChatId === chat.id
-                    ? "text-brand-400 bg-brand-500/10 font-bold"
-                    : "text-gray-500 hover:text-gray-200 hover:bg-white/5"
+                    ? "text-white bg-brand-500 font-bold"
+                    : "text-gray-300 hover:text-white hover:bg-white/5"
                 )}
               >
                 {chat.title || 'Untitled'}

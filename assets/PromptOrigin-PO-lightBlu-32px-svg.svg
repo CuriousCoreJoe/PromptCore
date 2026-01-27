@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <path d="M15.695,8.779L10.54,8.779L10.54,23.02L13.007,23.02L13.007,18.487L15.695,18.487C18.463,18.487 20.89,16.742 20.89,13.633C20.89,10.524 18.463,8.779 15.695,8.779ZM15.695,16.16L13.007,16.16L13.007,11.106L15.695,11.106C17.26,11.106 18.423,11.968 18.423,13.633C18.423,15.298 17.26,16.16 15.695,16.16Z" style="fill:#d9eefb;fill-rule:nonzero;"/>
+    <path d="M18.422,23.221C19.124,23.221 19.685,22.659 19.685,21.957C19.685,21.255 19.124,20.694 18.422,20.694C17.72,20.694 17.158,21.255 17.158,21.957C17.158,22.659 17.72,23.221 18.422,23.221Z" style="fill:#d9eefb;fill-rule:nonzero;"/>
+    <path id="O" d="M16.022,32C6.962,32 0,24.811 0,16C0,7.189 6.962,0 16.022,0C25.038,0 32,7.189 32,16C32,24.811 25.038,32 16.022,32ZM16.022,28.449C22.895,28.449 28.162,22.795 28.162,16C28.162,9.205 22.895,3.551 16.022,3.551C9.105,3.551 3.838,9.205 3.838,16C3.838,22.795 9.105,28.449 16.022,28.449Z" style="fill:url(#_Radial1);fill-rule:nonzero;"/>
+    <defs>
+        <radialGradient id="_Radial1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(32,0,0,32,10.73113,16)"><stop offset="0" style="stop-color:#22d3ee;stop-opacity:1"/><stop offset="0.5" style="stop-color:#8b5cf6;stop-opacity:1"/><stop offset="1" style="stop-color:#22d3ee;stop-opacity:1"/></radialGradient>
+    </defs>
+</svg>

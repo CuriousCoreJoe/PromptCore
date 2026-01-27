@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async'; // <--- NEW IMPORT
 import { MessageSquare, Sparkles, Cpu, Code2, LayoutGrid, Hammer, FileSearch, ScanText, Check, ArrowRight, PlayCircle } from 'lucide-react';
+import { LogoTypefaceWhite } from './icons/LogoTypefaceWhite';
+import { BrandIcon } from './icons/BrandIcon';
 
 // --- Sub-components (FeatureCard, PricingCard) remain exactly the same as before ---
 // (I am omitting them here to save space, but keep your existing FeatureCard and PricingCard code!)
@@ -75,6 +77,27 @@ const PricingCard = ({ tier, index }) => {
 
 export default function LandingPage() {
     const [activeMode, setActiveMode] = useState('everyday');
+    const [email, setEmail] = useState('');
+    const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+    const handleWaitlistSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setWaitlistStatus('loading');
+        try {
+            const res = await fetch('/.netlify/functions/handle-waitlist', {
+                method: 'POST',
+                body: JSON.stringify({ email, source: 'landing_hero' }),
+            });
+            if (res.ok) {
+                setWaitlistStatus('success');
+                setEmail('');
+            } else {
+                throw new Error('Failed');
+            }
+        } catch (err) {
+            setWaitlistStatus('error');
+        }
+    };
 
     const getAppUrl = () => {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -168,8 +191,7 @@ export default function LandingPage() {
             <nav className="fixed w-full z-50 top-0 border-b border-white/5 bg-[#020617]/80 backdrop-blur-md">
                 <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-gradient-to-tr from-cyan-400 to-blue-600 rounded-sm"></div>
-                        <span className="font-bold text-lg tracking-tight text-white">PromptOrigin.</span>
+                        <LogoTypefaceWhite className="h-6 w-auto" />
                     </div>
                     <div className="hidden md:flex gap-8 text-sm font-medium text-slate-400">
                         <a href="#features" className="hover:text-white transition-colors">Features</a>
@@ -210,6 +232,32 @@ export default function LandingPage() {
                                     <PlayCircle size={16} />
                                     <span>Watch Workflow</span>
                                 </button>
+                            </div>
+
+                            {/* Waitlist Form */}
+                            <div className="mt-8 pt-8 border-t border-slate-800">
+                                <p className="text-sm text-slate-400 mb-4">Join the waitlist for early access updates.</p>
+                                <form onSubmit={handleWaitlistSubmit} className="flex gap-2 max-w-md">
+                                    <input
+                                        type="email"
+                                        placeholder="Enter your email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        required
+                                        className="flex-1 bg-slate-900 border border-slate-700 rounded px-4 py-2 text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors"
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={waitlistStatus === 'loading' || waitlistStatus === 'success'}
+                                        className={`px-6 py-2 rounded font-medium transition-all ${waitlistStatus === 'success'
+                                            ? 'bg-green-500 text-white cursor-default'
+                                            : 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white'
+                                            }`}
+                                    >
+                                        {waitlistStatus === 'loading' ? 'Joining...' : waitlistStatus === 'success' ? 'Joined!' : 'Join'}
+                                    </button>
+                                </form>
+                                {waitlistStatus === 'error' && <p className="text-red-400 text-xs mt-2">Something went wrong. Please try again.</p>}
                             </div>
                         </motion.div>
 
