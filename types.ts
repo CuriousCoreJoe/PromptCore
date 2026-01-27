@@ -63,17 +63,19 @@ export interface UserProfile {
   vibe_code_uses_monthly?: number;
   talk_to_source_uses_monthly?: number;
   media_gen_uses_monthly?: number;
+  total_pdfs_uploaded?: number;
 }
 
 // Added Document interface to resolve "Module '"../types"' has no exported member 'Document'" error in Dashboard.tsx
 export interface Document {
   id: string;
-  userId: string;
+  user_id: string;
   title: string;
-  sourceType: 'pdf' | 'youtube';
-  sourceUrl?: string;
+  source_type: 'pdf' | 'youtube' | 'txt' | 'paste';
+  source_url?: string;
   content: string;
-  createdAt: number;
+  is_business_context?: boolean;
+  created_at: string;
 }
 
 // New Consumer-First Factory Types

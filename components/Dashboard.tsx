@@ -48,7 +48,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
             if (!user) return;
 
             // Fetch Profile
-            const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+            const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
             if (profile) setUserProfile(profile);
 
             // Fetch Packs
@@ -183,6 +183,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
         try {
             await supabase.from('documents').delete().eq('id', id);
             setDocuments(prev => prev.filter(d => d.id !== id));
+
+            // Update profile count
+            const currentTotal = userProfile?.total_pdfs_uploaded || 0;
+            await supabase.from('profiles').update({
+                total_pdfs_uploaded: Math.max(0, currentTotal - 1)
+            }).eq('id', userProfile.id);
         } catch (err) {
             console.error(err);
         }
@@ -238,105 +244,113 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Prompt Batches */}
+                {/* PDF Library (Talk to Source Mode Only) */}
                 <div className="bg-dark-900 border border-dark-800 rounded-xl overflow-hidden shadow-lg flex flex-col">
                     <div className="p-4 border-b border-dark-800 flex justify-between items-center bg-dark-950/50">
-                        <h2 className="font-semibold text-white flex items-center gap-2">
-                            <Package size={18} className="text-brand-400" />
-                            Prompt Batches
-                        </h2>
+                        <div className="flex flex-col">
+                            <h2 className="font-semibold text-white flex items-center gap-2">
+                                <FileText size={18} className="text-orange-400" />
+                                PDF Library (Talk to Source)
+                            </h2>
+                            <span className="text-[10px] text-gray-500 uppercase tracking-widest mt-0.5">
+                                {documents.filter(d => d.source_type === 'pdf' && !d.is_business_context).length} / {
+                                    (userProfile?.subscription_status === 'pro' ? 100 :
+                                        userProfile?.subscription_status === 'lite' ? 30 : 10)
+                                } PDFs Used
+                            </span>
+                        </div>
                         <button
-                            onClick={() => onNavigate('factory')}
-                            className="text-xs text-brand-400 hover:text-brand-300 font-medium"
+                            onClick={() => {
+                                setIsBusinessContext(false);
+                                setShowAddSource(true);
+                                setNewSourceType('pdf');
+                            }}
+                            className="px-3 py-1.5 bg-dark-800 hover:bg-dark-700 border border-dark-700 text-gray-300 rounded-lg text-xs font-medium transition-all flex items-center gap-2"
                         >
-                            View All
+                            <Plus size={14} /> Upload
                         </button>
                     </div>
-                    <div className="p-4 space-y-3">
-                        {recentPacks.length === 0 ? (
-                            <div className="text-center text-gray-500 py-4 text-sm">No packs generated yet.</div>
+                    <div className="p-4">
+                        {documents.filter(d => d.source_type === 'pdf' && !d.is_business_context).length === 0 ? (
+                            <div className="text-center text-gray-500 py-12 bg-dark-950/30 rounded-lg border border-dashed border-dark-800">
+                                <FileText size={32} className="mx-auto mb-3 opacity-20" />
+                                <p className="text-sm">Your Talk to Source library is empty.</p>
+                            </div>
                         ) : (
-                            recentPacks.map(pack => (
-                                <div key={pack.id} className="flex items-center justify-between p-3 bg-dark-950 border border-dark-800 rounded-lg group hover:border-brand-500/30 transition-colors">
-                                    <div className="flex flex-col">
-                                        <span className="font-medium text-gray-200">{pack.niche}</span>
-                                        <span className="text-xs text-gray-500">
-                                            {new Date(pack.created_at).toLocaleDateString()} • {pack.total_count} items
-                                        </span>
-                                    </div>
-                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="space-y-2">
+                                {documents.filter(d => d.source_type === 'pdf' && !d.is_business_context).map(doc => (
+                                    <div key={doc.id} className="flex items-center justify-between p-3 bg-dark-950 border border-dark-800 rounded-xl group transition-all hover:border-orange-500/30">
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className="w-8 h-8 rounded-lg bg-orange-900/10 text-orange-500 flex items-center justify-center flex-shrink-0">
+                                                <FileText size={14} />
+                                            </div>
+                                            <div className="flex flex-col truncate">
+                                                <span className="font-medium text-gray-200 text-sm truncate">{doc.title}</span>
+                                                <span className="text-[10px] text-gray-500">{new Date(doc.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                        </div>
                                         <button
-                                            onClick={() => onNavigate('factory')}
-                                            className="p-1.5 text-gray-400 hover:text-white hover:bg-dark-800 rounded"
-                                            title="View Details"
+                                            onClick={() => handleDeleteSource(doc.id)}
+                                            className="p-1.5 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
                                         >
-                                            <ExternalLink size={14} />
+                                            <Trash2 size={14} />
                                         </button>
                                     </div>
-                                </div>
-                            ))
+                                ))}
+                            </div>
                         )}
                     </div>
                 </div>
 
-                {/* Knowledge Base */}
+                {/* Knowledge Base (Global Platform Enrichment) */}
                 <div className="bg-dark-900 border border-dark-800 rounded-xl overflow-hidden shadow-lg flex flex-col">
                     <div className="p-4 border-b border-dark-800 flex justify-between items-center bg-dark-950/50">
-                        <h2 className="font-semibold text-white flex items-center gap-2">
-                            <FileText size={18} className="text-orange-400" />
-                            Knowledge Base (RAG)
-                        </h2>
-                        <button className="text-xs text-brand-400 hover:text-brand-300 font-medium">Manage</button>
-                    </div>
-                    <div className="p-4 space-y-3">
-                        {documents.length === 0 ? (
-                            <div className="text-center text-gray-500 py-4 text-sm">No documents added.</div>
-                        ) : (
-                            documents.map(doc => (
-                                <div key={doc.id} className={`flex items-center justify-between p-3 bg-dark-950 border rounded-lg group transition-colors ${doc.is_business_context ? 'border-brand-500/30 bg-brand-900/10' : 'border-dark-800 hover:border-orange-500/30'}`}>
-                                    <div className="flex items-center gap-3 overflow-hidden">
-                                        <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 ${doc.is_business_context ? 'bg-brand-500/20 text-brand-400' :
-                                            'bg-blue-900/20 text-blue-500'
-                                            }`}>
-                                            {doc.is_business_context ? <Shield size={14} /> : <FileText size={14} />}
-                                        </div>
-                                        <div className="flex flex-col truncate">
-                                            <span className="font-medium text-gray-200 truncate flex items-center gap-2">
-                                                {doc.title}
-                                                {doc.is_business_context && <span className="text-[10px] bg-brand-500/20 text-brand-300 px-1.5 py-0.5 rounded uppercase tracking-wider">Business Context</span>}
-                                            </span>
-                                            <span className="text-xs text-gray-500">Added {new Date(doc.created_at).toLocaleDateString()}</span>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => handleDeleteSource(doc.id)}
-                                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-dark-800 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                        <Trash2 size={14} />
-                                    </button>
-                                </div>
-                            ))
-                        )}
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => {
-                                    setIsBusinessContext(false);
-                                    setShowAddSource(true);
-                                }}
-                                className="flex-1 py-2 border border-dashed border-dark-700 text-gray-500 rounded-lg text-sm hover:border-brand-500 hover:text-brand-500 transition-colors flex items-center justify-center gap-2"
-                            >
-                                <Plus size={14} /> Add Source
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setIsBusinessContext(true);
-                                    setShowAddSource(true);
-                                }}
-                                className="flex-1 py-2 border border-dashed border-brand-900/50 text-brand-600 rounded-lg text-sm hover:border-brand-500 hover:text-brand-400 hover:bg-brand-900/10 transition-colors flex items-center justify-center gap-2"
-                            >
-                                <Shield size={14} /> Add Business Context
-                            </button>
+                        <div className="flex flex-col">
+                            <h2 className="font-semibold text-white flex items-center gap-2">
+                                <Shield size={18} className="text-brand-400" />
+                                Knowledge Base
+                            </h2>
+                            <span className="text-[10px] text-gray-500 uppercase tracking-widest mt-0.5">Enriches Prompt Origin Context</span>
                         </div>
+                        <button
+                            onClick={() => {
+                                setIsBusinessContext(true);
+                                setShowAddSource(true);
+                            }}
+                            className="px-3 py-1.5 bg-brand-500/10 hover:bg-brand-500/20 border border-brand-500/30 text-brand-400 rounded-lg text-xs font-medium transition-all flex items-center gap-2"
+                        >
+                            <Plus size={14} /> Add Context
+                        </button>
+                    </div>
+                    <div className="p-4 overflow-y-auto max-h-[400px]">
+                        {documents.filter(d => d.is_business_context).length === 0 ? (
+                            <div className="text-center text-gray-500 py-12 bg-dark-950/30 rounded-lg border border-dashed border-dark-800">
+                                <Shield size={32} className="mx-auto mb-3 opacity-20" />
+                                <p className="text-sm">No business context added yet.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {documents.filter(d => d.is_business_context).map(doc => (
+                                    <div key={doc.id} className="flex items-center justify-between p-3 bg-dark-950 border border-brand-500/30 rounded-xl group transition-all">
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-400 flex items-center justify-center flex-shrink-0">
+                                                <Shield size={14} />
+                                            </div>
+                                            <div className="flex flex-col truncate">
+                                                <span className="font-medium text-gray-200 text-sm truncate">{doc.title}</span>
+                                                <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Business Context</span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => handleDeleteSource(doc.id)}
+                                            className="p-1.5 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

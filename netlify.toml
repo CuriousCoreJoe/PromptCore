@@ -39,6 +39,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/execute-background"
+  to = "/.netlify/functions/execute-background"
+  status = 200
+
+[[redirects]]
   from = "/api/builder-background"
   to = "/.netlify/functions/builder-background"
   status = 200

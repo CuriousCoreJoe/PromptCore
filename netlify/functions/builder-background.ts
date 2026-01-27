@@ -129,13 +129,16 @@ IF THE USER ASKS TO "BUILD APP":
 - Use simple, clean formatting (Tailwind via CDN).
 - Focus on logic and functionality.
 - Wrap the HTML code in \`\`\`html\`\`\` blocks.
-- **IMPORTANT**: After the code block, include a section titled "### 💎 Final Prompt" containing a polished, comprehensive text prompt that could be used in any AI builder tool.
+- **IMPORTANT**: After the code block, include a section titled "### 💎 Final Prompt".
+- **CRITICAL**: Inside this section, you MUST start the prompt with the exact text "FINAL PROMPT:" followed by the prompt content. This triggers the "Run Prompt" button in the UI.
 
 IF THE USER ASKS TO "DESCRIBE PLAN":
 - Output simple numbered list requirements (simple plan).
 
 IF THE USER ASKS TO "GET INSTRUCTIONS":
-- Generate a comprehensive System Prompt for pro AI coding tools.`;
+- Generate a comprehensive System Prompt for pro AI coding tools.
+- **CRITICAL**: You MUST include a section titled "### 💎 Final Prompt" at the end.
+- Inside this section, start with "FINAL PROMPT:" followed by the system prompt content.`;
 
             const messages = [
                 { role: 'system', content: systemPrompt },

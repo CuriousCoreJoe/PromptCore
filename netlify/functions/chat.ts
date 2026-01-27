@@ -60,7 +60,8 @@ MODES:
    - Use simple, clean formatting (Tailwind via CDN is excellent).
    - Focus on functionality. Make sure buttons work and logic is sound.
    - Wrap the HTML code in \`\`\`html\`\`\` blocks.
-   - **IMPORTANT**: After the code block, include a section titled "### 💎 Final Prompt" containing a polished, comprehensive text prompt that could be used in ANY pro AI coding tool to recreate this app from scratch.
+   - **IMPORTANT**: After the code block, include a section titled "### 💎 Final Prompt".
+   - **CRITICAL**: Inside this section, you MUST start the prompt with the exact text "FINAL PROMPT:" followed by the prompt content. This triggers the "Run Prompt" button in the UI.
 
 2. IF USER CLICKS "DESCRIBE PLAN" (or asks for a feature list):
    - Output a simple numbered list in Markdown.
@@ -71,6 +72,8 @@ MODES:
    - Generate a "System Prompt" block for an expert AI builder.
    - Start with: "You are a Senior Engineer. Your task is to build [AppName] using modern frameworks..."
    - List the requirements in a way that any powerful AI tool can follow.
+   - **CRITICAL**: You MUST include a section titled "### 💎 Final Prompt" at the end.
+   - Inside this section, start with "FINAL PROMPT:" followed by the system prompt content again (or a refined version of it). This allows the user to run it.
 
 DEFAULT BEHAVIOR:
 Stay conversational. If the user is just starting, say: "That sounds like a great idea! Do you want to see a **Visual Prototype** of how it would work, or should I **Describe the Plan** for you first?"
@@ -86,7 +89,7 @@ You are an Expert Creative Prompt Consultant specializing in AI media generation
 MEDIA GEN PROTOCOL:
             1. ** First Question Rule **: If the user's intent is identified but the target platform is not yet chosen, your VERY FIRST question MUST be about the AI platform they intend to use.
             2. ** Options based on Media Type **:
-   - ** IMAGES **: Use buttons: \`[OPTIONS: Nano Banana, Flux, Gemini, Pollinations]\` (Default is Nano Banana).
+   - ** IMAGES **: Use buttons: \`[OPTIONS: Nano Banana, ChatGPT 5, Flux 2]\` (Default is Nano Banana).
    - **VIDEO**: Use buttons: \`[OPTIONS: Default, Sora, Runway Gen-3, Luma Dream Machine, Kling AI, Pika 2.0]\`.
    - **SONG/AUDIO**: Use buttons: \`[OPTIONS: Default, Suno v3.5, Udio, Stable Audio, ElevenLabs]\`.
 3. ${isIterative
@@ -172,7 +175,55 @@ const handler: Handler = async (event, context) => {
     }
 
     try {
-        const { messages, input, userId, wizardMode = 'iterative', defaultModel = 'claude-sonnet-4.5', mode = 'Everyday', sourceContent, chatId } = JSON.parse(event.body || "{}");
+        let { messages, input, userId, wizardMode = 'iterative', defaultModel = 'claude-sonnet-4.5', mode = 'Everyday', sourceContent, chatId } = JSON.parse(event.body || "{}");
+
+        // Relevance Check: If input is too short or nonsensical
+        if (input && input.trim().length <= 3 && !['yes', 'no', 'ok', 'go', 'stop'].includes(input.trim().toLowerCase())) {
+
+            // Find the last model message to check for previous clarification requests
+            const modelMessages = messages.filter((m: any) => m.role === 'model' || m.role === 'assistant');
+            const lastModelMessage = modelMessages[modelMessages.length - 1];
+
+            const isClarificationRequest = lastModelMessage && lastModelMessage.content.includes("Could you clarify what you mean?");
+            const isStuckOptionsRequest = lastModelMessage && lastModelMessage.content.includes("It seems we're stuck.");
+
+            if (isStuckOptionsRequest) {
+                // STRIKE 3: User still stuck. Auto-choose primary path.
+                let autoDefault = "Draft Content";
+                if (mode === 'Vibe Code') autoDefault = "Landing Page";
+                if (mode === 'Media Gen') autoDefault = "Photo-realistic";
+                if (mode === 'Talk to Source') autoDefault = "Summarize";
+
+                // Override input and proceed to LLM call
+                input = autoDefault;
+                console.log(`[Chat] Strike 3 detected. Auto-choosing: ${autoDefault}`);
+            } else if (isClarificationRequest) {
+                // FALLBACK: User is stuck. Provide Chips based on Mode.
+                let options = "Brainstorm Ideas, Draft Content, Improve Text";
+                if (mode === 'Vibe Code') options = "Landing Page, Dashboard, Mobile App";
+                if (mode === 'Media Gen') options = "Photo-realistic, 3D Render, Abstract Art";
+                if (mode === 'Talk to Source') options = "Summarize, Explain Concepts, Find Key Quotes";
+
+                return {
+                    statusCode: 200,
+                    headers,
+                    body: JSON.stringify({
+                        text: `It seems we're stuck. To get us back on track, please select what you're trying to build:\n\n[OPTIONS: ${options}]`,
+                        msgType: 'meta_helper'
+                    })
+                };
+            }
+
+            // Normal Clarification Request (Strike 1)
+            return {
+                statusCode: 200,
+                headers,
+                body: JSON.stringify({
+                    text: "Could you clarify what you mean? I need a bit more detail to help you effectively.",
+                    msgType: 'meta_helper'
+                })
+            };
+        }
 
         const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

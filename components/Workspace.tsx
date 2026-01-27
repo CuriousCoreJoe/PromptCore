@@ -37,12 +37,15 @@ interface GoalOption {
 }
 
 // Mode-specific goal options
-const EVERYDAY_GOALS: GoalOption[] = [
+const EVERYDAY_GOALS_PRIMARY: GoalOption[] = [
     { id: 'enhance', label: 'Enhance', icon: <Sparkles size={16} />, promptSuffix: "Enhance this with more details, clarity, and impact." },
-    { id: 'explain', label: 'Explain this', icon: <FileText size={16} />, promptSuffix: "Explain this concept clearly and visually." },
-    { id: 'shorten', label: 'Shorten', icon: <Minimize2 size={16} />, promptSuffix: "Shorten this text significantly while keeping key info." },
     { id: 'formal', label: 'More Formal', icon: <Briefcase size={16} />, promptSuffix: "Rewrite this to be professional and formal." },
     { id: 'casual', label: 'More Casual', icon: <Coffee size={16} />, promptSuffix: "Rewrite this to be casual and friendly." },
+];
+
+const EVERYDAY_GOALS_COMPLEX: GoalOption[] = [
+    { id: 'explain', label: 'Explain this', icon: <FileText size={16} />, promptSuffix: "Explain this concept clearly and visually." },
+    { id: 'shorten', label: 'Shorten', icon: <Minimize2 size={16} />, promptSuffix: "Shorten this text significantly while keeping key info." },
     { id: 'bulletize', label: 'Bulletize', icon: <List size={16} />, promptSuffix: "Convert this into a bulleted list." },
 ];
 
@@ -56,21 +59,16 @@ const MEDIA_GEN_GOALS: GoalOption[] = [
     { id: 'image', label: 'Image', icon: <Image size={16} />, promptSuffix: "Generate an image prompt for Midjourney/DALL-E." },
     { id: 'video', label: 'Video', icon: <Video size={16} />, promptSuffix: "Generate a video prompt for Runway/Pika." },
     { id: 'music', label: 'Music', icon: <Music size={16} />, promptSuffix: "Generate a music prompt for Suno/Udio." },
-    { id: 'style-transfer', label: 'Style Transfer', icon: <Palette size={16} />, promptSuffix: "Transform content into a specific artistic style." },
-    { id: 'enhance-visual', label: 'Enhance', icon: <Sparkles size={16} />, promptSuffix: "Enhance and upscale existing media." },
-    { id: 'animate', label: 'Animate', icon: <Zap size={16} />, promptSuffix: "Create animation from static content." },
 ];
 
 const TALK_TO_SOURCE_GOALS: GoalOption[] = [
     { id: 'summarize', label: 'Summarize', icon: <FileText size={16} />, promptSuffix: "Summarize the key points of this content." },
-    { id: 'extract', label: 'Extract Info', icon: <List size={16} />, promptSuffix: "Extract specific information or data points." },
     { id: 'explain', label: 'Explain', icon: <MessageSquare size={16} />, promptSuffix: "Explain the concepts in this content." },
     { id: 'compare', label: 'Compare', icon: <Code size={16} />, promptSuffix: "Compare different ideas or sections." },
-    { id: 'generate', label: 'Generate Content', icon: <Sparkles size={16} />, promptSuffix: "Generate new content based on this source." },
     { id: 'qa', label: 'Q&A', icon: <MessageSquare size={16} />, promptSuffix: "Answer questions about this content." },
 ];
 
-const getGoalOptionsForMode = (mode: AppMode): GoalOption[] => {
+const getGoalOptionsForMode = (mode: AppMode, draftPrompt: string = ''): GoalOption[] => {
     switch (mode) {
         case AppMode.VIBE_CODE:
             return VIBE_CODE_GOALS;
@@ -80,7 +78,9 @@ const getGoalOptionsForMode = (mode: AppMode): GoalOption[] => {
             return TALK_TO_SOURCE_GOALS;
         case AppMode.EVERYDAY:
         default:
-            return EVERYDAY_GOALS;
+            // Heuristic: If prompt is long (>100 chars) or has newlines, assume pasted content -> Show more options
+            const isComplex = draftPrompt.length > 100 || draftPrompt.includes('\n');
+            return isComplex ? [...EVERYDAY_GOALS_PRIMARY, ...EVERYDAY_GOALS_COMPLEX] : EVERYDAY_GOALS_PRIMARY;
     }
 };
 
@@ -471,8 +471,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             });
         }
 
-        // Use background processing for Talk to Source to avoid timeouts
-        const useBackgroundChat = currentMode === AppMode.TALK_TO_SOURCE;
+        // Use background processing for ALL modes to avoid Netlify 10s timeout
+        // The /api/chat-background endpoint handles the request asynchronously and updates via Supabase Realtime
+        const useBackgroundChat = true;
 
         // Prepare messages for chat API (truncate large execution results to avoid payload limits)
         const chatMessages = tempMessages.map(m => {
@@ -486,7 +487,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         });
 
         try {
-            if (useBackgroundChat && activeChatId) {
+            // Always use background chat to prevent 504 timeouts
+            if (activeChatId) {
                 // Route to background function for heavy processing
                 const response = await fetch('/api/chat-background', {
                     method: 'POST',
@@ -512,11 +514,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 }
 
                 // Background function returns 202 - UI will update via Realtime subscription
-                onShowToast('📚 Analyzing content in background...');
+                // Removed toast for better UX as requested
+                // onShowToast('📚 Processing request...');
                 setTimeout(() => loadHistory(), 1000);
 
             } else {
-                // Standard synchronous chat for other modes
+                // Fallback for when no chat ID exists (shouldn't happen in current flow as we create chat ID first)
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -603,6 +606,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             const MODEL_MAPPING: Record<string, string> = {
                 'Nano Banana': 'nano-banana',
                 'Flux': 'flux',
+                'Flux 2': 'flux', // Map to flux for now, handled in backend
+                'ChatGPT 5': 'chatgpt-5',
                 'Gemini': 'gemini',
                 'Pollinations': 'pollinations',
                 'Default': 'nano-banana'
@@ -715,9 +720,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             // Determine which background process to use based on mode
             const useBackgroundBuilder = currentMode === AppMode.VIBE_CODE;
             const useBackgroundMediaGen = currentMode === AppMode.MEDIA_GEN;
+
+            // Use background execution for ALL modes to prevent timeouts (500 errors)
             const endpoint = useBackgroundBuilder ? '/api/builder-background' :
                 useBackgroundMediaGen ? '/api/media-gen-background' :
-                    '/api/execute';
+                    '/api/execute-background';
 
             const response = await fetch(endpoint, {
                 method: 'POST',
@@ -738,34 +745,20 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 throw new Error(errorData.error || 'Execution failed');
             }
 
-            // If using background processing, wait for Realtime to update the UI
-            if (useBackgroundBuilder || useBackgroundMediaGen) {
-                const toastMessage = useBackgroundBuilder
-                    ? '🏗️ Architect is building in the background...'
-                    : '🎨 Creating your media in the background...';
-                onShowToast(toastMessage);
+            // Always wait for Realtime update since we are using background processing now
+            // We ONLY show toast for explicit "Run Prompt" actions (which this is)
+            const toastMessage = useBackgroundBuilder
+                ? '🏗️ Architect is building in the background...'
+                : useBackgroundMediaGen
+                    ? '🎨 Creating your media in the background...'
+                    : '⚙️ Executing prompt in background...';
 
-                // Force a refresh after a delay to ensure the "Processing" message is caught
-                // (Optimistic update backup in case Realtime is slow)
-                setTimeout(() => {
-                    loadHistory();
-                }, 1000);
-            } else {
-                // Standard synchronous execution (fallback)
-                const data = await response.json();
+            onShowToast(toastMessage);
 
-                // Save to DB first - Realtime subscription will add it to state
-                if (activeChatId) {
-                    await supabase.from('messages').insert({
-                        chat_id: activeChatId,
-                        role: 'model',
-                        content: data.text,
-                        msg_type: 'execution_result',
-                        execution_model: data.model
-                    });
-                }
-                onShowToast(`✓ Executed with ${data.model || 'external LLM'}`);
-            }
+            // Force a refresh after a delay to ensure the "Processing" message is caught
+            setTimeout(() => {
+                loadHistory();
+            }, 1000);
 
         } catch (err: any) {
             console.error('Execution error:', err);
@@ -899,6 +892,31 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             return;
         }
 
+        // Tiered Limit Checks
+        const subscriptionStatus = userProfile?.subscription_status || 'free';
+        const totalPdfs = (userProfile?.total_pdfs_uploaded || 0);
+
+        const tierLimits: Record<string, number> = {
+            'free': 10,
+            'lite': 30,
+            'pro': 100
+        };
+        const tierLimit = tierLimits[subscriptionStatus] || 10;
+
+        if (!isDev && totalPdfs >= tierLimit) {
+            onShowToast(`You've reached your ${tierLimit} PDF limit. Manage your PDFs in the Dashboard.`, 'Dashboard');
+            return;
+        }
+
+        // Per-Chat limit for Free users
+        if (!isDev && subscriptionStatus === 'free') {
+            const chatPdfs = messages.filter(m => m.role === 'user' && m.content.includes('uploaded a PDF document')).length;
+            if (chatPdfs >= 3) {
+                onShowToast('Free tier is limited to 3 PDFs per chat. Start a new chat to upload more.');
+                return;
+            }
+        }
+
         if (file.size > 10 * 1024 * 1024) { // 10MB limit
             onShowToast('File too large. Max 10MB.');
             return;
@@ -907,14 +925,36 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         onShowToast('Processing PDF...');
 
         try {
-            // Read file as text (basic extraction - in production you'd use a proper PDF parser)
+            // Read file as text (basic extraction)
             const reader = new FileReader();
             reader.onload = async (event) => {
                 const text = event.target?.result as string;
-                // For now, we'll pass the file name and let the user describe what they uploaded
+
+                // Track upload in database and update profile count (simulated update here)
+                if (activeChatId) {
+                    await supabase.from('documents').insert({
+                        user_id: session.user.id,
+                        title: file.name,
+                        source_type: 'pdf',
+                        content: text.substring(0, 10000) // Truncate for now
+                    });
+
+                    // Update profile count
+                    await supabase.from('profiles').update({
+                        total_pdfs_uploaded: totalPdfs + 1
+                    }).eq('id', session.user.id);
+                }
+
                 setUploadedSource(`PDF: ${file.name}`);
                 setInput(`I've uploaded a PDF document: "${file.name}". `);
                 onShowToast(`✓ PDF "${file.name}" ready for analysis`);
+
+                // If in active chat, automatically submit this as a message
+                if (messages.length > 1) {
+                    const msg = `I've uploaded a new PDF document for analysis: "${file.name}"`;
+                    await saveMessage({ id: '', role: 'user', content: msg, timestamp: Date.now(), mode: currentMode });
+                    await processMessage(msg);
+                }
             };
             reader.readAsText(file);
         } catch (err) {
@@ -1090,12 +1130,14 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                     </span>
                                 </div>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                    {getGoalOptionsForMode(currentMode).map((opt) => (
+                                    {getGoalOptionsForMode(currentMode, draftPrompt).map((opt) => (
                                         <button
                                             key={opt.id}
                                             onClick={() => handleGoalSelect(opt)}
                                             className={cn(
                                                 "flex flex-col items-start gap-2 p-3 bg-dark-900/50 hover:bg-dark-800 border border-dark-800 rounded-[20px] transition-all text-left group",
+                                                // Dynamic glowing border for primary actions
+                                                (opt.id === 'enhance' || opt.id === 'image' || opt.id === 'build-app') && "animate-glow border-brand-500/50",
                                                 currentMode === AppMode.VIBE_CODE ? "hover:border-purple-500/30" :
                                                     currentMode === AppMode.MEDIA_GEN ? "hover:border-pink-500/30" :
                                                         currentMode === AppMode.TALK_TO_SOURCE ? "hover:border-orange-500/30" :
@@ -1135,7 +1177,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 <div className="flex-shrink-0 p-6 bg-[#131314] border-t border-dark-800/50">
                     <div className={clsx("mx-auto w-full", activeArtifact ? "max-w-2xl" : "max-w-4xl")}>
                         {/* Talk to Source - Source Input Buttons */}
-                        {currentMode === AppMode.TALK_TO_SOURCE && wizardStage === 'IDLE' && messages.length === 1 && (
+                        {currentMode === AppMode.TALK_TO_SOURCE && (wizardStage === 'IDLE' || messages.length > 1) && (
                             <div className="mb-4 flex items-center gap-3">
                                 {/* Hidden file input */}
                                 <input

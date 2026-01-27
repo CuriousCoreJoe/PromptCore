@@ -65,7 +65,7 @@ You are an Expert Creative Prompt Consultant specializing in AI media generation
 MEDIA GEN PROTOCOL:
 1. ** First Question Rule **: If the user's intent is identified but the target platform is not yet chosen, your VERY FIRST question MUST be about the AI platform they intend to use.
 2. ** Options based on Media Type **:
-   - ** IMAGES **: Use buttons: \`[OPTIONS: Nano Banana, Flux, Gemini, Pollinations]\` (Default is Nano Banana).
+   - ** IMAGES **: Use buttons: \`[OPTIONS: Nano Banana, ChatGPT 5, Flux 2]\` (Default is Nano Banana).
    - **VIDEO**: Use buttons: \`[OPTIONS: Default, Sora, Runway Gen-3, Luma Dream Machine, Kling AI, Pika 2.0]\`.
    - **SONG/AUDIO**: Use buttons: \`[OPTIONS: Default, Suno v3.5, Udio, Stable Audio, ElevenLabs]\`.
 3. ${isIterative
@@ -98,7 +98,59 @@ const handler: Handler = async (event, context) => {
 
     try {
         const payload = JSON.parse(event.body || "{}");
-        const { input, chatId, userId, conversationHistory = [], mode = 'Talk to Source', wizardMode = 'iterative' } = payload;
+        let { input, chatId, userId, conversationHistory = [], mode = 'Talk to Source', wizardMode = 'iterative' } = payload;
+
+        // Relevance Check (Background): If input is too short/irrelevant, save a clarification message and exit
+        if (input && input.trim().length <= 3 && !['yes', 'no', 'ok', 'go', 'stop'].includes(input.trim().toLowerCase())) {
+            const supabaseUrl = process.env.VITE_SUPABASE_URL!;
+            const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+            const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+            // Find the last model message in history (skipping the user's recent input if present)
+            const modelMessages = conversationHistory.filter((m: any) => m.role === 'model' || m.role === 'assistant');
+            const lastModelMessage = modelMessages[modelMessages.length - 1];
+
+            const isClarificationRequest = lastModelMessage && lastModelMessage.content.includes("Could you clarify what you mean?");
+            const isStuckOptionsRequest = lastModelMessage && lastModelMessage.content.includes("It seems we're stuck.");
+
+            if (isStuckOptionsRequest) {
+                // STRIKE 3: Auto-choose and BREAK early logic to proceed to LLM call below
+                let autoDefault = "Draft Content";
+                if (mode === 'Vibe Code') autoDefault = "Landing Page";
+                if (mode === 'Media Gen') autoDefault = "Photo-realistic";
+                if (mode === 'Talk to Source') autoDefault = "Summarize";
+
+                payload.input = autoDefault; // Modify payload input for the rest of the handler
+                input = autoDefault;
+                console.log(`[Chat Background] Strike 3 detected. Auto-choosing: ${autoDefault}`);
+                // fall through to standard processing below
+            } else if (isClarificationRequest) {
+                let options = "Brainstorm Ideas, Draft Content, Improve Text";
+                if (mode === 'Vibe Code') options = "Landing Page, Dashboard, Mobile App";
+                if (mode === 'Media Gen') options = "Photo-realistic, 3D Render, Abstract Art";
+                if (mode === 'Talk to Source') options = "Summarize, Explain Concepts, Find Key Quotes";
+
+                await supabase.from('messages').insert({
+                    chat_id: chatId,
+                    role: 'model',
+                    content: `It seems we're stuck. To get us back on track, please select what you're trying to build:\n\n[OPTIONS: ${options}]`,
+                    msg_type: 'meta_helper',
+                    status: 'completed'
+                });
+                return { statusCode: 202, body: JSON.stringify({ message: "Short input handled" }) };
+            } else {
+                await supabase.from('messages').insert({
+                    chat_id: chatId,
+                    role: 'model',
+                    content: "Could you clarify what you mean? I need a bit more detail to help you effectively.",
+                    msg_type: 'meta_helper',
+                    status: 'completed'
+                });
+                return { statusCode: 202, body: JSON.stringify({ message: "Short input handled" }) };
+            }
+
+            return { statusCode: 202, body: JSON.stringify({ message: "Short input handled" }) };
+        }
 
         if (!input || !chatId || !userId) {
             console.error("Missing required fields");
@@ -193,33 +245,17 @@ const handler: Handler = async (event, context) => {
         // Use Gemini 3 Pro for Talk to Source (good at analysis)
         const modelId = 'google/gemini-3-pro-preview';
 
-        // 1. Insert Initial "Processing" Message
-        const messageId = crypto.randomUUID();
-        const { error: insertError } = await supabase.from('messages').insert({
-            id: messageId,
-            chat_id: chatId,
-            role: 'model',
-            content: '📚 **Analyzing Content...**\n\nI am processing your source material and preparing a comprehensive response. This may take a moment for longer documents.\n\n*Please wait while I analyze...*',
-            status: 'processing',
-            msg_type: 'meta_helper',
-            metadata: {
-                startTime: Date.now(),
-                jobType: 'chat-background',
-                mode: mode
-            }
-        });
-
-        if (insertError) {
-            console.error("Failed to insert initial message:", insertError);
-            return { statusCode: 500, body: "Database error" };
-        }
-
-        console.log(`[Chat Background] Initial message inserted: ${messageId}`);
-
         // 2. Perform the Heavy AI Task
         try {
             const isIterative = wizardMode === 'iterative';
             const systemPrompt = getModeSystemPrompt(mode, isIterative);
+
+            // Customize processing label for the existing messageId
+            if (mode === 'Talk to Source') {
+                await supabase.from('messages').update({
+                    content: '📚 **Analyzing Content...**\n\nI am processing your source material and preparing a comprehensive response. This may take a moment for longer documents.\n\n*Please wait while I analyze...*'
+                }).eq('id', messageId);
+            }
 
             const messages = [
                 { role: 'system', content: systemPrompt },

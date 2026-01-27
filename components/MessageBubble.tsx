@@ -272,8 +272,25 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
     );
   };
 
+  // Mobile Long Press logic
+  const touchTimeout = React.useRef<any>(null);
+  const handleTouchStart = () => {
+    touchTimeout.current = setTimeout(() => {
+      handleCopy();
+      if (window.navigator.vibrate) window.navigator.vibrate(50); // Haptic feedback if supported
+    }, 600);
+  };
+  const handleTouchEnd = () => {
+    if (touchTimeout.current) clearTimeout(touchTimeout.current);
+  };
+
   return (
-    <div className={`flex w-full mb-8 gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+    <div
+      className={`flex w-full mb-8 gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchEnd} // Cancel if moving
+    >
 
 
       {/* Content Column */}
@@ -281,19 +298,24 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
         "flex flex-col max-w-4xl relative",
         isUser ? 'items-end' : 'items-start w-full'
       )}>
-        {/* Floating COPY PROMPT Button */}
-        {isFinalPrompt && (
-          <button
-            onClick={handleCopy}
-            className="absolute -top-3 right-0 flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-lg shadow-lg transition-all hover:scale-105 active:scale-95 z-10"
-          >
-            {copied ? <Check size={14} /> : <Copy size={14} />}
-            {copied ? 'COPIED' : 'COPY PROMPT'}
-          </button>
-        )}
-
         {isUser && (
           <div className="text-base text-gray-200 whitespace-pre-wrap">{message.content}</div>
+        )}
+
+        {/* Floating COPY Button (for Final Prompts and User Messages) moved below content */}
+        {(isFinalPrompt || isUser) && (
+          <button
+            onClick={handleCopy}
+            className={clsx(
+              "mt-2 flex items-center justify-center w-8 h-8 rounded-lg shadow-lg transition-all hover:scale-110 active:scale-95 z-10",
+              isUser
+                ? "bg-[#1E1F20] text-gray-400 hover:text-white"
+                : "bg-brand-600 text-white"
+            )}
+            title={isUser ? "Copy your prompt" : "Copy generated prompt"}
+          >
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+          </button>
         )}
 
         {!isUser && (
@@ -315,26 +337,23 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                 </span>
               </div>
             )}
-            {message.status === 'processing' || message.status === 'failed' ? (
+            {message.status === 'processing' ? (
               (() => {
                 // Detect if message is stuck (processing for > 2 minutes)
                 const startTime = message.metadata?.startTime;
                 const isStuck = startTime && (Date.now() - startTime > 2 * 60 * 1000);
-                const isFailed = message.status === 'failed';
 
-                if (isFailed || isStuck) {
+                if (isStuck) {
                   return (
                     <div className="flex flex-col gap-3 py-2">
                       <div className="flex items-center gap-3 text-amber-400 font-medium">
                         <div className="relative flex h-3 w-3">
                           <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
                         </div>
-                        {isFailed ? 'This request failed to complete' : 'This request appears to be stuck'}
+                        This request appears to be stuck
                       </div>
                       <div className="text-sm text-gray-400/80">
-                        {isFailed
-                          ? 'An error occurred while processing. You can try again or continue the conversation.'
-                          : 'The background process may have been interrupted. You can retry or dismiss this message.'}
+                        The background process may have been interrupted. You can retry or dismiss this message.
                       </div>
                       <div className="flex gap-2 mt-2">
                         {onRecoverStuck && (
@@ -359,20 +378,48 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                   );
                 }
 
-                // Mode-specific processing labels
+                // Check if this is a heavy execution (Run Prompt) or just normal chat
+                const isExecution = message.msgType === 'execution_result';
+
+                if (!isExecution) {
+                  // Simple Pulsing Dot for normal chat
+                  return (
+                    <div className="flex items-center gap-3 py-3 px-1 text-gray-400">
+                      <div className="relative flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-500"></span>
+                      </div>
+                      <span className="text-sm font-medium animate-pulse">Generating response...</span>
+                    </div>
+                  );
+                }
+
+                // Large Loading Box for Execution Results (Vibe Code, etc)
                 const isTalkToSource = message.mode === 'Talk to Source';
-                const processingLabel = isTalkToSource
-                  ? 'Analyzing your content...'
-                  : 'Building your application...';
-                const processingSubtext = isTalkToSource
-                  ? 'Reading and understanding your source material.'
-                  : 'This may take up to a minute for complex architectures.';
-                const gradientClass = isTalkToSource
-                  ? 'from-orange-600 to-amber-600'
-                  : 'from-purple-600 to-pink-600';
-                const dotColor = isTalkToSource ? 'bg-orange-400' : 'bg-purple-400';
-                const dotColorSolid = isTalkToSource ? 'bg-orange-500' : 'bg-purple-500';
-                const textColor = isTalkToSource ? 'text-orange-300' : 'text-purple-300';
+                const isMediaGen = message.mode === 'Media Gen';
+
+                let processingLabel = 'Building your application...';
+                let processingSubtext = 'This may take up to a minute for complex architectures.';
+                let gradientClass = 'from-purple-600 to-pink-600';
+                let dotColor = 'bg-purple-400';
+                let dotColorSolid = 'bg-purple-500';
+                let textColor = 'text-purple-300';
+
+                if (isTalkToSource) {
+                  processingLabel = 'Analyzing your content...';
+                  processingSubtext = 'Reading and understanding your source material.';
+                  gradientClass = 'from-orange-600 to-amber-600';
+                  dotColor = 'bg-orange-400';
+                  dotColorSolid = 'bg-orange-500';
+                  textColor = 'text-orange-300';
+                } else if (isMediaGen) {
+                  processingLabel = 'Designing media prompts...';
+                  processingSubtext = 'Crafting the perfect parameters for your generation.';
+                  gradientClass = 'from-pink-600 to-rose-600';
+                  dotColor = 'bg-pink-400';
+                  dotColorSolid = 'bg-pink-500';
+                  textColor = 'text-pink-300';
+                }
 
                 return (
                   <div className="flex flex-col gap-3 py-2">
