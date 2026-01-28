@@ -166,6 +166,7 @@ export default function LandingPage() {
             {/* --- METADATA SECTION START --- */}
             <Helmet>
                 <title>Prompt Origin | Don't just chat. Start at the Origin.</title>
+                <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
                 <meta name="description" content="The staging ground for your best ideas. Refine prompts, build specs for Cursor, and generate assets before you open ChatGPT." />
 
                 {/* Facebook / Discord / LinkedIn */}

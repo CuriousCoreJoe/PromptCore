@@ -200,6 +200,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
         <div className="flex-1 h-full flex flex-col bg-dark-950 text-gray-100 p-4 md:p-8 overflow-y-auto relative">
             <Helmet>
                 <title>Dashboard | Prompt Origin</title>
+                <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
                 <meta name="robots" content="noindex" />
             </Helmet>
             {/* Header */}
