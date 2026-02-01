@@ -1011,7 +1011,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
     };
 
     return (
-        <div className="flex flex-row h-screen bg-[#131314] text-white overflow-hidden relative">
+        <div className="flex flex-row h-screen overflow-hidden relative" style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-app)' }}>
             {/* Mode Selector - Floating or Top */}
             <div className={clsx(
                 "absolute top-4 -translate-x-1/2 z-30 transition-all duration-300 w-full max-w-[90%] md:max-w-none md:w-auto flex justify-center",
@@ -1028,8 +1028,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             {/* LEFT PANEL: Chat & Input */}
             <div className={clsx(
                 "flex flex-col h-full transition-all duration-300 ease-in-out relative pt-16",
-                activeArtifact ? "hidden md:flex w-1/2 border-r border-dark-800" : "w-full mx-auto"
-            )}>
+                activeArtifact ? "hidden md:flex w-1/2 border-r" : "w-full mx-auto"
+            )} style={{ borderColor: 'var(--border-sidebar)' }}>
 
                 {/* Messages Area */}
                 <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6 custom-scrollbar">
@@ -1038,10 +1038,10 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                         {messages.length === 1 && wizardStage === 'IDLE' && (
                             <div className="flex-1 flex flex-col items-center justify-center text-center pt-12 pb-12">
                                 {/* Title & Description */}
-                                <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
+                                <h1 className="text-3xl font-bold mb-2 tracking-tight" style={{ color: 'var(--text-app)' }}>
                                     {MODE_CONFIGS[currentMode].title}
                                 </h1>
-                                <p className="text-sm text-gray-400 mb-4 leading-relaxed max-w-lg mx-auto">
+                                <p className="text-sm mb-4 leading-relaxed max-w-lg mx-auto" style={{ color: 'var(--text-sidebar)' }}>
                                     {MODE_CONFIGS[currentMode].desc}
                                 </p>
 
@@ -1059,7 +1059,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
 
                                             if (check.exceeded) {
                                                 return (
-                                                    <div className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                                                    <div className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-500 text-sm">
                                                         <AlertCircle size={16} />
                                                         <span>Trial limit reached ({check.limit}/{check.limit}). Upgrade for unlimited access.</span>
                                                     </div>
@@ -1067,9 +1067,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                             }
 
                                             return (
-                                                <div className="flex items-center gap-3 px-4 py-2 bg-dark-800/50 border border-dark-700 rounded-lg text-gray-400 text-sm">
+                                                <div className="flex items-center gap-3 px-4 py-2 rounded-lg text-sm border" style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)', color: 'var(--text-sidebar)' }}>
                                                     <span>{check.remaining} free uses remaining</span>
-                                                    <span className="text-gray-600">•</span>
+                                                    <span style={{ color: 'var(--text-sidebar-dim)' }}>•</span>
                                                     <span>{cost} credits per use</span>
                                                 </div>
                                             );
@@ -1079,18 +1079,19 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
 
                                 {/* Recent Section */}
                                 <div className="w-full max-w-md text-left mx-auto">
-                                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-4 ml-1">Recent</h3>
+                                    <h3 className="text-xs font-bold uppercase tracking-[0.2em] mb-4 ml-1" style={{ color: 'var(--text-sidebar-dim)' }}>Recent</h3>
                                     <div className="space-y-3">
                                         {(recentChats.length > 0 ? recentChats : []).map((chat, idx) => (
                                             <div
                                                 key={idx}
                                                 onClick={() => onLoadChat(chat.id)}
-                                                className="flex items-center gap-4 p-3.5 rounded-2xl bg-dark-900/30 border border-dark-800/50 hover:border-brand-500/30 hover:bg-dark-800/40 transition-all cursor-pointer group"
+                                                className="flex items-center gap-4 p-3.5 rounded-2xl border transition-all cursor-pointer group"
+                                                style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}
                                             >
                                                 <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-inner", MODE_CONFIGS[currentMode].color)}>
                                                     {MODE_CONFIGS[currentMode].initial}
                                                 </div>
-                                                <span className="text-gray-300 group-hover:text-white font-medium truncate flex-1">{chat.title}</span>
+                                                <span className="font-medium truncate flex-1" style={{ color: 'var(--text-sidebar)' }}>{chat.title}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -1122,7 +1123,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                         {showQuickActions && (
                             <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                                 <div className="flex flex-col gap-2 mb-2">
-                                    <span className="text-sm text-gray-400 ml-1">
+                                    <span className="text-sm ml-1" style={{ color: 'var(--text-sidebar)' }}>
                                         {currentMode === AppMode.VIBE_CODE ? "What do you want to do?" :
                                             currentMode === AppMode.MEDIA_GEN ? "What type of media?" :
                                                 currentMode === AppMode.TALK_TO_SOURCE ? "How should I analyze this?" :
@@ -1135,14 +1136,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                             key={opt.id}
                                             onClick={() => handleGoalSelect(opt)}
                                             className={cn(
-                                                "flex flex-col items-start gap-2 p-3 bg-dark-900/50 hover:bg-dark-800 border border-dark-800 rounded-[20px] transition-all text-left group",
+                                                "flex flex-col items-start gap-2 p-3 border rounded-[20px] transition-all text-left group",
                                                 // Dynamic glowing border for primary actions
-                                                (opt.id === 'enhance' || opt.id === 'image' || opt.id === 'build-app') && "animate-glow border-brand-500/50",
-                                                currentMode === AppMode.VIBE_CODE ? "hover:border-purple-500/30" :
-                                                    currentMode === AppMode.MEDIA_GEN ? "hover:border-pink-500/30" :
-                                                        currentMode === AppMode.TALK_TO_SOURCE ? "hover:border-orange-500/30" :
-                                                            "hover:border-blue-500/30"
+                                                (opt.id === 'enhance' || opt.id === 'image' || opt.id === 'build-app') && "animate-glow border-brand-500/50"
                                             )}
+                                            style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}
                                         >
                                             <span className={cn(
                                                 "transition-colors p-1.5 rounded-lg",
@@ -1153,7 +1151,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                             )}>
                                                 {opt.icon}
                                             </span>
-                                            <span className="font-medium text-gray-200 text-xs">{opt.label}</span>
+                                            <span className="font-medium text-xs" style={{ color: 'var(--text-app)' }}>{opt.label}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -1161,7 +1159,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                         )}
 
                         {isLoading && (
-                            <div className="flex items-center gap-3 animate-pulse text-gray-500">
+                            <div className="flex items-center gap-3 animate-pulse" style={{ color: 'var(--text-sidebar)' }}>
                                 <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
                                     <Sparkles size={16} className="text-blue-400" />
                                 </div>
@@ -1174,7 +1172,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 </div>
 
                 {/* Input Area */}
-                <div className="flex-shrink-0 p-6 bg-[#131314] border-t border-dark-800/50">
+                <div className="flex-shrink-0 p-6 border-t" style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}>
                     <div className={clsx("mx-auto w-full", activeArtifact ? "max-w-2xl" : "max-w-4xl")}>
                         {/* Talk to Source - Source Input Buttons */}
                         {currentMode === AppMode.TALK_TO_SOURCE && (wizardStage === 'IDLE' || messages.length > 1) && (
@@ -1214,7 +1212,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                             onChange={(e) => setYoutubeUrl(e.target.value)}
                                             onKeyDown={(e) => e.key === 'Enter' && handleYouTubeSubmit()}
                                             placeholder="Paste YouTube URL..."
-                                            className="flex-1 px-4 py-2.5 bg-dark-800 border border-red-500/30 rounded-xl text-gray-200 placeholder-gray-500 focus:outline-none focus:border-red-500/50 text-sm"
+                                            className="flex-1 px-4 py-2.5 border rounded-xl placeholder-gray-500 focus:outline-none focus:border-brand-500/50 text-sm"
+                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-sidebar)', color: 'var(--text-app)' }}
                                             autoFocus
                                         />
                                         <button
@@ -1235,11 +1234,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
 
                                 {/* Uploaded Source Indicator */}
                                 {uploadedSource && (
-                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 text-xs">
+                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 rounded-lg text-green-500 text-xs">
                                         <span>✓ {uploadedSource}</span>
                                         <button
                                             onClick={() => setUploadedSource(null)}
-                                            className="hover:text-green-300"
+                                            className="hover:text-green-600"
                                         >
                                             ✕
                                         </button>
@@ -1249,9 +1248,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                         )}
 
                         <div className={cn(
-                            "flex items-center bg-[#1E1F20] rounded-[28px] transition-all duration-200 border border-transparent focus-within:border-dark-700 shadow-2xl overflow-hidden pr-2 py-2",
-                            "focus-within:bg-[#1E1F20]"
-                        )}>
+                            "flex items-center rounded-[28px] transition-all duration-200 border border-transparent shadow-2xl overflow-hidden pr-2 py-2"
+                        )} style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-sidebar)' }}>
                             <textarea
                                 ref={textareaRef}
                                 value={input}
@@ -1264,7 +1262,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                             wizardStage === 'CLARIFYING' ? "Answer the questions..." :
                                                 "Reply to Gemini..."
                                 }
-                                className="flex-1 bg-transparent text-[#E3E3E3] placeholder-[#8E918F] px-6 py-3 focus:outline-none resize-none min-h-[56px] max-h-[200px] overflow-y-auto leading-relaxed text-[15px]"
+                                className="flex-1 bg-transparent px-6 py-3 focus:outline-none resize-none min-h-[56px] max-h-[200px] overflow-y-auto leading-relaxed text-[15px]"
+                                style={{ color: 'var(--text-app)' }}
                                 rows={1}
                             />
 
@@ -1273,7 +1272,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                 {isLoading || isRunningExecution ? (
                                     <button
                                         onClick={handleStop}
-                                        className="p-2.5 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all duration-200"
+                                        className="p-2.5 rounded-full bg-red-500/20 text-red-500 hover:bg-red-500/30 transition-all duration-200"
                                         title="Stop Generation"
                                     >
                                         <div className="w-4 h-4 bg-current rounded-sm" />
@@ -1295,8 +1294,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                         className={cn(
                                             "p-2.5 rounded-full transition-all duration-200",
                                             input.trim()
-                                                ? "bg-[#E3E3E3] text-[#131314] hover:bg-white shadow-lg"
-                                                : "bg-transparent text-gray-600 cursor-not-allowed hover:bg-dark-800"
+                                                ? "bg-brand-500 text-white hover:bg-brand-600 shadow-lg"
+                                                : "bg-transparent text-gray-400 cursor-not-allowed"
                                         )}
                                     >
                                         <Send size={18} />
@@ -1305,7 +1304,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                             </div>
                         </div>
 
-                        <div className="text-center mt-3 text-xs text-gray-500 font-medium">
+                        <div className="text-center mt-3 text-xs font-medium" style={{ color: 'var(--text-sidebar-dim)' }}>
                             PromptOrigin can make mistakes. Consider checking important information.
                         </div>
                     </div>
@@ -1314,15 +1313,19 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
 
             {/* RIGHT PANEL: Artifact Preview (Split View) */}
             {activeArtifact && (
-                <div className="w-full md:w-1/2 h-full bg-[#1E1F20] border-l border-dark-800 flex flex-col animate-in fade-in slide-in-from-right duration-300 shadow-2xl z-40 absolute md:relative inset-0 md:inset-auto">
-                    <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-[#2A2B2C] border-b border-dark-700">
-                        <span className="font-semibold text-gray-200 text-sm flex items-center gap-2">
+                <div
+                    className="w-full md:w-1/2 h-full border-l flex flex-col animate-in fade-in slide-in-from-right duration-300 shadow-2xl z-40 absolute md:relative inset-0 md:inset-auto"
+                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-sidebar)' }}
+                >
+                    <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b" style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}>
+                        <span className="font-semibold text-sm flex items-center gap-2" style={{ color: 'var(--text-app)' }}>
                             <Sparkles size={14} className="text-purple-400" />
                             {activeArtifact.title || 'Application Preview'}
                         </span>
                         <button
                             onClick={handleClosePreview}
-                            className="p-1.5 hover:bg-dark-700 rounded-lg text-gray-400 hover:text-white transition-colors"
+                            className="p-1.5 rounded-lg transition-colors"
+                            style={{ color: 'var(--text-sidebar)', backgroundColor: 'transparent' }}
                             title="Close Preview"
                         >
                             <Minimize2 size={16} className="hidden md:block" />

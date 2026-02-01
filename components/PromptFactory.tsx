@@ -4,6 +4,7 @@ import {
   History, FileText, FileSpreadsheet, ChevronDown, ChevronUp, HelpCircle, Plus, Minus, X,
   Check
 } from 'lucide-react';
+import clsx from 'clsx';
 import { FactoryBatch, BatchItem } from '../types';
 import { supabase } from '../lib/supabase';
 import { CREDIT_COSTS } from '../config/pricing';
@@ -212,15 +213,16 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
     <div
       key={item.id}
       ref={el => { if (el) promptRefs.current[item.id] = el; }}
-      className={`bg-dark-950 border rounded-xl overflow-hidden transition-all group animate-in fade-in slide-in-from-bottom-4 duration-500 ${selectedPromptId === item.id
+      className={`border rounded-xl overflow-hidden transition-all group animate-in fade-in slide-in-from-bottom-4 duration-500 ${selectedPromptId === item.id
         ? 'border-brand-500 shadow-lg shadow-brand-900/20'
-        : 'border-dark-700/50 hover:border-white'
+        : 'border-white/10 dark:border-dark-700/50 hover:border-brand-500'
         }`}
+      style={{ backgroundColor: 'var(--bg-app)' }}
       onClick={() => setSelectedPromptId(item.id)}
     >
-      <div className="p-4 border-b border-dark-800/50 flex justify-between items-start bg-dark-900/30">
+      <div className="p-4 border-b flex justify-between items-start" style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}>
         <div>
-          <h4 className={`font-bold text-lg transition-colors ${selectedPromptId === item.id ? 'text-brand-400' : 'text-white group-hover:text-brand-400'}`}>
+          <h4 className={clsx("font-bold text-lg transition-colors", selectedPromptId === item.id ? "text-brand-500 dark:text-brand-400" : "group-hover:text-brand-500")} style={{ color: selectedPromptId === item.id ? '' : 'var(--text-app)' }}>
             {item.title}
           </h4>
           <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -230,7 +232,7 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
               }`}>
               {item.difficulty}
             </span>
-            <span className="bg-dark-800 text-gray-400 px-2 py-0.5 rounded text-[10px] font-mono">
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono border" style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-sidebar)', color: 'var(--text-sidebar)' }}>
               {item.style_var}
             </span>
           </div>
@@ -242,7 +244,7 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
           }}
           className={`p-2 rounded transition-colors ${copiedId === item.id
             ? 'text-green-400 bg-green-900/20'
-            : 'text-gray-500 hover:text-white hover:bg-dark-800'
+            : 'text-gray-500 hover:text-brand-600 dark:hover:text-white hover:bg-black/5 dark:hover:bg-dark-800'
             }`}
           title="Copy Prompt"
         >
@@ -251,13 +253,13 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
       </div>
 
       <div className="p-5 space-y-4">
-        <p className="text-sm text-gray-400 italic border-l-2 border-dark-700 pl-3">
+        <p className="text-sm italic border-l-2 pl-3" style={{ color: 'var(--text-sidebar)', borderColor: 'var(--border-sidebar)' }}>
           "{item.description}"
         </p>
 
         <div className="relative">
-          <div className="absolute top-0 left-0 px-2 py-1 bg-dark-800 rounded-br text-[10px] text-gray-500 font-mono uppercase">Prompt</div>
-          <div className="bg-dark-900 p-4 pt-8 rounded-lg border border-dark-800 font-mono text-sm text-brand-100 whitespace-pre-wrap leading-relaxed">
+          <div className="absolute top-0 left-0 px-2 py-1 rounded-br text-[10px] font-mono uppercase" style={{ backgroundColor: 'var(--bg-sidebar-alt)', color: 'var(--text-sidebar-dim)' }}>Prompt</div>
+          <div className="p-4 pt-8 rounded-lg border font-mono text-sm whitespace-pre-wrap leading-relaxed shadow-inner" style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)', color: 'var(--text-app)' }}>
             {item.prompt_content}
           </div>
         </div>
@@ -266,24 +268,25 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
   );
 
   return (
-    <div className="flex-1 h-full flex flex-col bg-dark-950 text-gray-100 p-4 md:p-8 overflow-y-auto">
+    <div className="flex-1 h-full flex flex-col p-4 md:p-8 overflow-y-auto" style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-app)' }}>
       {/* Header */}
-      <div className="mb-6 md:mb-8 border-b border-dark-800 pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="mb-6 md:mb-8 border-b pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4" style={{ borderColor: 'var(--border-sidebar)' }}>
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-3">
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3" style={{ color: 'var(--text-app)' }}>
             <Layers className="text-brand-500" />
             Consumer Factory
           </h1>
-          <p className="text-gray-400 mt-2 max-w-2xl text-sm md:text-base">
+          <p className="mt-2 max-w-2xl text-sm md:text-base" style={{ color: 'var(--text-sidebar)' }}>
             Build high-value prompt curriculums.
           </p>
         </div>
         <button
           onClick={() => setShowHistory(!showHistory)}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${showHistory
-            ? 'bg-brand-900/20 border-brand-500 text-brand-400'
-            : 'bg-dark-900 border-dark-700 text-gray-300 hover:bg-dark-800'
+            ? 'bg-brand-500/10 border-brand-500 text-brand-500 dark:text-brand-400'
+            : 'hover:bg-black/5 dark:hover:bg-dark-800 border-gray-200 dark:border-dark-700'
             }`}
+          style={{ backgroundColor: showHistory ? '' : 'var(--bg-sidebar-alt)', color: showHistory ? '' : 'var(--text-sidebar)' }}
         >
           <History size={18} />
           {showHistory ? 'Back to Factory' : 'History'}
@@ -295,9 +298,9 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <div className="lg:col-span-1 space-y-6">
-            <div className="bg-dark-900 border border-dark-800 p-6 rounded-xl shadow-lg">
+            <div className="border p-6 rounded-xl shadow-lg" style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-white">Factory Setup</h2>
+                <h2 className="text-lg font-semibold" style={{ color: 'var(--text-app)' }}>Factory Setup</h2>
                 <button
                   onClick={() => setShowHelp(!showHelp)}
                   className="text-gray-500 hover:text-brand-400 transition-colors"
@@ -307,18 +310,18 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
               </div>
 
               {showHelp && (
-                <div className="mb-6 bg-dark-950/50 border border-dark-800 rounded-lg p-4 text-sm text-gray-400 space-y-2 animate-in fade-in slide-in-from-top-2">
+                <div className="mb-6 border rounded-lg p-4 text-sm space-y-2 animate-in fade-in slide-in-from-top-2" style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-sidebar)', color: 'var(--text-sidebar)' }}>
                   <div className="flex justify-between items-start">
-                    <h4 className="font-medium text-gray-300 mb-1">How to use</h4>
-                    <button onClick={() => setShowHelp(false)}><X size={14} /></button>
+                    <h4 className="font-medium mb-1" style={{ color: 'var(--text-app)' }}>How to use</h4>
+                    <button onClick={() => setShowHelp(false)} className="hover:text-brand-500"><X size={14} /></button>
                   </div>
                   <p>1. Enter a niche topic (e.g., "Email Marketing").</p>
                   <p>2. Select the number of prompts to generate.</p>
                   <p>3. Click "Generate Pack" to start.</p>
                   <p>4. Use the Copy/Export buttons to save your prompts.</p>
 
-                  <div className="mt-4 pt-4 border-t border-dark-800">
-                    <h5 className="text-white text-xs font-bold mb-3 uppercase tracking-wider">Difficulty Tiers</h5>
+                  <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-sidebar)' }}>
+                    <h5 className="text-[10px] font-bold mb-3 uppercase tracking-wider" style={{ color: 'var(--text-app)' }}>Difficulty Tiers</h5>
                     <div className="space-y-3">
                       {/* Beginner tier */}
                       <div className="flex items-center gap-3">
@@ -329,7 +332,7 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
                             <span className="text-gray-500">&lt; 100 words</span>
                           </div>
                           <p className="text-[10px] text-gray-400 mb-1 leading-tight italic">Focus: Goal + Context. Best for simple one-off tasks.</p>
-                          <div className="h-1 bg-dark-800 rounded-full overflow-hidden">
+                          <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-sidebar)' }}>
                             <div className="h-full bg-green-500 w-1/3"></div>
                           </div>
                         </div>
@@ -344,7 +347,7 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
                             <span className="text-gray-500">100-300 words</span>
                           </div>
                           <p className="text-[10px] text-gray-400 mb-1 leading-tight italic">Focus: Persona, Tone + Constraints. Reliable creative results.</p>
-                          <div className="h-1 bg-dark-800 rounded-full overflow-hidden">
+                          <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-sidebar)' }}>
                             <div className="h-full bg-yellow-500 w-2/3"></div>
                           </div>
                         </div>
@@ -359,7 +362,7 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
                             <span className="text-gray-500">300+ words</span>
                           </div>
                           <p className="text-[10px] text-gray-400 mb-1 leading-tight italic">Focus: Multi-section Specs + Variables. Professional-grade output.</p>
-                          <div className="h-1 bg-dark-800 rounded-full overflow-hidden">
+                          <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-sidebar)' }}>
                             <div className="h-full bg-red-500 w-full"></div>
                           </div>
                         </div>
@@ -371,13 +374,14 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
 
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">Target Niche</label>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-sidebar-dim)' }}>Target Niche</label>
                   <input
                     type="text"
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
                     placeholder="e.g. Wedding Planning, Python Basics"
-                    className="w-full bg-dark-950 border border-dark-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all"
+                    className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-brand-500 outline-none transition-all"
+                    style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-sidebar)', color: 'var(--text-app)' }}
                   />
                 </div>
 
@@ -385,8 +389,9 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
                   <label className="block text-sm font-medium text-gray-400 mb-2">Pack Size</label>
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={() => setCount(Math.max(5, count - 5))}
-                      className="p-2 bg-dark-800 hover:bg-dark-700 rounded-lg border border-dark-700 text-gray-300 transition-colors"
+                      onClick={() => Math.max(5, count - 5)}
+                      className="p-2 hover:bg-black/5 dark:hover:bg-dark-700 rounded-lg border transition-colors"
+                      style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-sidebar)', color: 'var(--text-sidebar)' }}
                     >
                       <Minus size={18} />
                     </button>
@@ -398,12 +403,14 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
                         step="5"
                         value={count}
                         onChange={(e) => setCount(Math.min(200, Math.max(5, Number(e.target.value))))}
-                        className="w-full bg-dark-950 border border-dark-700 rounded-lg px-4 py-2 text-center text-white font-mono focus:ring-2 focus:ring-brand-500 outline-none"
+                        className="w-full border rounded-lg px-4 py-2 text-center font-mono focus:ring-2 focus:ring-brand-500 outline-none"
+                        style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-sidebar)', color: 'var(--text-app)' }}
                       />
                     </div>
                     <button
                       onClick={() => setCount(Math.min(200, count + 5))}
-                      className="p-2 bg-dark-800 hover:bg-dark-700 rounded-lg border border-dark-700 text-gray-300 transition-colors"
+                      className="p-2 hover:bg-black/5 dark:hover:bg-dark-700 rounded-lg border transition-colors"
+                      style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-sidebar)', color: 'var(--text-sidebar)' }}
                     >
                       <Plus size={18} />
                     </button>
@@ -415,11 +422,11 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
                   </div>
                 </div>
 
-                <div className="bg-dark-950 p-3 rounded border border-dark-800 text-xs flex justify-between items-center">
-                  <span className="text-gray-400">Estimated Cost:</span>
-                  <span className="text-white font-mono flex items-center gap-1">
+                <div className="border p-3 rounded text-xs flex justify-between items-center" style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-sidebar)' }}>
+                  <span style={{ color: 'var(--text-sidebar)' }}>Estimated Cost:</span>
+                  <span className="font-mono flex items-center gap-1" style={{ color: 'var(--text-app)' }}>
                     {estimatedCost} Credits
-                    <Info size={12} className="text-gray-500" />
+                    <Info size={12} className="opacity-50" />
                   </span>
                 </div>
               </div>
@@ -428,8 +435,8 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
                 onClick={handleStartFactory}
                 disabled={isProcessing || !topic.trim()}
                 className={`w-full mt-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all ${isProcessing || !topic.trim()
-                  ? 'bg-dark-800 text-gray-500 cursor-not-allowed'
-                  : 'bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-900/40'
+                  ? 'bg-gray-200 dark:bg-dark-800 text-gray-500 cursor-not-allowed border dark:border-dark-700'
+                  : 'bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-600/20'
                   }`}
               >
                 {isProcessing ? <Loader2 className="animate-spin" size={20} /> : <Play size={20} />}
@@ -438,12 +445,12 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
             </div>
           </div>
 
-          <div className="lg:col-span-2 flex flex-col h-[600px] lg:h-auto bg-dark-900 border border-dark-800 rounded-xl overflow-hidden shadow-lg">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border-b border-dark-800 bg-dark-950/50 gap-4">
+          <div className="lg:col-span-2 flex flex-col h-[600px] lg:h-auto border rounded-xl overflow-hidden shadow-lg" style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border-b gap-4" style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-sidebar)' }}>
               <div>
-                <h2 className="font-semibold text-white">Pack Preview</h2>
+                <h2 className="font-semibold" style={{ color: 'var(--text-app)' }}>Pack Preview</h2>
                 {(generatedItems.length > 0 || isProcessing) && (
-                  <div className="text-xs text-brand-400 font-mono mt-1">
+                  <div className="text-[10px] text-brand-500 font-bold uppercase tracking-wider mt-1">
                     {isProcessing ? `Generating... (${generatedItems.length}/${count})` : `${generatedItems.length} Prompts Generated`}
                   </div>
                 )}
@@ -453,21 +460,24 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
                 <button
                   onClick={() => handleCopyAll(generatedItems)}
                   disabled={generatedItems.length === 0}
-                  className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-300 bg-dark-800 hover:bg-dark-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed border"
+                  style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)', color: 'var(--text-sidebar)' }}
                 >
                   <Copy size={14} /> Copy All
                 </button>
                 <button
                   onClick={() => handleExportCSV(generatedItems, `prompts-${topic.replace(/\s+/g, '-')}`)}
                   disabled={generatedItems.length === 0}
-                  className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-300 bg-dark-800 hover:bg-dark-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed border"
+                  style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)', color: 'var(--text-sidebar)' }}
                 >
                   <FileSpreadsheet size={14} /> CSV
                 </button>
                 <button
                   onClick={() => handleExportTXT(generatedItems, `prompts-${topic.replace(/\s+/g, '-')}`)}
                   disabled={generatedItems.length === 0}
-                  className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-300 bg-dark-800 hover:bg-dark-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed border"
+                  style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)', color: 'var(--text-sidebar)' }}
                 >
                   <FileText size={14} /> TXT
                 </button>
@@ -476,9 +486,9 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
               {generatedItems.length === 0 && !isProcessing && (
-                <div className="h-full flex flex-col items-center justify-center text-gray-600 p-8 text-center">
+                <div className="h-full flex flex-col items-center justify-center p-8 text-center" style={{ color: 'var(--text-sidebar-dim)' }}>
                   <Layers size={48} className="mb-4 opacity-20" />
-                  <p className="text-lg font-medium mb-2">Production Line Idle</p>
+                  <p className="text-lg font-medium mb-2" style={{ color: 'var(--text-app)' }}>Production Line Idle</p>
                   <p className="text-sm max-w-md">Configure your consumer niche on the left to begin generating high-quality prompt batches.</p>
                 </div>
               )}

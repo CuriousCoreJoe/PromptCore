@@ -9,11 +9,14 @@ import {
     Sparkles,
     Command,
     Brain,
-    Layers
+    Layers,
+    Palette,
+    Type
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { AIModel } from '../types';
+import { useTheme, THEME_PACKS, FontSize } from '../context/ThemeContext';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
     return twMerge(clsx(inputs));
@@ -40,6 +43,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     isDev = false,
     onBack
 }) => {
+    const { settings, updateSettings } = useTheme();
     const modelDisplayNames: Record<AIModel, string> = {
         'gpt-5': 'ChatGPT 5',
         'google/gemini-3-pro-preview': 'Gemini 3 Pro',
@@ -163,14 +167,125 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </div>
                     </section>
 
-                    {/* Power User Settings */}
-                    <section className="space-y-4 opacity-75 grayscale pointer-events-none">
+                    {/* Appearance & Branding */}
+                    <section className="space-y-4">
                         <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                            <Zap size={14} className="text-orange-500" /> Power User (Coming Soon)
+                            <Palette size={14} className="text-pink-500" /> Appearance & Branding
                         </h2>
 
                         <div className="bg-dark-900 border border-dark-800 rounded-2xl divide-y divide-dark-800">
-                            <div className="p-6 flex items-center justify-between">
+                            {/* Color Palette Packs */}
+                            <div className="p-6 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <p className="font-semibold text-gray-100">Color Palette Packs</p>
+                                        <p className="text-sm text-gray-400">Choose a theme pack to re-color your workspace and mode buttons.</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex bg-dark-950 p-1 rounded-xl border border-dark-800">
+                                            <button
+                                                onClick={() => updateSettings({ isDarkMode: true })}
+                                                className={cn(
+                                                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                                                    settings.isDarkMode ? "bg-dark-700 text-white shadow-lg" : "text-gray-500 hover:text-gray-300"
+                                                )}
+                                            >
+                                                Dark
+                                            </button>
+                                            <button
+                                                onClick={() => updateSettings({ isDarkMode: false })}
+                                                className={cn(
+                                                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                                                    !settings.isDarkMode ? "bg-brand-500 text-white shadow-lg" : "text-gray-500 hover:text-gray-300"
+                                                )}
+                                            >
+                                                Light
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    {THEME_PACKS.map((pack) => (
+                                        <button
+                                            key={pack.id}
+                                            onClick={() => updateSettings({ themePackId: pack.id })}
+                                            className={cn(
+                                                "p-3 rounded-xl border transition-all text-left space-y-2 group",
+                                                settings.themePackId === pack.id
+                                                    ? "bg-dark-800 border-brand-500 ring-1 ring-brand-500/50"
+                                                    : "bg-dark-950/50 border-dark-800 hover:border-dark-700"
+                                            )}
+                                        >
+                                            <div className="flex -space-x-1">
+                                                {Object.values(pack.colors).map((color, i) => (
+                                                    <div
+                                                        key={i}
+                                                        className="w-3 h-3 rounded-full ring-2 ring-dark-900"
+                                                        style={{ backgroundColor: color }}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <p className={cn(
+                                                "text-xs font-bold truncate",
+                                                settings.themePackId === pack.id ? "text-brand-400" : "text-gray-500 group-hover:text-gray-400"
+                                            )}>
+                                                {pack.name}
+                                            </p>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Font Size Scaling */}
+                            <div className="p-6 space-y-6">
+                                <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Type size={16} className="text-gray-400" />
+                                            <p className="font-semibold text-gray-100">Interface Scale (Font Size)</p>
+                                        </div>
+                                        <span className="text-xs font-mono text-brand-500 bg-brand-500/10 px-2 py-0.5 rounded uppercase">
+                                            {settings.fontSize}
+                                        </span>
+                                    </div>
+                                    <p className="text-sm text-gray-400">Apply a global scale factor to the entire application UI.</p>
+                                </div>
+
+                                <div className="relative h-2 bg-dark-950 rounded-full border border-dark-800 flex items-center justify-between px-2">
+                                    {['xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl', '4xl'].map((size) => (
+                                        <button
+                                            key={size}
+                                            onClick={() => updateSettings({ fontSize: size as FontSize })}
+                                            className={cn(
+                                                "w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center relative group",
+                                                settings.fontSize === size
+                                                    ? "bg-brand-500 border-white scale-110 shadow-lg shadow-brand-500/20"
+                                                    : "bg-dark-800 border-dark-700 hover:border-dark-600"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "absolute -bottom-6 text-[10px] font-bold uppercase transition-colors",
+                                                settings.fontSize === size ? "text-brand-400" : "text-gray-600 opacity-0 group-hover:opacity-100"
+                                            )}>
+                                                {size}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="h-6" /> {/* Spacer for labels */}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Power User Settings */}
+                    <section className="space-y-4">
+                        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                            <Zap size={14} className="text-orange-500" /> Power User
+                        </h2>
+
+                        <div className="bg-dark-900 border border-dark-800 rounded-2xl divide-y divide-dark-800">
+                            <div className="p-6 flex items-center justify-between hover:bg-dark-900/50 transition-colors">
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2">
                                         <Keyboard size={16} className="text-gray-400" />
@@ -178,10 +293,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     </div>
                                     <p className="text-sm text-gray-500">Quickly toggle modes and send messages with customizable keys.</p>
                                 </div>
-                                <div className="w-10 h-6 bg-dark-800 rounded-full"></div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] bg-dark-800 px-2 py-1 rounded text-gray-500 font-bold">LOCKED</span>
+                                </div>
                             </div>
 
-                            <div className="p-6 flex items-center justify-between">
+                            <div className="p-6 flex items-center justify-between hover:bg-dark-900/50 transition-colors">
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2">
                                         <Command size={16} className="text-gray-400" />
@@ -189,7 +306,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     </div>
                                     <p className="text-sm text-gray-500">Use CMD+K to search history and jump between workspaces instantly.</p>
                                 </div>
-                                <div className="w-10 h-6 bg-dark-800 rounded-full"></div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] bg-brand-500/20 text-brand-400 px-2 py-1 rounded border border-brand-500/20 font-bold uppercase tracking-tighter">CMD + K</span>
+                                </div>
                             </div>
                         </div>
                     </section>

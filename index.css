@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Inter', sans-serif;
+  --font-sans: var(--font-custom, 'Inter', sans-serif);
   --font-mono: 'JetBrains Mono', monospace;
 
   --color-brand-50: #f0f9ff;
@@ -15,9 +15,125 @@
   --color-dark-950: #0a0a0a;
 }
 
+html {
+  font-size: var(--font-size-base, 16px);
+}
+
+:root {
+  --bg-app: #0a0a0a;
+  --text-app: #e5e5e5;
+  --bg-sidebar: #0a0a0a;
+  --bg-sidebar-alt: #131314;
+  --border-sidebar: rgba(255, 255, 255, 0.05);
+  --text-sidebar: #9ca3af;
+  /* gray-400 */
+  --text-sidebar-dim: #4b5563;
+  /* gray-600 */
+
+  --bg-search-palette: #0a090a;
+  --border-search-palette: #1f2937;
+  /* dark-700 */
+  --text-muted: #9ca3af;
+  --bg-input: #1e1f20;
+  --bg-overlay: #131314;
+  --bg-kbd: #2a2b2c;
+  --text-kbd: #9ca3af;
+  --text-btn-active: #ffffff;
+}
+
 body {
+  background-color: var(--bg-app, var(--color-dark-950));
+  color: var(--text-app, #e5e5e5);
+}
+
+.light-mode {
+  --color-dark-950: #ffffff;
+  --color-dark-900: #f8fafc;
+  /* slate-50 */
+  --color-dark-800: #f1f5f9;
+  /* slate-100 */
+  --color-dark-700: #e2e8f0;
+  /* slate-200 */
+  --color-gray-100: #0f172a;
+  /* slate-900 */
+  --color-gray-200: #1e293b;
+  /* slate-800 */
+  --color-gray-300: #334155;
+  /* slate-700 */
+  --color-gray-400: #475569;
+  /* slate-600 */
+  --color-gray-500: #64748b;
+  /* slate-500 */
+
+  --bg-app: #ffffff;
+  --text-app: #0f172a;
+  --bg-sidebar: #f8fafc;
+  --bg-sidebar-alt: #f1f5f9;
+  --border-sidebar: #e2e8f0;
+  --text-sidebar: #64748b;
+  --text-sidebar-dim: #94a3b8;
+
+  --bg-search-palette: #ffffff;
+  --border-search-palette: #e2e8f0;
+  --text-muted: #64748b;
+  --bg-input: #f1f5f9;
+  --bg-overlay: #f8fafc;
+  --bg-kbd: #e2e8f0;
+  --text-kbd: #64748b;
+  --text-btn-active: #000000;
+}
+
+.light-mode body {
+  background-color: var(--bg-app);
+  color: var(--text-app);
+}
+
+.light-mode .bg-dark-900 {
+  background-color: var(--color-dark-900);
+}
+
+.light-mode .bg-dark-950 {
   background-color: var(--color-dark-950);
-  color: #e5e5e5;
+}
+
+.light-mode .bg-dark-800 {
+  background-color: var(--color-dark-800);
+}
+
+.light-mode .border-dark-800 {
+  border-color: var(--color-dark-800);
+}
+
+.light-mode .border-dark-700 {
+  border-color: var(--color-dark-700);
+}
+
+.light-mode .text-gray-100 {
+  color: var(--color-gray-100);
+}
+
+.light-mode .text-gray-400 {
+  color: var(--text-sidebar-dim);
+}
+
+.light-mode .text-gray-600 {
+  color: var(--text-muted);
+}
+
+.light-mode .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.light-mode .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.light-mode .border-white\/5 {
+  border-color: var(--border-sidebar);
+}
+
+.light-mode .border-white\/10 {
+  border-color: var(--border-sidebar);
 }
 
 /* Custom scrollbar */

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { FeedbackItem, FeedbackComment } from '../types';
-import { MessageSquare, ThumbsUp, Plus, Bug, Check, Filter, MessageCircle, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { MessageSquare, Plus, MessageCircle, X, ChevronUp } from 'lucide-react';
 
 interface FeedbackBoardProps {
     userId: string;
@@ -31,15 +31,12 @@ export const FeedbackBoard: React.FC<FeedbackBoardProps> = ({ userId }) => {
             return;
         }
 
-        // Process upvotes count and user vote status
         const processedItems: FeedbackItem[] = data.map((item: any) => ({
             ...item,
             vote_count: item.feedback_upvotes?.length || 0,
             user_has_voted: item.feedback_upvotes?.some((v: any) => v.user_id === userId),
         }));
 
-        // Sort by votes (optional default) or keep chronological
-        // Let's sort by votes desc, then date
         processedItems.sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0) || new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
         setItems(processedItems);
@@ -59,7 +56,7 @@ export const FeedbackBoard: React.FC<FeedbackBoardProps> = ({ userId }) => {
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'feedback_upvotes' },
-                () => fetchItems() // Refresh to update counts
+                () => fetchItems()
             )
             .subscribe();
 
@@ -69,12 +66,14 @@ export const FeedbackBoard: React.FC<FeedbackBoardProps> = ({ userId }) => {
     }, [userId]);
 
     const handleVote = async (itemId: string, hasVoted: boolean) => {
+        if (!userId) return;
+
         if (hasVoted) {
             await supabase.from('feedback_upvotes').delete().match({ user_id: userId, feedback_id: itemId });
         } else {
             await supabase.from('feedback_upvotes').insert({ user_id: userId, feedback_id: itemId });
         }
-        // Optimistic update
+
         setItems(prev => prev.map(item => {
             if (item.id === itemId) {
                 return {
@@ -92,11 +91,11 @@ export const FeedbackBoard: React.FC<FeedbackBoardProps> = ({ userId }) => {
         if (!newItemContent.trim()) return;
 
         const { error } = await supabase.from('feedback_items').insert({
-            user_id: userId,
+            user_id: userId || null,
             content: newItemContent,
             type: newItemType,
             status: 'open',
-            tags: [newItemType === 'bug' ? 'bug' : 'user-feedback'] // Simple auto-tag
+            tags: [newItemType === 'bug' ? 'bug' : 'user-feedback']
         });
 
         if (!error) {
@@ -136,7 +135,7 @@ export const FeedbackBoard: React.FC<FeedbackBoardProps> = ({ userId }) => {
 
         const { error } = await supabase.from('feedback_comments').insert({
             feedback_id: itemId,
-            user_id: userId,
+            user_id: userId || null,
             content: newComment
         });
 
@@ -149,25 +148,30 @@ export const FeedbackBoard: React.FC<FeedbackBoardProps> = ({ userId }) => {
     const filteredItems = items.filter(item => filter === 'all' || item.type === filter);
 
     return (
-        <div className="h-full flex flex-col bg-dark-950 text-gray-100 p-4 relative">
-            <div className="flex justify-end items-center mb-6">
+        <div className="h-full flex flex-col bg-dark-950 text-gray-100 p-6 relative overflow-hidden">
+            {/* Submit Feedback Prompt */}
+            <div className="bg-gradient-to-r from-brand-600/10 to-violet-600/10 border border-brand-500/20 rounded-2xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                    <h3 className="text-lg font-bold text-white mb-1">Have an idea or found a bug?</h3>
+                    <p className="text-gray-400 text-sm">Your feedback helps us build the ultimate prompt staging ground.</p>
+                </div>
                 <button
                     onClick={() => setIsModalOpen(true)}
-                    className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                    className="bg-brand-600 hover:bg-brand-500 text-white px-6 py-2.5 rounded-full font-bold flex items-center gap-2 transition-all shadow-lg hover:shadow-brand-500/20 active:scale-95 whitespace-nowrap"
                 >
-                    <Plus size={18} /> New Feedback
+                    <Plus size={18} /> Submit Feedback
                 </button>
             </div>
 
             {/* Filters */}
-            <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+            <div className="flex gap-2 mb-6 overflow-x-auto pb-2 no-scrollbar">
                 {(['all', 'bug', 'suggestion', 'feedback', 'complaint'] as const).map(f => (
                     <button
                         key={f}
                         onClick={() => setFilter(f)}
-                        className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all capitalize whitespace-nowrap ${filter === f
-                            ? 'bg-brand-500/20 border-brand-500 text-brand-400'
-                            : 'bg-dark-900 border-dark-800 text-gray-400 hover:border-brand-500/50'
+                        className={`px-5 py-2 rounded-full text-sm font-bold border transition-all capitalize whitespace-nowrap ${filter === f
+                            ? 'bg-brand-600 border-brand-500 text-white'
+                            : 'bg-dark-900 border-dark-800 text-gray-400 hover:text-gray-200'
                             }`}
                     >
                         {f}
@@ -175,134 +179,113 @@ export const FeedbackBoard: React.FC<FeedbackBoardProps> = ({ userId }) => {
                 ))}
             </div>
 
-            {/* List */}
-            <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+            {/* List Container */}
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                 {isLoading ? (
-                    <div className="text-center py-12 text-gray-500">Loading feedback...</div>
+                    <div className="flex flex-col items-center justify-center py-20">
+                        <div className="w-10 h-10 border-4 border-brand-500/20 border-t-brand-500 rounded-full animate-spin mb-4"></div>
+                        <p className="text-gray-500">Loading...</p>
+                    </div>
                 ) : filteredItems.length === 0 ? (
-                    <div className="text-center py-12 bg-dark-900/50 rounded-xl border border-dashed border-dark-800">
-                        <MessageSquare className="mx-auto mb-3 opacity-20" size={48} />
-                        <p className="text-gray-400">No feedback found. Be the first to share your thoughts!</p>
+                    <div className="text-center py-20 bg-dark-900/30 rounded-2xl border border-dashed border-dark-800">
+                        <MessageSquare className="mx-auto mb-4 text-gray-700" size={32} />
+                        <h4 className="text-white font-bold mb-2">No feedback yet</h4>
+                        <p className="text-gray-400 text-sm mb-6">Be the first to share your thoughts!</p>
+                        <button onClick={() => setIsModalOpen(true)} className="text-brand-400 font-bold hover:text-brand-300 transition-colors">
+                            Submit a report
+                        </button>
                     </div>
                 ) : (
-                    filteredItems.map(item => (
-                        <div key={item.id} className="bg-dark-900/50 border border-dark-800 rounded-2xl p-5 transition-all hover:border-brand-500/30 hover:bg-dark-900 group shadow-lg">
-                            <div className="flex gap-4">
-                                {/* Vote Column */}
-                                <div className="flex flex-col items-center gap-1 min-w-[3rem]">
-                                    <button
-                                        onClick={() => handleVote(item.id, item.user_has_voted || false)}
-                                        className={`p-2 rounded-lg transition-colors ${item.user_has_voted
-                                            ? 'bg-brand-500/20 text-brand-400'
-                                            : 'bg-dark-950 text-gray-500 hover:bg-dark-800 hover:text-gray-300'
-                                            }`}
-                                    >
-                                        <ChevronUp size={20} className={item.user_has_voted ? 'fill-current' : ''} />
-                                    </button>
-                                    <span className={`font-bold ${item.user_has_voted ? 'text-brand-400' : 'text-gray-400'}`}>
-                                        {item.vote_count}
-                                    </span>
-                                </div>
-
-                                {/* Content Column */}
-                                <div className="flex-1">
-                                    <div className="flex items-start justify-between mb-2">
-                                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${item.type === 'bug' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
-                                            item.type === 'suggestion' ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' :
-                                                'bg-gray-800 border-gray-700 text-gray-400'
-                                            }`}>
-                                            {item.type}
-                                        </span>
-                                        <span className="text-xs text-gray-600">{new Date(item.created_at).toLocaleDateString()}</span>
-                                    </div>
-                                    <p className="text-gray-200 leading-relaxed mb-3">{item.content}</p>
-
-                                    <div className="flex items-center gap-4">
+                    <div className="space-y-4">
+                        {filteredItems.map(item => (
+                            <div key={item.id} className="bg-dark-900/50 border border-dark-800 rounded-2xl p-5 hover:border-brand-500/30 transition-all">
+                                <div className="flex gap-5">
+                                    <div className="flex flex-col items-center gap-1 min-w-[3rem]">
                                         <button
-                                            onClick={() => toggleExpand(item.id)}
-                                            className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1.5 transition-colors"
+                                            onClick={() => handleVote(item.id, item.user_has_voted || false)}
+                                            className={`p-2 rounded-xl transition-all ${item.user_has_voted ? 'bg-brand-600 text-white' : 'bg-dark-950 text-gray-500 border border-dark-800'}`}
                                         >
-                                            <MessageCircle size={14} />
-                                            {comments[item.id]?.length || 0} Comments
+                                            <ChevronUp size={20} />
                                         </button>
+                                        <span className="font-bold text-gray-400">{item.vote_count}</span>
                                     </div>
-
-                                    {/* Expanded Comments Section */}
-                                    {expandedItem === item.id && (
-                                        <div className="mt-4 pt-4 border-t border-dark-800 animate-in fade-in slide-in-from-top-2">
-                                            <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
-                                                {comments[item.id]?.map(comment => (
-                                                    <div key={comment.id} className="bg-dark-950 p-3 rounded-lg text-sm">
-                                                        <p className="text-gray-300">{comment.content}</p>
-                                                        <span className="text-[10px] text-gray-600 mt-1 block">
-                                                            {new Date(comment.created_at).toLocaleDateString()}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                                {comments[item.id]?.length === 0 && (
-                                                    <p className="text-gray-600 text-sm italic">No comments yet.</p>
-                                                )}
-                                            </div>
-                                            <form onSubmit={(e) => handleCommentSubmit(e, item.id)} className="flex gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={newComment}
-                                                    onChange={(e) => setNewComment(e.target.value)}
-                                                    placeholder="Add a comment..."
-                                                    className="flex-1 bg-dark-950 border border-dark-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-500"
-                                                />
-                                                <button type="submit" disabled={!newComment.trim()} className="bg-dark-800 hover:bg-dark-700 text-gray-300 px-3 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
-                                                    Post
-                                                </button>
-                                            </form>
+                                    <div className="flex-1">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-dark-800 text-gray-400 border border-dark-700">
+                                                {item.type}
+                                            </span>
+                                            <span className="text-xs text-gray-500">
+                                                {new Date(item.created_at).toLocaleDateString()}
+                                            </span>
                                         </div>
-                                    )}
+                                        <p className="text-gray-200 mb-3">{item.content}</p>
+                                        <button onClick={() => toggleExpand(item.id)} className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 transition-colors">
+                                            <MessageCircle size={14} /> {comments[item.id]?.length || 0} Comments
+                                        </button>
+
+                                        {expandedItem === item.id && (
+                                            <div className="mt-4 pt-4 border-t border-dark-800">
+                                                <div className="space-y-3 mb-4 max-h-40 overflow-y-auto">
+                                                    {comments[item.id]?.map(c => (
+                                                        <div key={c.id} className="bg-dark-950 p-2 rounded shadow-sm">
+                                                            <p className="text-sm text-gray-300">{c.content}</p>
+                                                            <span className="text-[10px] text-gray-600">{new Date(c.created_at).toLocaleDateString()}</span>
+                                                        </div>
+                                                    ))}
+                                                    {(!comments[item.id] || comments[item.id].length === 0) && (
+                                                        <p className="text-xs text-gray-600 italic">No comments yet.</p>
+                                                    )}
+                                                </div>
+                                                <form onSubmit={(e) => handleCommentSubmit(e, item.id)} className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={newComment}
+                                                        onChange={(e) => setNewComment(e.target.value)}
+                                                        placeholder="Add a comment..."
+                                                        className="flex-1 bg-dark-950 border border-dark-700 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-brand-500"
+                                                    />
+                                                    <button type="submit" className="bg-brand-600 text-white px-3 py-1.5 rounded text-sm font-bold">Post</button>
+                                                </form>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))
+                        ))}
+                    </div>
                 )}
             </div>
 
-            {/* Add Modal */}
+            {/* Modal */}
             {isModalOpen && (
-                <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-dark-900 border border-dark-700 rounded-xl w-full max-w-lg shadow-2xl animate-in zoom-in-95">
-                        <div className="p-4 border-b border-dark-800 flex justify-between items-center">
-                            <h3 className="font-bold text-white">Submit Feedback</h3>
-                            <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-white"><X size={20} /></button>
+                <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-dark-900 border border-dark-700 rounded-2xl w-full max-w-lg p-6 shadow-2xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-white">Share your thoughts</h3>
+                            <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-white"><X size={24} /></button>
                         </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Category</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {(['suggestion', 'bug', 'feedback', 'complaint'] as const).map(t => (
-                                        <button
-                                            key={t}
-                                            type="button"
-                                            onClick={() => setNewItemType(t)}
-                                            className={`p-2 rounded-lg text-sm font-medium border capitalize ${newItemType === t
-                                                ? 'bg-brand-600 border-brand-500 text-white'
-                                                : 'bg-dark-950 border-dark-800 text-gray-400 hover:bg-dark-800'
-                                                }`}
-                                        >
-                                            {t}
-                                        </button>
-                                    ))}
-                                </div>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-2">
+                                {(['suggestion', 'bug', 'feedback', 'complaint'] as const).map(t => (
+                                    <button
+                                        key={t}
+                                        type="button"
+                                        onClick={() => setNewItemType(t)}
+                                        className={`py-2 rounded-lg text-sm font-bold border capitalize transition-all ${newItemType === t ? 'bg-brand-600 border-brand-500 text-white' : 'bg-dark-950 border-dark-800 text-gray-500'}`}
+                                    >
+                                        {t}
+                                    </button>
+                                ))}
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-2">Details</label>
-                                <textarea
-                                    value={newItemContent}
-                                    onChange={(e) => setNewItemContent(e.target.value)}
-                                    placeholder={newItemType === 'bug' ? "Describe the bug and steps to reproduce..." : "Share your idea..."}
-                                    className="w-full h-32 bg-dark-950 border border-dark-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-brand-500 outline-none resize-none"
-                                    required
-                                />
-                            </div>
-                            <button type="submit" className="w-full bg-brand-600 hover:bg-brand-500 text-white font-bold py-3 rounded-lg transition-colors">
-                                Submit Feedback
+                            <textarea
+                                value={newItemContent}
+                                onChange={(e) => setNewItemContent(e.target.value)}
+                                placeholder="Details..."
+                                className="w-full h-32 bg-dark-950 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none resize-none"
+                                required
+                            />
+                            <button type="submit" className="w-full bg-brand-600 py-3 rounded-xl text-white font-bold hover:bg-brand-500 transition-colors">
+                                Submit
                             </button>
                         </form>
                     </div>

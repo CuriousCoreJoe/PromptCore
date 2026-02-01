@@ -154,9 +154,18 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, us
     }, {} as Record<string, ChatSession[]>);
 
     return (
-        <div className="flex flex-col h-full bg-[#0a0a0a] text-gray-100 font-sans overflow-y-auto">
+        <div
+            className="flex flex-col h-full font-sans overflow-y-auto"
+            style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-app)' }}
+        >
             {/* Header */}
-            <div className="flex-shrink-0 pt-12 pb-8 flex flex-col items-center justify-center border-b border-white/5 relative bg-gradient-to-b from-[#131314] to-[#0a0a0a]">
+            <div
+                className="flex-shrink-0 pt-12 pb-8 flex flex-col items-center justify-center border-b relative"
+                style={{
+                    backgroundImage: 'linear-gradient(to bottom, var(--bg-sidebar-alt), var(--bg-app))',
+                    borderColor: 'var(--border-sidebar)'
+                }}
+            >
                 {/* Back Button */}
                 <button
                     onClick={onBack}
@@ -169,7 +178,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, us
                 <div className="w-24 h-24 rounded-full bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-4xl font-bold text-white mb-4 shadow-2xl ring-4 ring-white/5 uppercase">
                     {userProfile?.email?.charAt(0) || userProfile?.full_name?.charAt(0) || 'U'}
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-1">
+                <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-app)' }}>
                     {userProfile?.full_name || userProfile?.email?.split('@')[0] || 'User'}
                 </h1>
                 <p className="text-sm text-gray-500 mb-6 uppercase tracking-wider font-semibold">
@@ -177,7 +186,10 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, us
                 </p>
 
                 {/* Tabs */}
-                <div className="flex items-center bg-[#1E1F20] p-1 rounded-full border border-white/5">
+                <div
+                    className="flex items-center p-1 rounded-full border"
+                    style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-sidebar)' }}
+                >
                     <button
                         onClick={() => setActiveTab('chat')}
                         className={clsx(
@@ -220,7 +232,8 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, us
                         placeholder="Search your history..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-[#1E1F20] border border-white/5 rounded-full py-3 pl-12 pr-6 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-all text-white"
+                        className="w-full border rounded-full py-3 pl-12 pr-6 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 transition-all"
+                        style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-sidebar)', color: 'var(--text-app)' }}
                     />
                 </div>
             </div>
@@ -250,7 +263,8 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, us
                                             <div
                                                 key={chat.id}
                                                 onClick={() => onLoadChat(chat.id)}
-                                                className="group flex items-center gap-4 p-4 rounded-xl hover:bg-[#1E1F20] cursor-pointer transition-all border border-transparent hover:border-white/5"
+                                                className="group flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all border border-transparent hover:border-brand-500/30"
+                                                style={{ borderBottomWidth: '1px' }}
                                             >
                                                 <div className="text-xs font-mono text-gray-500 w-12 text-right">
                                                     {new Date(chat.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -261,7 +275,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, us
                                                 </div>
 
                                                 <div className="flex-1 min-w-0">
-                                                    <h4 className="text-gray-300 group-hover:text-white font-medium truncate transition-colors">
+                                                    <h4 className="font-medium truncate transition-colors" style={{ color: 'var(--text-app)' }}>
                                                         {chat.title || 'New Chat'}
                                                     </h4>
                                                     <p className="text-xs text-gray-600 group-hover:text-gray-500 truncate mt-0.5 capitalize">
@@ -307,7 +321,10 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onBack, onLoadChat, us
                                                         </button>
 
                                                         {openFolderMenuId === chat.id && (
-                                                            <div className="absolute right-0 bottom-full mb-2 w-48 bg-[#1e1f20] border border-white/10 rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in slide-in-from-bottom-2 max-h-40 overflow-y-auto">
+                                                            <div
+                                                                className="absolute right-0 bottom-full mb-2 w-48 border rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in slide-in-from-bottom-2 max-h-40 overflow-y-auto"
+                                                                style={{ backgroundColor: 'var(--bg-search-palette)', borderColor: 'var(--border-sidebar)' }}
+                                                            >
                                                                 <button
                                                                     onClick={(e) => { e.stopPropagation(); handleMoveToFolder(chat.id, null); }}
                                                                     className="w-full text-left px-4 py-2 text-xs text-gray-400 hover:bg-white/5 hover:text-white transition-colors"

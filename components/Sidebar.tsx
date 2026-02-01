@@ -165,22 +165,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
         />
       )}
 
-      <div className={clsx(
-        "bg-[#0a0a0a] border-r border-white/5 flex flex-col h-full transition-all duration-300",
-        "fixed inset-y-0 left-0 z-50 md:relative md:z-0",
-        isMobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0",
-        isCollapsed ? "w-16" : "w-64"
-      )}>
+      <div
+        className={clsx(
+          "flex flex-col h-full transition-all duration-300",
+          "fixed inset-y-0 left-0 z-50 md:relative md:z-0",
+          isMobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"
+        )}
+        style={{
+          backgroundColor: 'var(--bg-sidebar)',
+          borderRight: '1px solid var(--border-sidebar)',
+          width: isCollapsed ? '4rem' : '16rem'
+        }}
+      >
         {/* Logo Area */}
-        <div className="h-16 flex items-center px-4 border-b border-white/5 justify-between bg-[#131314]">
+        <div className="h-16 flex items-center px-4 border-b justify-between" style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}>
           <div className="flex items-center flex-1 overflow-hidden">
             {isCollapsed ? (
               <div className="w-8 h-8 mx-auto flex items-center justify-center">
                 <BrandIcon className="w-full h-full" />
               </div>
             ) : (
-              <div className="flex items-center gap-2 pl-1">
-                <LogoTypefaceWhite className="h-6 w-auto" />
+              <div className="flex items-center gap-2" style={{ color: 'var(--text-app)' }}>
+                <BrandIcon className="w-8 h-8" />
+                <LogoTypefaceWhite className="h-5" />
               </div>
             )}
           </div>
@@ -276,24 +283,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                 {!isRecentsCollapsed && (
                   <>
-                    <div className="flex bg-[#1E1F20] rounded-md p-0.5 border border-white/5 mb-3 mx-2">
+                    <div className="flex rounded-md p-0.5 border mb-3 mx-2" style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}>
                       <button
                         onClick={() => setFilter('recent')}
-                        className={clsx("p-1 rounded transition-colors", filter === 'recent' ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300")}
+                        className={clsx("p-1 rounded transition-colors", filter === 'recent' ? "bg-brand-500/10 text-brand-500 shadow-sm" : "text-gray-500 hover:text-brand-600 dark:hover:text-gray-300")}
                         title="Recent"
                       >
                         <Clock size={12} />
                       </button>
                       <button
                         onClick={() => setFilter('bookmarked')}
-                        className={clsx("p-1 rounded transition-colors", filter === 'bookmarked' ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300")}
+                        className={clsx("p-1 rounded transition-colors", filter === 'bookmarked' ? "bg-brand-500/10 text-brand-500 shadow-sm" : "text-gray-500 hover:text-brand-600 dark:hover:text-gray-300")}
                         title="Bookmarks"
                       >
                         <Bookmark size={12} />
                       </button>
                       <button
                         onClick={() => setFilter('mode')}
-                        className={clsx("p-1 rounded transition-colors", filter === 'mode' ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300")}
+                        className={clsx("p-1 rounded transition-colors", filter === 'mode' ? "bg-brand-500/10 text-brand-500 shadow-sm" : "text-gray-500 hover:text-brand-600 dark:hover:text-gray-300")}
                         title="By Mode"
                       >
                         <Filter size={12} />
@@ -310,8 +317,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               "text-[9px] px-2 py-0.5 rounded-full border transition-all",
                               activeModeFilter === m
                                 ? "bg-brand-500/20 border-brand-500/50 text-brand-400"
-                                : "bg-dark-900 border-white/5 text-gray-500 hover:text-gray-300"
+                                : "border-white/5 text-gray-500 hover:text-gray-300"
                             )}
+                            style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}
                           >
                             {m}
                           </button>
@@ -381,7 +389,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         />
 
         {/* User / Settings Footer */}
-        <div className="p-4 border-t border-white/5 bg-[#131314]" >
+        <div className="p-4 border-t" style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}>
           <div
             onClick={() => onNavigate('settings')}
             className="flex items-center p-2 rounded-xl hover:bg-white/5 cursor-pointer group mb-4 transition-all"
@@ -391,7 +399,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             {!isCollapsed && (
               <div className="ml-3 flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">{profile?.full_name || 'User'}</p>
+                <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-app)' }}>{profile?.full_name || 'User'}</p>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] font-bold text-brand-500 uppercase tracking-wider">{profile?.subscription_status || 'Free'}</span>
                 </div>
@@ -442,7 +450,7 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, active, onClick, isColla
       "w-full flex items-center px-4 py-2.5 rounded-full transition-all group relative",
       active
         ? "bg-brand-600 text-white font-bold shadow-lg shadow-brand-600/20"
-        : "text-gray-300 hover:bg-white/5 hover:text-white",
+        : "text-gray-500 hover:bg-black/5 dark:hover:bg-white/5 hover:text-brand-600 dark:hover:text-white",
       isCollapsed ? "justify-center px-0" : "justify-start"
     )}
   >
@@ -504,7 +512,8 @@ const HistoryItem: React.FC<{
         <div className="flex items-center gap-1 px-2 py-1.5 w-full">
           <input
             autoFocus
-            className="flex-1 bg-dark-800 text-white text-sm rounded-lg px-2 py-1 outline-none ring-1 ring-brand-500 min-w-0"
+            className="flex-1 text-sm rounded-lg px-2 py-1 outline-none ring-1 ring-brand-500 min-w-0"
+            style={{ backgroundColor: 'var(--bg-sidebar-alt)', color: 'var(--text-app)' }}
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={(e) => {
@@ -526,7 +535,7 @@ const HistoryItem: React.FC<{
             "w-full text-left px-4 py-2.5 text-[13px] rounded-full truncate transition-all pr-10",
             isActive
               ? "text-white bg-brand-600 font-bold shadow-lg shadow-brand-600/20"
-              : "text-gray-300 hover:text-white hover:bg-white/5 border border-transparent"
+              : "text-gray-500 hover:text-brand-600 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 border border-transparent"
           )}
         >
           {chat.title || 'Untitled'}
@@ -559,8 +568,14 @@ const HistoryItem: React.FC<{
       {showMenu && menuPosition && createPortal(
         <div
           ref={menuRef}
-          style={{ position: 'absolute', top: menuPosition.top, left: menuPosition.left }}
-          className="w-48 bg-[#1e1f20] border border-white/10 rounded-xl shadow-2xl z-[100] overflow-hidden py-1.5 animate-in fade-in zoom-in-95 duration-100"
+          style={{
+            position: 'absolute',
+            top: menuPosition.top,
+            left: menuPosition.left,
+            backgroundColor: 'var(--bg-search-palette)',
+            borderColor: 'var(--border-sidebar)'
+          }}
+          className="w-48 border rounded-xl shadow-2xl z-[100] overflow-hidden py-1.5 animate-in fade-in zoom-in-95 duration-100"
         >
           <MenuBtn icon={<Pin size={14} className={chat.is_pinned ? "text-brand-400" : ""} />} label={chat.is_pinned ? "Unpin" : "Pin"} onClick={() => { onTogglePin(); setShowMenu(false); }} />
           <MenuBtn icon={<Bookmark size={14} className={chat.is_bookmarked ? "text-brand-400" : ""} />} label={chat.is_bookmarked ? "Return from Saved" : "Bookmark"} onClick={() => { onToggleBookmark(); setShowMenu(false); }} />
@@ -613,7 +628,7 @@ const MenuBtn: React.FC<{ icon: React.ReactNode, label: string, onClick: () => v
   <button
     onClick={(e) => { e.stopPropagation(); onClick(); }}
     className={clsx(
-      "w-full flex items-center gap-3 px-3 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white transition-colors",
+      "w-full flex items-center gap-3 px-3 py-2 text-xs text-gray-500 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/5 hover:text-brand-600 dark:hover:text-white transition-colors",
       className
     )}
   >
@@ -680,7 +695,7 @@ const FolderItem: React.FC<FolderItemProps> = ({
           className={clsx("text-gray-500 transition-transform", !isExpanded && "-rotate-90")}
         />
         <FolderIcon size={14} style={{ color: folder.color }} />
-        <span className="text-gray-200 truncate flex-1 text-left font-medium">{folder.name}</span>
+        <span className="truncate flex-1 text-left font-medium" style={{ color: 'var(--text-sidebar)' }}>{folder.name}</span>
       </button>
 
       {/* Folder Menu Button */}
@@ -698,7 +713,8 @@ const FolderItem: React.FC<FolderItemProps> = ({
       {showMenu && (
         <div
           ref={menuRef}
-          className="absolute left-8 top-full mt-1 w-44 bg-[#1e1f20] border border-white/10 rounded-xl shadow-2xl z-[60] overflow-hidden py-1.5 animate-in fade-in zoom-in-95 duration-100"
+          className="absolute left-8 top-full mt-1 w-44 border rounded-xl shadow-2xl z-[60] overflow-hidden py-1.5 animate-in fade-in zoom-in-95 duration-100"
+          style={{ backgroundColor: 'var(--bg-search-palette)', borderColor: 'var(--border-sidebar)' }}
         >
           <MenuBtn icon={<Plus size={14} />} label="New Chat in Folder" onClick={() => { onNewChatInFolder(); setShowMenu(false); }} />
           <MenuBtn icon={<Pencil size={14} />} label="Edit Folder" onClick={() => { onEditFolder(); setShowMenu(false); }} />

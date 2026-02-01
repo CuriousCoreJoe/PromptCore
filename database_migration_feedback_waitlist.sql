@@ -1,7 +1,7 @@
 -- Create feedback_items table
 CREATE TABLE IF NOT EXISTS feedback_items (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  user_id UUID REFERENCES auth.users(id), -- NULL for anonymous/system feedback
   type TEXT NOT NULL, -- 'bug', 'suggestion', 'feedback', 'complaint'
   content TEXT NOT NULL,
   tags TEXT[],
@@ -29,7 +29,7 @@ CREATE POLICY "Users can update their own feedback items"
 CREATE TABLE IF NOT EXISTS feedback_comments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   feedback_id UUID REFERENCES feedback_items(id) ON DELETE CASCADE NOT NULL,
-  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  user_id UUID REFERENCES auth.users(id),
   content TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

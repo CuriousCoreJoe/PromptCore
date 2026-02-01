@@ -41,6 +41,7 @@ import './index.css';
 import MainRouter from './components/MainRouter';
 
 import { HelmetProvider } from 'react-helmet-async';
+import { ThemeProvider } from './context/ThemeContext';
 
 console.log('[Entry] index.tsx starting...');
 
@@ -55,7 +56,9 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <HelmetProvider>
-      <MainRouter />
+      <ThemeProvider>
+        <MainRouter />
+      </ThemeProvider>
     </HelmetProvider>
   </React.StrictMode>
 );

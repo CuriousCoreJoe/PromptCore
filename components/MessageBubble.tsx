@@ -26,7 +26,7 @@ interface MessageBubbleProps {
 const ActionButton: React.FC<{ icon: React.ReactNode, title: string, onClick?: () => void }> = ({ icon, title, onClick }) => (
   <button
     onClick={onClick}
-    className="p-1.5 text-gray-500 hover:text-white transition-colors rounded-lg hover:bg-dark-800"
+    className="p-1.5 transition-colors rounded-lg hover:bg-black/5 dark:hover:bg-brand-500/10 text-gray-500 hover:text-brand-600 dark:hover:text-white"
     title={title}
     type="button"
   >
@@ -143,22 +143,23 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
       };
 
       return inline ? (
-        <code className="bg-gray-800 text-gray-200 px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
+        <code className="bg-black/5 dark:bg-gray-800 text-brand-600 dark:text-gray-200 px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
           {children}
         </code>
       ) : (
-        <div className="my-4 rounded-xl overflow-hidden bg-[#1E1F20] border border-dark-800">
-          <div className="flex items-center justify-between px-4 py-2 bg-[#2A2B2C]/50 border-b border-dark-800">
+        <div className="my-4 rounded-xl overflow-hidden border" style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-sidebar)' }}>
+          <div className="flex items-center justify-between px-4 py-2 border-b" style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}>
             <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">code</span>
             <button
               onClick={handleBlockCopy}
-              className="flex items-center gap-1.5 text-xs font-bold text-gray-300 hover:text-white transition-colors bg-dark-800/80 px-3 py-1.5 rounded-lg border border-dark-700 hover:bg-dark-700 hover:scale-105 active:scale-95 shadow-lg"
+              className="flex items-center gap-1.5 text-xs font-bold transition-colors px-3 py-1.5 rounded-lg border hover:scale-105 active:scale-95 shadow-lg"
+              style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-sidebar)', color: 'var(--text-sidebar)' }}
             >
               {blockCopied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
               {blockCopied ? 'COPIED' : 'COPY'}
             </button>
           </div>
-          <pre className="p-4 overflow-x-auto text-sm font-mono text-gray-300">
+          <pre className="p-4 overflow-x-auto text-sm font-mono" style={{ color: 'var(--text-sidebar)' }}>
             <code className={className} {...props}>
               {children}
             </code>
@@ -168,10 +169,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
     },
     ul: ({ children }: any) => <ul className="list-disc pl-5 my-3 space-y-1">{children}</ul>,
     ol: ({ children }: any) => <ol className="list-decimal pl-5 my-3 space-y-1">{children}</ol>,
-    p: ({ children }: any) => <div className="mb-4 last:mb-0 leading-7 text-gray-300">{children}</div>,
-    h1: ({ children }: any) => <h1 className="text-xl md:text-2xl font-medium text-gray-100 mb-4 mt-6">{children}</h1>,
-    h2: ({ children }: any) => <h2 className="text-lg md:text-xl font-medium text-gray-100 mb-3 mt-5">{children}</h2>,
-    h3: ({ children }: any) => <h3 className="text-base md:text-lg font-medium text-gray-100 mb-2 mt-4">{children}</h3>,
+    p: ({ children }: any) => <div className="mb-4 last:mb-0 leading-7" style={{ color: 'var(--text-app)' }}>{children}</div>,
+    h1: ({ children }: any) => <h1 className="text-xl md:text-2xl font-medium mb-4 mt-6" style={{ color: 'var(--text-app)' }}>{children}</h1>,
+    h2: ({ children }: any) => <h2 className="text-lg md:text-xl font-medium mb-3 mt-5" style={{ color: 'var(--text-app)' }}>{children}</h2>,
+    h3: ({ children }: any) => <h3 className="text-base md:text-lg font-medium mb-2 mt-4" style={{ color: 'var(--text-app)' }}>{children}</h3>,
     img: ({ src, alt }: any) => {
       if (!src) return null;
 
@@ -299,7 +300,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
         isUser ? 'items-end' : 'items-start w-full'
       )}>
         {isUser && (
-          <div className="text-base text-gray-200 whitespace-pre-wrap">{message.content}</div>
+          <div className="text-base whitespace-pre-wrap" style={{ color: 'var(--text-app)' }}>{message.content}</div>
         )}
 
         {/* Floating COPY Button (for Final Prompts and User Messages) moved below content */}
@@ -309,9 +310,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             className={clsx(
               "mt-2 flex items-center justify-center w-8 h-8 rounded-lg shadow-lg transition-all hover:scale-110 active:scale-95 z-10",
               isUser
-                ? "bg-[#1E1F20] text-gray-400 hover:text-white"
+                ? "text-gray-400 hover:text-brand-600 border"
                 : "bg-brand-600 text-white"
             )}
+            style={isUser ? { backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' } : {}}
             title={isUser ? "Copy your prompt" : "Copy generated prompt"}
           >
             {copied ? <Check size={14} /> : <Copy size={14} />}
@@ -447,14 +449,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
 
                 {artifactContent && (
                   <div className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between p-4 bg-[#2A2B2C]/50 rounded-xl border border-dark-700 hover:border-purple-500/30 transition-all group">
+                    <div className="flex items-center justify-between p-4 rounded-xl border hover:border-purple-500/30 transition-all group" style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}>
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400 group-hover:text-purple-300 transition-colors">
                           <Sparkles size={18} />
                         </div>
                         <div className="flex flex-col">
-                          <span className="font-semibold text-gray-200">Application Generated</span>
-                          <span className="text-xs text-gray-500">Click to view preview</span>
+                          <span className="font-semibold" style={{ color: 'var(--text-app)' }}>Application Generated</span>
+                          <span className="text-xs" style={{ color: 'var(--text-sidebar-dim)' }}>Click to view preview</span>
                         </div>
                       </div>
                       <button

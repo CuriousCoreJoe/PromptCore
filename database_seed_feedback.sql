@@ -1,49 +1,26 @@
--- Mock Data for Feedback Board
--- IMPORTANT: Run this in your Supabase SQL Editor.
--- Note: These will be associated with the first user found in auth.users if possible, 
--- or you may need to manually update the user_id to your own if RLS prevents viewing them.
+-- Seed Mock Feedback Data
+-- Run this in your Supabase SQL Editor
 
-DO $$
-DECLARE
-    target_user_id UUID;
-BEGIN
-    -- Try to get the first available user ID
-    SELECT id INTO target_user_id FROM auth.users LIMIT 1;
+-- Ensure the table exists (it should have been created in the previous migration)
+-- CREATE TABLE IF NOT EXISTS feedback_items (
+--     id UUID DEFAULT extensions.uuid_generate_v4() PRIMARY KEY,
+--     user_id UUID REFERENCES auth.users(id),
+--     type TEXT CHECK (type IN ('bug', 'suggestion', 'feedback', 'complaint')),
+--     content TEXT NOT NULL,
+--     tags TEXT[] DEFAULT '{}',
+--     status TEXT DEFAULT 'open',
+--     created_at TIMESTAMPTZ DEFAULT NOW(),
+--     updated_at TIMESTAMPTZ DEFAULT NOW()
+-- );
 
-    IF target_user_id IS NOT NULL THEN
-        -- Insert 3 fake examples
-        INSERT INTO feedback_items (id, user_id, type, content, tags, status, created_at)
-        VALUES 
-        (
-            gen_random_uuid(), 
-            target_user_id, 
-            'bug', 
-            'The mobile menu button is unresponsive on Safari iOS 17. Steps to reproduce: open landing page, scroll down, try to click menu.', 
-            ARRAY['bug', 'mobile', 'safari'], 
-            'open',
-            NOW() - INTERVAL '2 days'
-        ),
-        (
-            gen_random_uuid(), 
-            target_user_id, 
-            'suggestion', 
-            'It would be amazing to have a "Dark Mode" toggle for the Landing Page. Currently, it''s only dark, but a light theme option would be great for visibility.', 
-            ARRAY['suggestion', 'ui', 'theme'], 
-            'open',
-            NOW() - INTERVAL '1 day'
-        ),
-        (
-            gen_random_uuid(), 
-            target_user_id, 
-            'feedback', 
-            'I absolutely love the new "Vibe Code" feature! It interpreted my fuzzy description perfectly. Keep up the great work!', 
-            ARRAY['feedback', 'vibe-code', 'praise'], 
-            'open',
-            NOW()
-        );
+-- Insert 3 mock items
+-- Note: user_id is NULL here for system-wide feedback, but can be set to a specific ID if needed.
+-- RLS should allow reading items with NULL user_id if configured correctly.
 
-        RAISE NOTICE 'Inserted 3 mock feedback items for user %', target_user_id;
-    ELSE
-        RAISE WARNING 'No users found in auth.users. Please create a user first before running this script.';
-    END IF;
-END $$;
+INSERT INTO feedback_items (type, content, tags, status)
+VALUES 
+('bug', 'The "Copy Prompt" button occasionally fails to copy multi-line text correctly in Safari.', '{bug, safari, ui}', 'open'),
+('suggestion', 'It would be great if we could Export Specs directly to a .cursorrules file.', '{feature-request, cursor, export}', 'open'),
+('complaint', 'The landing page is a bit slow to load on mobile devices. Consider optimizing image assets.', '{performance, mobile, landing-page}', 'open');
+
+-- Optional: Add some upvotes to mock data (requires valid user_ids, so we'll skip for now)

@@ -20,6 +20,9 @@ import { Session } from '@supabase/supabase-js';
 import { Auth } from './Auth';
 import { supabase } from '../lib/supabase';
 import { Helmet } from 'react-helmet-async';
+import { CommandPalette } from './CommandPalette';
+import { ThemeSettings } from './ThemeSettings';
+import { ChangelogModal } from './ChangelogModal';
 
 // Helper for classes
 function cn(...inputs: (string | undefined | null | false)[]) {
@@ -76,6 +79,8 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', actionLabel: '', action: () => { } });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showThemeSettings, setShowThemeSettings] = useState(false);
+  const [showChangelog, setShowChangelog] = useState(false);
 
   const isDev = session?.user?.email === 'dev@promptcore.com';
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -353,6 +358,31 @@ const App: React.FC = () => {
       </main>
 
       {/* Overlays */}
+      {/* Overlays */}
+      {showThemeSettings && <ThemeSettings onClose={() => setShowThemeSettings(false)} />}
+      {showChangelog && <ChangelogModal onClose={() => setShowChangelog(false)} />}
+
+      <CommandPalette
+        onNavigate={handleSidebarNavigate}
+        onSelectMode={(mode) => {
+          setCurrentMode(mode);
+          // Also set active chat to null to ensure we start fresh in that mode
+          setActiveChatId(null);
+        }}
+        onNewChat={(prompt) => {
+          setActiveChatId(null);
+          setInput(prompt);
+          handleSidebarNavigate('workspace');
+          setToast({
+            visible: true,
+            message: `New chat ready with your prompt.`,
+            actionLabel: 'Send',
+            action: () => { }
+          });
+        }}
+        onOpenThemeSettings={() => setShowThemeSettings(true)}
+        onOpenChangelog={() => setShowChangelog(true)}
+      />
       <Toast
         message={toast.message}
         isVisible={toast.visible}

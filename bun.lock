@@ -14,7 +14,7 @@
         "framer-motion": "^12.26.2",
         "inngest": "^3.48.1",
         "lucide-react": "^0.560.0",
-        "netlify-cli": "^23.13.5",
+        "netlify-cli": "^23.14.0",
         "react": "^19.2.3",
         "react-dom": "^19.2.3",
         "react-helmet-async": "^2.0.5",
@@ -37,8 +37,12 @@
     },
   },
   "trustedDependencies": [
-    "@parcel/watcher",
+    "esbuild",
+    "sharp",
+    "unix-dgram",
     "protobufjs",
+    "netlify-cli",
+    "@parcel/watcher",
   ],
   "packages": {
     "@babel/code-frame": ["@babel/code-frame@7.27.1", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.27.1", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-cjQ7ZlQ0Mv3b47hABuTevyTuYN4i+loJKGeV9flcCgIK37cCXRh+L1bd3iBHlynerhQ7BhCkn2BPbQUL+rGqFg=="],
@@ -265,35 +269,37 @@
 
     "@netlify/ai": ["@netlify/ai@0.3.4", "", { "dependencies": { "@netlify/api": "^14.0.11" } }, "sha512-mV0RtkO5dOwbuqRn/Sn0aHIV4j6sw8B4F16WCx0GYBRcJ9IbBkzvuEzW0IDUbNE6hxu9FFs5WRDASDJpgDY1ZQ=="],
 
-    "@netlify/api": ["@netlify/api@14.0.12", "", { "dependencies": { "@netlify/open-api": "^2.45.0", "node-fetch": "^3.0.0", "p-wait-for": "^5.0.0", "picoquery": "^2.5.0" } }, "sha512-4xSfHAj9PIZZ78YOPby6TBHxYnf6sOE1/jpkHSDyt2oRxF94qJ0fhp96Fo2kq/rIhvgTlU5Ce3HARi8BDY4mLw=="],
+    "@netlify/api": ["@netlify/api@14.0.13", "", { "dependencies": { "@netlify/open-api": "^2.46.0", "node-fetch": "^3.0.0", "p-wait-for": "^5.0.0", "picoquery": "^2.5.0" } }, "sha512-WQczmnM/u2wcxk0G0rE36yTHzYzuPdByaKmJBVEZvZE0LC7VeHz8tBoX2EYpAuvjzczm8ez1ekZGjqTHK1+Osw=="],
 
     "@netlify/binary-info": ["@netlify/binary-info@1.0.0", "", {}, "sha512-4wMPu9iN3/HL97QblBsBay3E1etIciR84izI3U+4iALY+JHCrI+a2jO0qbAZ/nxKoegypYEaiiqWXylm+/zfrw=="],
 
     "@netlify/blobs": ["@netlify/blobs@10.1.0", "", { "dependencies": { "@netlify/dev-utils": "4.3.0", "@netlify/runtime-utils": "2.2.0" } }, "sha512-dFpqDc6/x5LEu9L7kblCQu00CFEchH8J42jmQoXPuhKoE7avajzeLTbVKA8Olk3S/c2m9ejegrgbhL8NRA2Jyw=="],
 
-    "@netlify/build": ["@netlify/build@35.5.10", "", { "dependencies": { "@bugsnag/js": "^8.0.0", "@netlify/blobs": "^10.4.4", "@netlify/cache-utils": "^6.0.4", "@netlify/config": "^24.2.0", "@netlify/edge-bundler": "14.9.3", "@netlify/functions-utils": "^6.2.19", "@netlify/git-utils": "^6.0.3", "@netlify/opentelemetry-utils": "^2.0.1", "@netlify/plugins-list": "^6.80.0", "@netlify/run-utils": "^6.0.2", "@netlify/zip-it-and-ship-it": "14.2.0", "@sindresorhus/slugify": "^2.0.0", "ansi-escapes": "^7.0.0", "ansis": "^4.1.0", "clean-stack": "^5.0.0", "execa": "^8.0.0", "fdir": "^6.0.1", "figures": "^6.0.0", "filter-obj": "^6.0.0", "hot-shots": "11.4.0", "indent-string": "^5.0.0", "is-plain-obj": "^4.0.0", "keep-func-props": "^6.0.0", "log-process-errors": "^11.0.0", "memoize-one": "^6.0.0", "minimatch": "^9.0.4", "os-name": "^6.0.0", "p-event": "^6.0.0", "p-filter": "^4.0.0", "p-locate": "^6.0.0", "p-map": "^7.0.0", "p-reduce": "^3.0.0", "package-directory": "^8.0.0", "path-exists": "^5.0.0", "pretty-ms": "^9.0.0", "ps-list": "^8.0.0", "read-package-up": "^11.0.0", "readdirp": "^4.0.0", "resolve": "^2.0.0-next.5", "rfdc": "^1.3.0", "safe-json-stringify": "^1.2.0", "semver": "^7.3.8", "string-width": "^7.0.0", "supports-color": "^10.0.0", "terminal-link": "^4.0.0", "ts-node": "^10.9.1", "typescript": "^5.0.0", "uuid": "^11.0.0", "yaml": "^2.8.0", "yargs": "^17.6.0", "zod": "^3.25.76" }, "peerDependencies": { "@netlify/opentelemetry-sdk-setup": "^2.0.0", "@opentelemetry/api": "~1.8.0" }, "optionalPeers": ["@netlify/opentelemetry-sdk-setup"], "bin": { "netlify-build": "./bin.js" } }, "sha512-YgM5JmB4WszV7z4Nla3pT8lwqo/AH6T3VU8KE//A2HBXFBhw6N14sirCg95Cko0yBgMx0wbERkYgCMGhryQfcg=="],
+    "@netlify/build": ["@netlify/build@35.5.13", "", { "dependencies": { "@bugsnag/js": "^8.0.0", "@netlify/blobs": "^10.4.4", "@netlify/cache-utils": "^6.0.4", "@netlify/config": "^24.3.0", "@netlify/edge-bundler": "14.9.4", "@netlify/functions-utils": "^6.2.21", "@netlify/git-utils": "^6.0.3", "@netlify/opentelemetry-utils": "^2.0.1", "@netlify/plugins-list": "^6.81.1", "@netlify/run-utils": "^6.0.2", "@netlify/zip-it-and-ship-it": "14.3.1", "@sindresorhus/slugify": "^2.0.0", "ansi-escapes": "^7.0.0", "ansis": "^4.1.0", "clean-stack": "^5.0.0", "execa": "^8.0.0", "fdir": "^6.0.1", "figures": "^6.0.0", "filter-obj": "^6.0.0", "hot-shots": "11.4.0", "indent-string": "^5.0.0", "is-plain-obj": "^4.0.0", "keep-func-props": "^6.0.0", "log-process-errors": "^11.0.0", "memoize-one": "^6.0.0", "minimatch": "^9.0.4", "os-name": "^6.0.0", "p-event": "^6.0.0", "p-filter": "^4.0.0", "p-locate": "^6.0.0", "p-map": "^7.0.0", "p-reduce": "^3.0.0", "package-directory": "^8.0.0", "path-exists": "^5.0.0", "pretty-ms": "^9.0.0", "ps-list": "^8.0.0", "read-package-up": "^11.0.0", "readdirp": "^4.0.0", "resolve": "^2.0.0-next.5", "rfdc": "^1.3.0", "safe-json-stringify": "^1.2.0", "semver": "^7.3.8", "string-width": "^7.0.0", "supports-color": "^10.0.0", "terminal-link": "^4.0.0", "ts-node": "^10.9.1", "typescript": "^5.0.0", "uuid": "^11.0.0", "yaml": "^2.8.0", "yargs": "^17.6.0", "zod": "^3.25.76" }, "peerDependencies": { "@netlify/opentelemetry-sdk-setup": "^2.0.0", "@opentelemetry/api": "~1.8.0" }, "optionalPeers": ["@netlify/opentelemetry-sdk-setup"], "bin": { "netlify-build": "./bin.js" } }, "sha512-RiitVUIMF83nji2fzb2TYfaYb3wy1MbSiFvqHaq2v8tZ28z08iutBumP2h1tOnmYaZJ9lyP3hsYXZCYXk4welg=="],
 
     "@netlify/build-info": ["@netlify/build-info@10.3.0", "", { "dependencies": { "@bugsnag/js": "^8.0.0", "@iarna/toml": "^2.2.5", "dot-prop": "^9.0.0", "find-up": "^7.0.0", "minimatch": "^9.0.0", "read-pkg": "^9.0.0", "semver": "^7.3.8", "yaml": "^2.8.0", "yargs": "^17.6.0" }, "bin": { "build-info": "./bin.js" } }, "sha512-5cS0LPGMrdSg1lqVCoHd5qqyTMEhjb7HEj76i95bYCJ3ruiYKVeJ/hYk4aJBXBGIadBgkOGYpoe/sgEKsobIeA=="],
 
     "@netlify/cache-utils": ["@netlify/cache-utils@6.0.4", "", { "dependencies": { "cpy": "^11.0.0", "get-stream": "^9.0.0", "globby": "^14.0.0", "junk": "^4.0.0", "locate-path": "^7.0.0", "move-file": "^3.0.0", "readdirp": "^4.0.0" } }, "sha512-KD6IXLbJcjJ5BhjGCy32BJtp1WxvTBS9J5cvdxjbBJGgfLWuJwzUzU8LR2sA4fppCCnEdKJdKy40OcVGZE0iUg=="],
 
-    "@netlify/config": ["@netlify/config@24.2.0", "", { "dependencies": { "@iarna/toml": "^2.2.5", "@netlify/api": "^14.0.12", "@netlify/headers-parser": "^9.0.2", "@netlify/redirect-parser": "^15.0.3", "chalk": "^5.0.0", "cron-parser": "^4.1.0", "deepmerge": "^4.2.2", "dot-prop": "^9.0.0", "execa": "^8.0.0", "fast-safe-stringify": "^2.0.7", "figures": "^6.0.0", "filter-obj": "^6.0.0", "find-up": "^7.0.0", "indent-string": "^5.0.0", "is-plain-obj": "^4.0.0", "map-obj": "^5.0.0", "omit.js": "^2.0.2", "p-locate": "^6.0.0", "path-type": "^6.0.0", "read-package-up": "^11.0.0", "tomlify-j0.4": "^3.0.0", "validate-npm-package-name": "^5.0.0", "yaml": "^2.8.0", "yargs": "^17.6.0", "zod": "^4.0.5" }, "bin": { "netlify-config": "./bin.js" } }, "sha512-idc1D6kdQOFjG70aZC06crqElTyaSulVlnOEDZX2+5/vcmfFCBu8CJSEd5YzC6VCCXBgOW3Hw0cVxDTl5X6+CQ=="],
+    "@netlify/config": ["@netlify/config@24.3.0", "", { "dependencies": { "@iarna/toml": "^2.2.5", "@netlify/api": "^14.0.13", "@netlify/headers-parser": "^9.0.2", "@netlify/redirect-parser": "^15.0.3", "chalk": "^5.0.0", "cron-parser": "^4.1.0", "deepmerge": "^4.2.2", "dot-prop": "^9.0.0", "execa": "^8.0.0", "fast-safe-stringify": "^2.0.7", "figures": "^6.0.0", "filter-obj": "^6.0.0", "find-up": "^7.0.0", "indent-string": "^5.0.0", "is-plain-obj": "^4.0.0", "map-obj": "^5.0.0", "omit.js": "^2.0.2", "p-locate": "^6.0.0", "path-type": "^6.0.0", "read-package-up": "^11.0.0", "tomlify-j0.4": "^3.0.0", "validate-npm-package-name": "^5.0.0", "yaml": "^2.8.0", "yargs": "^17.6.0", "zod": "^4.0.5" }, "bin": { "netlify-config": "./bin.js" } }, "sha512-yLqZLwvONivf0jcaO1WxUWEnW+h0F9UMvVv8JqnVi4TFjg6sLsjHhH4qICK2+PKqyDJ/OkM00udEYHmhg7LGGg=="],
 
     "@netlify/dev-utils": ["@netlify/dev-utils@4.3.2", "", { "dependencies": { "@whatwg-node/server": "^0.10.0", "ansis": "^4.1.0", "chokidar": "^4.0.1", "decache": "^4.6.2", "dettle": "^1.0.5", "dot-prop": "9.0.0", "empathic": "^2.0.0", "env-paths": "^3.0.0", "image-size": "^2.0.2", "js-image-generator": "^1.0.4", "parse-gitignore": "^2.0.0", "semver": "^7.7.2", "tmp-promise": "^3.0.3", "uuid": "^13.0.0", "write-file-atomic": "^5.0.1" } }, "sha512-Nl6c5UVLbpOwvzVaT6fJycdkc3EswqFoI9c2hZ3WUUX+kQ2ojdrkFMuKcPERaGXYxrhy/uGk1CURAflG8YC2RA=="],
 
-    "@netlify/edge-bundler": ["@netlify/edge-bundler@14.9.3", "", { "dependencies": { "@import-maps/resolve": "^2.0.0", "ajv": "^8.11.2", "ajv-errors": "^3.0.0", "better-ajv-errors": "^1.2.0", "common-path-prefix": "^3.0.0", "env-paths": "^3.0.0", "esbuild": "0.27.2", "execa": "^8.0.0", "find-up": "^7.0.0", "get-port": "^7.0.0", "node-stream-zip": "^1.15.0", "p-retry": "^6.0.0", "p-wait-for": "^5.0.0", "parse-imports": "^2.2.1", "path-key": "^4.0.0", "semver": "^7.3.8", "tar": "^7.4.3", "tmp-promise": "^3.0.3", "urlpattern-polyfill": "8.0.2", "uuid": "^11.0.0" } }, "sha512-NaIIsjGfl6YcnZKRa5/BOpbBi4MK1B4U1E/ekH8VaAIy0I7aYwnWg45SZSkTrMOeHzZPGXTAwjyKqzPi8HBQ4A=="],
+    "@netlify/edge-bundler": ["@netlify/edge-bundler@14.9.4", "", { "dependencies": { "@import-maps/resolve": "^2.0.0", "ajv": "^8.11.2", "ajv-errors": "^3.0.0", "better-ajv-errors": "^1.2.0", "common-path-prefix": "^3.0.0", "env-paths": "^3.0.0", "esbuild": "0.27.2", "execa": "^8.0.0", "find-up": "^7.0.0", "get-port": "^7.0.0", "node-stream-zip": "^1.15.0", "p-retry": "^6.0.0", "p-wait-for": "^5.0.0", "parse-imports": "^2.2.1", "path-key": "^4.0.0", "semver": "^7.3.8", "tar": "^7.5.3", "tmp-promise": "^3.0.3", "urlpattern-polyfill": "8.0.2", "uuid": "^11.0.0" } }, "sha512-BDi+pnV2Dit6KqTxGkuuGM4faowFnGWtCPshJz7yLmwmaXBm2NY4H4HEnEjapjnSVTChK0N3MK4aye4dhV0ePw=="],
 
-    "@netlify/edge-functions": ["@netlify/edge-functions@3.0.2", "", { "dependencies": { "@netlify/types": "2.2.0" } }, "sha512-1vW3R+Rc2JxL6qITndlT87N94GPjJ6gH2ntXW3IDdLzSABoU9XCHw4lRzDw+bhgSLTm0oyOwQA2+hhFvstznNQ=="],
+    "@netlify/edge-functions": ["@netlify/edge-functions@3.0.3", "", { "dependencies": { "@netlify/types": "2.3.0" } }, "sha512-grElRK+rTBdYrPsULPKrhcHhrW+fwpDRLPbGByqa6Xrz0fhzcFJ2D9ijxEQ/onFcSVPYHT1u1mI48GhS5bZ/Ag=="],
 
     "@netlify/edge-functions-bootstrap": ["@netlify/edge-functions-bootstrap@2.17.1", "", {}, "sha512-KyNJbDhK1rC5wEeI7bXPgfl8QvADMHqNy2nwNJG60EHVRXTF0zxFnOpt/p0m2C512gcMXRrKZxaOZQ032RHVbw=="],
 
     "@netlify/functions": ["@netlify/functions@5.1.2", "", { "dependencies": { "@netlify/types": "2.3.0" } }, "sha512-tpPiLSkQatuexH8AdAZ8RlALvT7ixOE9VhvpkzQGNvihcms8hzmvUDuSxQa7UneTj/sHsdirnXmnJ+nmf+Nx/w=="],
 
-    "@netlify/functions-utils": ["@netlify/functions-utils@6.2.19", "", { "dependencies": { "@netlify/zip-it-and-ship-it": "14.2.0", "cpy": "^11.0.0", "path-exists": "^5.0.0" } }, "sha512-YBJkyIMOwx74KScc5LqtUvlwUwxQuA0w/mcj3RRCSAi0qC4L8VCDz6dS7CvatiuU9U/8q6lPbEqywndhPM6V7A=="],
+    "@netlify/functions-utils": ["@netlify/functions-utils@6.2.21", "", { "dependencies": { "@netlify/zip-it-and-ship-it": "14.3.1", "cpy": "^11.0.0", "path-exists": "^5.0.0" } }, "sha512-PJsavGfWmYqEHAMKz8nwyPYeU0+lEbJ80vNgeq+txltWVcmBSUvZJ6jq/TB3EjyriqdqjFiL+Yf6hyM8+s2ThQ=="],
 
     "@netlify/git-utils": ["@netlify/git-utils@6.0.3", "", { "dependencies": { "execa": "^8.0.0", "map-obj": "^5.0.0", "micro-memoize": "^5.1.1", "micromatch": "^4.0.2" } }, "sha512-f6zGgGaIL0/wsraqa1wraFFuv1kY6FqDtz9elPWsXVQpLMS/T6/rc5Qr7RT1FezUobA6XdspLJ+mTpIo2VNSzg=="],
 
     "@netlify/headers-parser": ["@netlify/headers-parser@9.0.2", "", { "dependencies": { "@iarna/toml": "^2.2.5", "escape-string-regexp": "^5.0.0", "fast-safe-stringify": "^2.0.7", "is-plain-obj": "^4.0.0", "map-obj": "^5.0.0", "path-exists": "^5.0.0" } }, "sha512-86YEGPxVemhksY1LeSr8NSOyH11RHvYHq+FuBJnTlPZoRDX+TD+0TAxF6lwzAgVTd1VPkyFEHlNgUGqw7aNzRQ=="],
+
+    "@netlify/images": ["@netlify/images@1.3.3", "", { "dependencies": { "ipx": "^3.1.1" } }, "sha512-1X3fUmacCLMlPIqyeV5tdo6Wbf9aBSWobgr4DyRvg9zDV9jbKqgdN3BNbcUXmVaqfN+0iiv0k9p02mcRV3OyOw=="],
 
     "@netlify/local-functions-proxy": ["@netlify/local-functions-proxy@2.0.3", "", { "optionalDependencies": { "@netlify/local-functions-proxy-darwin-arm64": "1.1.1", "@netlify/local-functions-proxy-darwin-x64": "1.1.1", "@netlify/local-functions-proxy-freebsd-arm64": "1.1.1", "@netlify/local-functions-proxy-freebsd-x64": "1.1.1", "@netlify/local-functions-proxy-linux-arm": "1.1.1", "@netlify/local-functions-proxy-linux-arm64": "1.1.1", "@netlify/local-functions-proxy-linux-ia32": "1.1.1", "@netlify/local-functions-proxy-linux-ppc64": "1.1.1", "@netlify/local-functions-proxy-linux-x64": "1.1.1", "@netlify/local-functions-proxy-openbsd-x64": "1.1.1", "@netlify/local-functions-proxy-win32-ia32": "1.1.1", "@netlify/local-functions-proxy-win32-x64": "1.1.1" } }, "sha512-siVwmrp7Ow+7jLALi6jXOja4Y4uHMMgOLLQMgd+OZ1TESOstrJvkUisJEDAc9hx7u0v/B0mh5g1g1huiH3uS3A=="],
 
@@ -327,7 +333,7 @@
 
     "@netlify/otel": ["@netlify/otel@5.1.1", "", { "dependencies": { "@opentelemetry/api": "1.9.0", "@opentelemetry/core": "1.30.1", "@opentelemetry/instrumentation": "^0.203.0", "@opentelemetry/resources": "1.30.1", "@opentelemetry/sdk-trace-node": "1.30.1" } }, "sha512-WCSlOsd0a0Vn+iPC5PYru7rq/5/QpBGnvam6C7cq9DEiTFqfwExNoxk6SWI0T6nI56gkBryaGsENLTEnUue1lg=="],
 
-    "@netlify/plugins-list": ["@netlify/plugins-list@6.80.0", "", {}, "sha512-bCKLI51UZ70ziIWsf2nvgPd4XuG6m8AMCoHiYtl/BSsiaSBfmryZnTTqdRXerH09tBRpbPPwzaEgUJwyU9o8Qw=="],
+    "@netlify/plugins-list": ["@netlify/plugins-list@6.81.2", "", {}, "sha512-H54JDMZkHL+v/OJaMLEb3EsIbOHgourLD/vEL0rnpWb3RyvrHb9HQGecvF7GEqDrDwcZS3HEIJVrvu+bvEfSNQ=="],
 
     "@netlify/redirect-parser": ["@netlify/redirect-parser@15.0.3", "", { "dependencies": { "@iarna/toml": "^2.2.5", "fast-safe-stringify": "^2.1.1", "is-plain-obj": "^4.0.0", "path-exists": "^5.0.0" } }, "sha512-/HB3fcRRNgf6O/pbLn4EYNDHrU2kiadMMnazg8/OjvQK2S9i4y61vQcrICvDxYKUKQdgeEaABUuaCNAJFnfD9w=="],
 
@@ -339,7 +345,7 @@
 
     "@netlify/types": ["@netlify/types@2.3.0", "", {}, "sha512-5gxMWh/S7wr0uHKSTbMv4bjWmWSpwpeLYvErWeVNAPll5/QNFo9aWimMAUuh8ReLY3/fg92XAroVVu7+z27Snw=="],
 
-    "@netlify/zip-it-and-ship-it": ["@netlify/zip-it-and-ship-it@14.2.0", "", { "dependencies": { "@babel/parser": "^7.22.5", "@babel/types": "^7.28.5", "@netlify/binary-info": "^1.0.0", "@netlify/serverless-functions-api": "^2.8.3", "@vercel/nft": "0.29.4", "archiver": "^7.0.0", "common-path-prefix": "^3.0.0", "copy-file": "^11.0.0", "es-module-lexer": "^1.0.0", "esbuild": "0.27.2", "execa": "^8.0.0", "fast-glob": "^3.3.3", "filter-obj": "^6.0.0", "find-up": "^7.0.0", "is-path-inside": "^4.0.0", "junk": "^4.0.0", "locate-path": "^7.0.0", "merge-options": "^3.0.4", "minimatch": "^9.0.0", "normalize-path": "^3.0.0", "p-map": "^7.0.0", "path-exists": "^5.0.0", "precinct": "^12.0.0", "require-package-name": "^2.0.1", "resolve": "^2.0.0-next.1", "semver": "^7.3.8", "tmp-promise": "^3.0.2", "toml": "^3.0.0", "unixify": "^1.0.0", "urlpattern-polyfill": "8.0.2", "yargs": "^17.0.0", "zod": "^3.23.8" }, "bin": { "zip-it-and-ship-it": "./bin.js" } }, "sha512-yM69tB71nhvl7L7orfq5fGEonmSVzi2G12/BAV8O+El7ISpkkjFz+8S8qZVxsEK3IbW4EFO+3L8l6jHJHZtxeQ=="],
+    "@netlify/zip-it-and-ship-it": ["@netlify/zip-it-and-ship-it@14.3.1", "", { "dependencies": { "@babel/parser": "^7.22.5", "@babel/types": "^7.28.5", "@netlify/binary-info": "^1.0.0", "@netlify/serverless-functions-api": "^2.8.3", "@vercel/nft": "0.29.4", "archiver": "^7.0.0", "common-path-prefix": "^3.0.0", "copy-file": "^11.0.0", "es-module-lexer": "^1.0.0", "esbuild": "0.27.2", "execa": "^8.0.0", "fast-glob": "^3.3.3", "filter-obj": "^6.0.0", "find-up": "^7.0.0", "is-path-inside": "^4.0.0", "junk": "^4.0.0", "locate-path": "^7.0.0", "merge-options": "^3.0.4", "minimatch": "^9.0.0", "normalize-path": "^3.0.0", "p-map": "^7.0.0", "path-exists": "^5.0.0", "precinct": "^12.0.0", "require-package-name": "^2.0.1", "resolve": "^2.0.0-next.1", "semver": "^7.3.8", "tmp-promise": "^3.0.2", "toml": "^3.0.0", "unixify": "^1.0.0", "urlpattern-polyfill": "8.0.2", "yargs": "^17.0.0", "zod": "^3.23.8" }, "bin": { "zip-it-and-ship-it": "./bin.js" } }, "sha512-dlLh7ZRVpvWc5mHR3h8RY0LA1VK6qz2mkq5SztJ+9w92xKP7i4FfTURjZOrDs8lwJuKcG64r3UaFv6dAB71K3w=="],
 
     "@nodelib/fs.scandir": ["@nodelib/fs.scandir@2.1.5", "", { "dependencies": { "@nodelib/fs.stat": "2.0.5", "run-parallel": "^1.1.9" } }, "sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g=="],
 
@@ -1597,7 +1603,7 @@
 
     "locate-path": ["locate-path@7.2.0", "", { "dependencies": { "p-locate": "^6.0.0" } }, "sha512-gvVijfZvn7R+2qyPX8mAuKcFGDf6Nc61GdvGafQsHL0sBIxfKzA+usWn4GFC/bk+QdwPUD4kWFJLhElipq+0VA=="],
 
-    "lodash": ["lodash@4.17.21", "", {}, "sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=="],
+    "lodash": ["lodash@4.17.23", "", {}, "sha512-LgVTMpQtIopCi79SJeDiP0TfWi5CNEc/L/aRdTh3yIvmZXTnheWpKjSZhnvMl8iXbC1tFg9gdHHDMLoV7CnG+w=="],
 
     "lodash.camelcase": ["lodash.camelcase@4.3.0", "", {}, "sha512-TwuEnCnxbc3rAvhf/LbG7tJUDzhqXyFnv3dtzLOPgCG/hODL7WFnsbwktkD7yUV0RrreP/l1PALq/YSg6VvjlA=="],
 
@@ -1785,7 +1791,7 @@
 
     "negotiator": ["negotiator@0.6.3", "", {}, "sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg=="],
 
-    "netlify-cli": ["netlify-cli@23.13.5", "", { "dependencies": { "@fastify/static": "7.0.4", "@netlify/ai": "0.3.4", "@netlify/api": "14.0.12", "@netlify/blobs": "10.1.0", "@netlify/build": "35.5.10", "@netlify/build-info": "10.3.0", "@netlify/config": "24.2.0", "@netlify/dev-utils": "4.3.2", "@netlify/edge-bundler": "14.9.3", "@netlify/edge-functions": "3.0.2", "@netlify/edge-functions-bootstrap": "2.17.1", "@netlify/headers-parser": "9.0.2", "@netlify/local-functions-proxy": "2.0.3", "@netlify/redirect-parser": "15.0.3", "@netlify/zip-it-and-ship-it": "14.2.0", "@octokit/rest": "22.0.0", "@opentelemetry/api": "1.8.0", "@pnpm/tabtab": "0.5.4", "ansi-escapes": "7.1.1", "ansi-to-html": "0.7.2", "ascii-table": "0.0.9", "backoff": "2.5.0", "boxen": "8.0.1", "chalk": "5.6.2", "chokidar": "4.0.3", "ci-info": "4.3.0", "clean-deep": "3.4.0", "commander": "12.1.0", "comment-json": "4.3.0", "content-type": "1.0.5", "cookie": "1.0.2", "cron-parser": "4.9.0", "debug": "4.4.3", "decache": "4.6.2", "dot-prop": "9.0.0", "dotenv": "17.2.3", "env-paths": "3.0.0", "envinfo": "7.15.0", "etag": "1.8.1", "execa": "5.1.1", "express": "4.22.1", "express-logging": "1.1.1", "extract-zip": "2.0.1", "fastest-levenshtein": "1.0.16", "fastify": "4.29.1", "find-up": "7.0.0", "folder-walker": "3.2.0", "fuzzy": "0.1.3", "get-port": "5.1.1", "gh-release-fetch": "4.0.3", "git-repo-info": "2.1.1", "gitconfiglocal": "2.1.0", "http-proxy": "1.18.1", "http-proxy-middleware": "2.0.9", "https-proxy-agent": "7.0.6", "inquirer": "8.2.7", "inquirer-autocomplete-prompt": "1.4.0", "ipx": "3.1.1", "is-docker": "3.0.0", "is-stream": "4.0.1", "is-wsl": "3.1.0", "isexe": "3.1.1", "jsonwebtoken": "9.0.3", "jwt-decode": "4.0.0", "lambda-local": "2.2.0", "locate-path": "7.2.0", "lodash": "4.17.21", "log-update": "6.1.0", "maxstache": "1.0.7", "maxstache-stream": "1.0.4", "multiparty": "4.2.3", "nanospinner": "1.2.2", "netlify-redirector": "0.5.0", "node-fetch": "3.3.2", "normalize-package-data": "7.0.1", "open": "10.2.0", "p-filter": "4.1.0", "p-map": "7.0.3", "p-wait-for": "5.0.2", "parallel-transform": "1.2.0", "parse-github-url": "1.0.3", "prettyjson": "1.2.5", "raw-body": "3.0.1", "read-package-up": "11.0.0", "readdirp": "4.1.2", "semver": "7.7.2", "source-map-support": "0.5.21", "terminal-link": "4.0.0", "toml": "3.0.0", "tomlify-j0.4": "3.0.0", "ulid": "3.0.1", "update-notifier": "7.3.1", "uuid": "11.1.0", "write-file-atomic": "5.0.1", "ws": "8.18.3" }, "bin": { "ntl": "bin/run.js", "netlify": "bin/run.js" } }, "sha512-Ysu7KL16ODADCNRl8LQBEar2DZcqdbeB9Vx+jFbDPrlWHEA7aMIaRhe1xQHQmJV1H9QxdLjqIPeceiskm5jZ5g=="],
+    "netlify-cli": ["netlify-cli@23.14.0", "", { "dependencies": { "@fastify/static": "7.0.4", "@netlify/ai": "0.3.4", "@netlify/api": "14.0.13", "@netlify/blobs": "10.1.0", "@netlify/build": "35.5.13", "@netlify/build-info": "10.3.0", "@netlify/config": "24.3.0", "@netlify/dev-utils": "4.3.2", "@netlify/edge-bundler": "14.9.4", "@netlify/edge-functions": "3.0.3", "@netlify/edge-functions-bootstrap": "2.17.1", "@netlify/headers-parser": "9.0.2", "@netlify/images": "^1.2.5", "@netlify/local-functions-proxy": "2.0.3", "@netlify/redirect-parser": "15.0.3", "@netlify/zip-it-and-ship-it": "14.3.1", "@octokit/rest": "22.0.0", "@opentelemetry/api": "1.8.0", "@pnpm/tabtab": "0.5.4", "ansi-escapes": "7.1.1", "ansi-to-html": "0.7.2", "ascii-table": "0.0.9", "backoff": "2.5.0", "boxen": "8.0.1", "chalk": "5.6.2", "chokidar": "4.0.3", "ci-info": "4.3.0", "clean-deep": "3.4.0", "commander": "12.1.0", "comment-json": "4.3.0", "content-type": "1.0.5", "cookie": "1.0.2", "cron-parser": "4.9.0", "debug": "4.4.3", "decache": "4.6.2", "dot-prop": "9.0.0", "dotenv": "17.2.3", "env-paths": "3.0.0", "envinfo": "7.15.0", "etag": "1.8.1", "execa": "5.1.1", "express": "4.22.1", "express-logging": "1.1.1", "extract-zip": "2.0.1", "fastest-levenshtein": "1.0.16", "fastify": "4.29.1", "find-up": "7.0.0", "folder-walker": "3.2.0", "fuzzy": "0.1.3", "get-port": "5.1.1", "gh-release-fetch": "4.0.3", "git-repo-info": "2.1.1", "gitconfiglocal": "2.1.0", "http-proxy": "1.18.1", "http-proxy-middleware": "2.0.9", "https-proxy-agent": "7.0.6", "inquirer": "8.2.7", "inquirer-autocomplete-prompt": "1.4.0", "is-docker": "3.0.0", "is-stream": "4.0.1", "is-wsl": "3.1.0", "isexe": "3.1.1", "jsonwebtoken": "9.0.3", "jwt-decode": "4.0.0", "lambda-local": "2.2.0", "locate-path": "7.2.0", "lodash": "4.17.23", "log-update": "6.1.0", "maxstache": "1.0.7", "maxstache-stream": "1.0.4", "multiparty": "4.2.3", "nanospinner": "1.2.2", "netlify-redirector": "0.5.0", "node-fetch": "3.3.2", "normalize-package-data": "7.0.1", "open": "10.2.0", "p-filter": "4.1.0", "p-map": "7.0.3", "p-wait-for": "5.0.2", "parallel-transform": "1.2.0", "parse-github-url": "1.0.3", "prettyjson": "1.2.5", "raw-body": "3.0.1", "read-package-up": "11.0.0", "readdirp": "4.1.2", "semver": "7.7.2", "source-map-support": "0.5.21", "terminal-link": "4.0.0", "toml": "3.0.0", "tomlify-j0.4": "3.0.0", "ulid": "3.0.1", "update-notifier": "7.3.1", "uuid": "11.1.0", "write-file-atomic": "5.0.1", "ws": "8.18.3" }, "bin": { "ntl": "bin/run.js", "netlify": "bin/run.js" } }, "sha512-U5CCVx1wR5JZYqYfakULIKcDGw9M5GQIXmOgmhYykFisb9Ok71MaPr1+Bnpz1y13wkh3YpP4qp9zI7i+JgwIjA=="],
 
     "netlify-redirector": ["netlify-redirector@0.5.0", "", {}, "sha512-4zdzIP+6muqPCuE8avnrgDJ6KW/2+UpHTRcTbMXCIRxiRmyrX+IZ4WSJGZdHPWF3WmQpXpy603XxecZ9iygN7w=="],
 
@@ -2423,6 +2429,8 @@
 
     "@mapbox/node-pre-gyp/semver": ["semver@7.7.3", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-SdsKMrI9TdgjdweUSR9MweHA4EJ8YxHn8DFaDisvhVlUOe4BF1tLD7GAj0lIqWVl+dPb/rExr0Btby5loQm20Q=="],
 
+    "@netlify/ai/@netlify/api": ["@netlify/api@14.0.12", "", { "dependencies": { "@netlify/open-api": "^2.45.0", "node-fetch": "^3.0.0", "p-wait-for": "^5.0.0", "picoquery": "^2.5.0" } }, "sha512-4xSfHAj9PIZZ78YOPby6TBHxYnf6sOE1/jpkHSDyt2oRxF94qJ0fhp96Fo2kq/rIhvgTlU5Ce3HARi8BDY4mLw=="],
+
     "@netlify/blobs/@netlify/dev-utils": ["@netlify/dev-utils@4.3.0", "", { "dependencies": { "@whatwg-node/server": "^0.10.0", "ansis": "^4.1.0", "chokidar": "^4.0.1", "decache": "^4.6.2", "dettle": "^1.0.5", "dot-prop": "9.0.0", "empathic": "^2.0.0", "env-paths": "^3.0.0", "image-size": "^2.0.2", "js-image-generator": "^1.0.4", "parse-gitignore": "^2.0.0", "semver": "^7.7.2", "tmp-promise": "^3.0.3", "uuid": "^11.1.0", "write-file-atomic": "^5.0.1" } }, "sha512-vZAL8pMuj3yPQlmHSgyaA/UQFxc6pZgU0LucFJ1+IPWGJtIzBXHRvuR4acpoP72HtyQPUHJ42s7U9GaaSGVNHg=="],
 
     "@netlify/build/@netlify/blobs": ["@netlify/blobs@10.5.0", "", { "dependencies": { "@netlify/dev-utils": "4.3.3", "@netlify/otel": "^5.1.1", "@netlify/runtime-utils": "2.2.1" } }, "sha512-yrdt6H1X56DYz7pS3exU/iHO+iOW5sVzseaQwRQQ9OYChB/pVjXQzkBKAjS9dHIecSpv0oynkLxd/mwSJfAJLQ=="],
@@ -2452,8 +2460,6 @@
     "@netlify/edge-bundler/get-port": ["get-port@7.1.0", "", {}, "sha512-QB9NKEeDg3xxVwCCwJQ9+xycaz6pBB6iQ76wiWMl1927n0Kir6alPiP+yuiICLLU4jpMe08dXfpebuQppFA2zw=="],
 
     "@netlify/edge-bundler/semver": ["semver@7.7.3", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-SdsKMrI9TdgjdweUSR9MweHA4EJ8YxHn8DFaDisvhVlUOe4BF1tLD7GAj0lIqWVl+dPb/rExr0Btby5loQm20Q=="],
-
-    "@netlify/edge-functions/@netlify/types": ["@netlify/types@2.2.0", "", {}, "sha512-XOWlZ2wPpdRKkAOcQbjIf/Qz7L4RjcSVINVNQ9p3F6U8V6KSEOsB3fPrc6Ly8EOeJioHUepRPuzHzJE/7V5EsA=="],
 
     "@netlify/git-utils/execa": ["execa@8.0.1", "", { "dependencies": { "cross-spawn": "^7.0.3", "get-stream": "^8.0.1", "human-signals": "^5.0.0", "is-stream": "^3.0.0", "merge-stream": "^2.0.0", "npm-run-path": "^5.1.0", "onetime": "^6.0.0", "signal-exit": "^4.1.0", "strip-final-newline": "^3.0.0" } }, "sha512-VyhnebXciFV2DESc+p6B+y0LjSm0krU4OgJN44qFAhBY0TJ+1V61tYD2+wHusZ6F9n5K+vl8k0sTy7PEfV4qpg=="],
 
@@ -2520,6 +2526,8 @@
     "archiver/readable-stream": ["readable-stream@4.7.0", "", { "dependencies": { "abort-controller": "^3.0.0", "buffer": "^6.0.3", "events": "^3.3.0", "process": "^0.11.10", "string_decoder": "^1.3.0" } }, "sha512-oIGGmcpTLwPga8Bn6/Z75SVaH1z5dUut2ibSyAMVhmUggWpmDn2dapB0n7f8nwaSiRtepAsfJyfXIO5DCVAODg=="],
 
     "archiver-utils/is-stream": ["is-stream@2.0.1", "", {}, "sha512-hFoiJiTl63nn+kstHGBtewWSKnQLpyb155KHheA1l39uvtO9nWIop1p3udqPcUd/xbF1VLMO4n7OI6p7RbngDg=="],
+
+    "archiver-utils/lodash": ["lodash@4.17.21", "", {}, "sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=="],
 
     "archiver-utils/readable-stream": ["readable-stream@4.7.0", "", { "dependencies": { "abort-controller": "^3.0.0", "buffer": "^6.0.3", "events": "^3.3.0", "process": "^0.11.10", "string_decoder": "^1.3.0" } }, "sha512-oIGGmcpTLwPga8Bn6/Z75SVaH1z5dUut2ibSyAMVhmUggWpmDn2dapB0n7f8nwaSiRtepAsfJyfXIO5DCVAODg=="],
 
@@ -2596,6 +2604,8 @@
     "inquirer/ansi-escapes": ["ansi-escapes@4.3.2", "", { "dependencies": { "type-fest": "^0.21.3" } }, "sha512-gKXj5ALrKWQLsYG9jlTRmR/xKluxHV+Z9QEwNIgCfM1/uwPMCuzVVnh5mwTd+OuBZcwSIMbqssNWRm1lE51QaQ=="],
 
     "inquirer/figures": ["figures@3.2.0", "", { "dependencies": { "escape-string-regexp": "^1.0.5" } }, "sha512-yaduQFRKLXYOGgEn6AZau90j3ggSOyiqXU0F9JZfeXYhNa+Jk4X+s45A2zg5jns87GAFa34BBm2kXw4XpNcbdg=="],
+
+    "inquirer/lodash": ["lodash@4.17.21", "", {}, "sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg=="],
 
     "inquirer/string-width": ["string-width@4.2.3", "", { "dependencies": { "emoji-regex": "^8.0.0", "is-fullwidth-code-point": "^3.0.0", "strip-ansi": "^6.0.1" } }, "sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g=="],
 
