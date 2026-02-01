@@ -489,7 +489,24 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         try {
             // Always use background chat to prevent 504 timeouts
             if (activeChatId) {
-                // Route to background function for heavy processing
+                // 1. Insert placeholder message and get its ID
+                const { data: placeholderMsg, error: insertError } = await supabase
+                    .from('messages')
+                    .insert({
+                        chat_id: activeChatId,
+                        role: 'model',
+                        content: '⚙️ **Processing...**',
+                        status: 'processing'
+                    })
+                    .select()
+                    .single();
+
+                if (insertError) {
+                    console.error("Failed to insert placeholder:", insertError);
+                    throw new Error("Failed to initialize response.");
+                }
+
+                // 2. Route to background function for heavy processing
                 const response = await fetch('/api/chat-background', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -498,6 +515,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                         input: content,
                         chatId: activeChatId,
                         userId: session.user.id,
+                        messageId: placeholderMsg.id,
                         conversationHistory: chatMessages.filter(m => m.role !== 'system').map(m => ({
                             role: m.role,
                             content: m.content

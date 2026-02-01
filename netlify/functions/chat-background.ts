@@ -98,7 +98,7 @@ const handler: Handler = async (event, context) => {
 
     try {
         const payload = JSON.parse(event.body || "{}");
-        let { input, chatId, userId, conversationHistory = [], mode = 'Talk to Source', wizardMode = 'iterative' } = payload;
+        let { input, chatId, userId, messageId, conversationHistory = [], mode = 'Talk to Source', wizardMode = 'iterative' } = payload;
 
         // Relevance Check (Background): If input is too short/irrelevant, save a clarification message and exit
         if (input && input.trim().length <= 3 && !['yes', 'no', 'ok', 'go', 'stop'].includes(input.trim().toLowerCase())) {
