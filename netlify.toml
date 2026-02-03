@@ -15,7 +15,7 @@
   command = "bun run dev"
   targetPort = 3000
   port = 8888
-  publish = "dist"
+  publish = "."
   functions_timeout = 60
   [dev.environment]
     NETLIFY_FUNCTIONS_TIMEOUT = "60"
@@ -24,63 +24,8 @@
   SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY"
 
 [[redirects]]
-  from = "/api/inngest"
-  to = "/.netlify/functions/inngest"
-  status = 200
-
-[[redirects]]
-  from = "/api/chat"
-  to = "/.netlify/functions/chat"
-  status = 200
-
-[[redirects]]
-  from = "/api/execute"
-  to = "/.netlify/functions/execute"
-  status = 200
-
-[[redirects]]
-  from = "/api/execute-background"
-  to = "/.netlify/functions/execute-background"
-  status = 200
-
-[[redirects]]
-  from = "/api/builder-background"
-  to = "/.netlify/functions/builder-background"
-  status = 200
-
-[[redirects]]
-  from = "/api/chat-background"
-  to = "/.netlify/functions/chat-background"
-  status = 200
-
-[[redirects]]
-  from = "/api/media-gen-background"
-  to = "/.netlify/functions/media-gen-background"
-  status = 200
-
-[[redirects]]
-  from = "/api/checkout"
-  to = "/.netlify/functions/checkout"
-  status = 200
-
-[[redirects]]
-  from = "/api/webhook"
-  to = "/.netlify/functions/webhook"
-  status = 200
-
-[[redirects]]
-  from = "/api/trigger"
-  to = "/.netlify/functions/trigger"
-  status = 200
-
-[[redirects]]
-  from = "/api/image-proxy"
-  to = "/.netlify/functions/image-proxy"
-  status = 200
-
-[[redirects]]
-  from = "/app"
-  to = "/index.html"
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
   status = 200
 
 [[redirects]]
@@ -88,7 +33,4 @@
   to = "/index.html"
   status = 200
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+

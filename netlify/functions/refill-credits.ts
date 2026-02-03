@@ -1,0 +1,93 @@
+import { Handler } from '@netlify/functions';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+export const handler: Handler = async (event) => {
+    if (event.httpMethod !== 'POST') {
+        return { statusCode: 405, body: 'Make sure you are refilling the tank correctly.' };
+    }
+
+    try {
+        const { userId, feedback } = JSON.parse(event.body || '{}');
+
+        if (!userId) {
+            return { statusCode: 400, body: JSON.stringify({ error: 'Missing userId' }) };
+        }
+
+        // 1. Log Feedback (You might want to save this to a 'feedback' table)
+        // For simplicity, we'll just log it here or rely on the analytics.
+        // We can add a simple insert if a feedback table exists.
+        try {
+            await supabase.from('feedback').insert({
+                user_id: userId,
+                type: 'fuel_tank_refill',
+                content: JSON.stringify(feedback),
+                status: 'open'
+            });
+        } catch (err) {
+            console.warn("Failed to save feedback stats:", err);
+            // Don't block the refill though
+        }
+
+        // 2. Check Frequency (Weekly Limit)
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('last_refill_date')
+            .eq('id', userId)
+            .single();
+
+        if (profile?.last_refill_date) {
+            const lastRefill = new Date(profile.last_refill_date);
+            const now = new Date();
+            const diffTime = Math.abs(now.getTime() - lastRefill.getTime());
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 7) {
+                return {
+                    statusCode: 403,
+                    body: JSON.stringify({ error: `Refill available in ${7 - diffDays} days.` })
+                };
+            }
+        }
+
+        // 3. Refill Credits (100 Credits)
+        // Use a transaction or just update the profile
+        const { data, error } = await supabase.rpc('refill_fuel_tank', {
+            target_user_id: userId,
+            amount: 100 // NEW: 100 credits
+        });
+
+        if (error) {
+            // Fallback to direct update if RPC doesn't exist yet
+            console.warn("RPC refill_fuel_tank not found, falling back to direct update");
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({
+                    credits: 100, // Update to 100
+                    is_demo_locked: false,
+                    last_refill_date: new Date().toISOString()
+                })
+                .eq('id', userId);
+
+            if (updateError) throw updateError;
+        }
+
+        // Increment refill count
+        await supabase.rpc('increment_refill_count', { target_user_id: userId });
+
+        return {
+            statusCode: 200,
+            body: JSON.stringify({ success: true, message: 'Tank refilled' })
+        };
+
+    } catch (error: any) {
+        console.error('Refill error:', error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: error.message })
+        };
+    }
+};

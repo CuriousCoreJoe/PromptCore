@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Message, AppMode, ChatSession } from '../types';
 import { supabase } from '../lib/supabase';
 import { MessageActionBar } from './MessageActionBar';
@@ -86,8 +87,13 @@ const getGoalOptionsForMode = (mode: AppMode, draftPrompt: string = ''): GoalOpt
 
 
 import { ModeSelector } from './ModeSelector';
+import { useCredits } from '../hooks/useCredits';
+import { usePredictiveText } from '../hooks/usePredictiveText';
+import { FuelTankModal } from './FuelTankModal';
+import { CREDIT_COSTS } from '../config/pricing';
 
 export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, credits, onShowToast, onUpgrade, wizardMode, defaultModel, onSelectMode, activeChatId, onLoadChat, userProfile }) => {
+    const navigate = useNavigate();
     const [messages, setMessages] = useState<Message[]>([
         { id: '0', role: 'system', content: '', timestamp: Date.now(), mode: AppMode.EVERYDAY }
     ]);
@@ -108,6 +114,15 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const [showFuelModal, setShowFuelModal] = useState(false);
+    const { checkCredits, refillCredits, isRefilling } = useCredits(userProfile, () => {
+        // Simple reload to refresh profile state for now
+        window.location.reload();
+    });
+
+    // Predictive Text
+    const prediction = usePredictiveText(currentMode, input);
 
     const isDev = session?.user?.email === 'dev@promptcore.com';
 
@@ -377,7 +392,18 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
     const handleInitialSubmit = async () => {
         if (!input.trim()) return;
 
-        // Check premium mode access before proceeding
+        // FUEL TANK: Check credits before proceeding
+        // Determine cost based on mode
+        let cost = CREDIT_COSTS.chatMessage;
+        if (currentMode === AppMode.VIBE_CODE) cost = CREDIT_COSTS.appBuildPrototype; // 50
+        // (Add other mode costs as needed)
+
+        if (!checkCredits(cost)) {
+            setShowFuelModal(true);
+            return;
+        }
+
+        // Check premium mode access before proceeding (Legacy/Additional check)
         const accessCheck = checkPremiumModeAccess();
         if (!accessCheck.canAccess) {
             onShowToast(accessCheck.message!, 'Upgrade', onUpgrade);
@@ -421,7 +447,20 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         }
 
         setInput('');
-        setWizardStage('GOAL_SELECTION');
+        // REMOVED: setWizardStage('GOAL_SELECTION'); -> Default to Standard Chat (IDLE)
+        // Only set to GOAL_SELECTION if explicitly in a mode that REQUIREs it or if user clicked "Enhance"
+        if (currentMode !== AppMode.EVERYDAY) {
+            // For specific modes like Vibe Code, we might still want to start the wizard?
+            // The user request says "User lands on App: It looks like a normal chatbot."
+            // So even for Vibe Code, maybe we start with chat and let them "Enhance" into the wizard?
+            // Let's stick to the request: "The AI attempts to answer immediately."
+            // So we stay in IDLE.
+        }
+
+        // Trigger AI Response
+        if (chatId) {
+            await processMessage(input, false, chatId);
+        }
     };
 
     const handleGoalSelect = async (goal: GoalOption) => {
@@ -456,9 +495,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         }
     };
 
-    const processMessage = async (content: string, isHiddenInstruction = false) => {
+    const processMessage = async (content: string, isHiddenInstruction = false, chatIdOverride?: string) => {
         setIsLoading(true);
         abortControllerRef.current = new AbortController();
+
+        const targetChatId = chatIdOverride || activeChatId;
 
         const tempMessages = [...messages];
         if (isHiddenInstruction) {
@@ -488,12 +529,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
 
         try {
             // Always use background chat to prevent 504 timeouts
-            if (activeChatId) {
+            if (targetChatId) {
                 // 1. Insert placeholder message and get its ID
                 const { data: placeholderMsg, error: insertError } = await supabase
                     .from('messages')
                     .insert({
-                        chat_id: activeChatId,
+                        chat_id: targetChatId,
                         role: 'model',
                         content: '⚙️ **Processing...**',
                         status: 'processing'
@@ -513,7 +554,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                     signal: abortControllerRef.current?.signal,
                     body: JSON.stringify({
                         input: content,
-                        chatId: activeChatId,
+                        chatId: targetChatId,
                         userId: session.user.id,
                         messageId: placeholderMsg.id,
                         conversationHistory: chatMessages.filter(m => m.role !== 'system').map(m => ({
@@ -521,7 +562,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                             content: m.content
                         })),
                         mode: currentMode,
-                        wizardMode
+                        wizardMode,
+                        wizardStage
                     })
                 });
 
@@ -547,8 +589,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                         input: isHiddenInstruction ? content : content,
                         mode: currentMode,
                         userId: session.user.id,
-                        chatId: activeChatId,
+                        chatId: targetChatId,
                         wizardMode,
+                        wizardStage,
                         defaultModel: defaultModel || 'claude-sonnet-4.5'
                     })
                 });
@@ -561,9 +604,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 const data = await response.json();
 
                 // Save Model Response to DB first - Realtime subscription will add it to state
-                if (activeChatId) {
+                if (targetChatId) {
                     await supabase.from('messages').insert({
-                        chat_id: activeChatId,
+                        chat_id: targetChatId,
                         role: 'model',
                         content: data.text,
                         msg_type: data.msgType || 'meta_helper'
@@ -601,7 +644,32 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         }
     };
 
+    const handleEnhance = (content: string) => {
+        // Switch to Everyday Mode (Refiner) and start Wizard
+        if (currentMode !== AppMode.EVERYDAY) {
+            onSelectMode(AppMode.EVERYDAY);
+        }
+        setDraftPrompt(content);
+        setWizardStage('GOAL_SELECTION');
+    };
+
+    const handleSendToFactory = (content: string) => {
+        // Navigate to factory with state
+        const hostname = window.location.hostname;
+        const isAppSubdomain = hostname.startsWith('app.');
+        const prefix = isAppSubdomain ? '' : '/app';
+
+        navigate(`${prefix}/factory`, { state: { initialPrompt: content } });
+        onShowToast("Opening Factory...", "View", () => { });
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Tab' && prediction) {
+            e.preventDefault();
+            setInput(prediction.text);
+            return;
+        }
+
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             if (wizardStage === 'IDLE') handleInitialSubmit();
@@ -1135,6 +1203,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                 onRecoverStuck={handleRecoverStuck}
                                 isRunning={isRunningExecution}
                                 onOpenArtifact={handleOpenPreview}
+                                onEnhance={msg.role === 'user' ? () => handleEnhance(msg.content) : undefined}
+                                onSendToFactory={() => handleSendToFactory(msg.content)}
                             />
                         ))}
 
@@ -1266,8 +1336,19 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                         )}
 
                         <div className={cn(
-                            "flex items-center rounded-[28px] transition-all duration-200 border border-transparent shadow-2xl overflow-hidden pr-2 py-2"
+                            "flex items-center rounded-[28px] transition-all duration-200 border border-transparent shadow-2xl overflow-hidden pr-2 py-2 relative"
                         )} style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-sidebar)' }}>
+
+                            {/* Ghost Text Overlay */}
+                            <div className="absolute inset-0 px-6 py-3 pointer-events-none text-[15px] leading-relaxed font-sans" aria-hidden="true">
+                                <span className="text-transparent whitespace-pre-wrap">{input}</span>
+                                {prediction && (
+                                    <span className={prediction.isEnhancement ? "text-brand-400 opacity-60" : "text-gray-500 opacity-40"}>
+                                        {prediction.remainder || (prediction.isEnhancement ? `  (Tab to enhance)` : "")}
+                                    </span>
+                                )}
+                            </div>
+
                             <textarea
                                 ref={textareaRef}
                                 value={input}
@@ -1355,6 +1436,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                     </div>
                 </div>
             )}
+            {/* Fuel Tank Modal */}
+            <FuelTankModal
+                isOpen={showFuelModal}
+                onClose={() => setShowFuelModal(false)}
+                onRefill={refillCredits}
+                isRefilling={isRefilling}
+            />
         </div>
     );
 };

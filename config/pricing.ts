@@ -45,22 +45,22 @@ export const SUBSCRIPTION_TIERS: Record<string, SubscriptionTier> = {
     name: 'free',
     displayName: 'Standard',
     price: 0,
-    monthlyCredits: 50,
-    overageMultiplier: 3.0, // THE "USAGE TAX" - After 100 credits, actions cost 3x
-    usageThreshold: 100, // Multiplier kicks in after 100 credits used this month
+    monthlyCredits: 500, // FUEL TANK: Start with 500
+    overageMultiplier: 1.0, // DISABLED: We now lock instead of tax
+    usageThreshold: null,
     features: {
-      promptFactory: true, // THE HOOK - Unrestricted access to burn credits fast
-      vibeCoding: true, // TRIAL - Limited uses, higher cost
-      appBuilder: true, // TRIAL - Limited uses, higher cost
-      talkToSource: true, // TRIAL - Limited uses, higher cost
-      workspaceSave: false, // LOCKED - Can't save work
-      mediaGen: true, // TRIAL - Limited uses, higher cost
+      promptFactory: true,
+      vibeCoding: true,
+      appBuilder: true,
+      talkToSource: true,
+      workspaceSave: false,
+      mediaGen: true,
       prioritySupport: false,
     },
     trialLimits: {
-      vibeCodeUses: 5, // Free users can use Vibe Code 5 times per month
-      talkToSourceUses: 10, // Free users can use Talk to Source 10 times per month
-      mediaGenUses: 10, // Free users can use Media Gen 10 times per month
+      vibeCodeUses: 100, // Effectively limited by credits now
+      talkToSourceUses: 100,
+      mediaGenUses: 100,
     },
   },
   lite: {
@@ -100,12 +100,13 @@ export const SUBSCRIPTION_TIERS: Record<string, SubscriptionTier> = {
 };
 
 // Base Credit Costs (before multiplier)
+// Base Credit Costs (before multiplier)
 export const CREDIT_COSTS: CreditCost = {
-  chatMessage: 1,
-  promptFactoryBatch: 5, // 5 credits per batch (generates ~5 prompts)
-  appBuildPrototype: 30, // Building a full app prototype
-  mediaGenPrompt: 5, // Generating a media prompt
-  talkToSourceQuery: 2, // Analyzing source content
+  chatMessage: 10, // FUEL TANK: 10 credits per message
+  promptFactoryBatch: 25, // 5 prompts * 5 credits
+  appBuildPrototype: 50, // FUEL TANK: 50 credits per Vibe
+  mediaGenPrompt: 20,
+  talkToSourceQuery: 15,
 };
 
 // Credit Pack Options
@@ -202,7 +203,7 @@ export function calculateModeCost(
   subscriptionStatus: 'free' | 'lite' | 'pro'
 ): number {
   const tier = SUBSCRIPTION_TIERS[subscriptionStatus];
-  
+
   // Subscribers pay standard rates
   if (subscriptionStatus !== 'free') {
     switch (mode) {
@@ -216,7 +217,7 @@ export function calculateModeCost(
         return CREDIT_COSTS.chatMessage;
     }
   }
-  
+
   // Free users pay higher rates for premium modes (2x-3x)
   switch (mode) {
     case 'Vibe Code':
@@ -242,10 +243,10 @@ export function hasExceededTrialLimit(
   if (subscriptionStatus !== 'free') {
     return { exceeded: false, remaining: Infinity, limit: Infinity };
   }
-  
+
   const tier = SUBSCRIPTION_TIERS.free;
   const limits = tier.trialLimits!;
-  
+
   switch (mode) {
     case 'Vibe Code':
       const vibeCodeUsed = monthlyUsage.vibeCode || 0;
@@ -282,12 +283,12 @@ export function getTrialLimitMessage(
   monthlyUsage: { vibeCode?: number; talkToSource?: number; mediaGen?: number }
 ): string | null {
   if (subscriptionStatus !== 'free') return null;
-  
+
   const check = hasExceededTrialLimit(mode, subscriptionStatus, monthlyUsage);
-  
+
   if (check.exceeded) {
     return `You've used all ${check.limit} free uses of ${mode} this month. Upgrade to Lite for unlimited access.`;
   }
-  
+
   return `${check.remaining} free ${mode} uses remaining this month (${check.limit} total).`;
 }

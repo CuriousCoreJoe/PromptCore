@@ -144,6 +144,16 @@ DO NOT generate "FINAL PROMPT:" blocks. This is a research/conversation mode, no
 
 ${baseOptions}`;
 
+        case 'IDLE':
+        case 'Everyday-Standard':
+            return systemPromptContent(`
+You are a helpful, intelligent AI assistant.
+1. Answer the user's request directly and concisely.
+2. Do NOT ask clarifying questions unless absolutely necessary.
+3. If the user asks for code, write it. If they ask for a plan, write it.
+4. Do NOT use the "Refiner" protocol (no numbered questions, no rigid structure).
+5. Be conversational, friendly, and efficient.`);
+
         case 'Everyday':
         default:
             return systemPromptContent(`
@@ -175,7 +185,7 @@ const handler: Handler = async (event, context) => {
     }
 
     try {
-        let { messages, input, userId, wizardMode = 'iterative', defaultModel = 'claude-sonnet-4.5', mode = 'Everyday', sourceContent, chatId } = JSON.parse(event.body || "{}");
+        let { messages, input, userId, wizardMode = 'iterative', wizardStage = 'IDLE', defaultModel = 'claude-sonnet-4.5', mode = 'Everyday', sourceContent, chatId } = JSON.parse(event.body || "{}");
 
         // Relevance Check: If input is too short or nonsensical
         if (input && input.trim().length <= 3 && !['yes', 'no', 'ok', 'go', 'stop'].includes(input.trim().toLowerCase())) {
@@ -184,8 +194,8 @@ const handler: Handler = async (event, context) => {
             const modelMessages = messages.filter((m: any) => m.role === 'model' || m.role === 'assistant');
             const lastModelMessage = modelMessages[modelMessages.length - 1];
 
-            const isClarificationRequest = lastModelMessage && lastModelMessage.content.includes("Could you clarify what you mean?");
             const isStuckOptionsRequest = lastModelMessage && lastModelMessage.content.includes("It seems we're stuck.");
+            const isClarificationRequest = lastModelMessage && lastModelMessage.content.includes("Could you clarify what you mean?");
 
             if (isStuckOptionsRequest) {
                 // STRIKE 3: User still stuck. Auto-choose primary path.
@@ -197,6 +207,16 @@ const handler: Handler = async (event, context) => {
                 // Override input and proceed to LLM call
                 input = autoDefault;
                 console.log(`[Chat] Strike 3 detected. Auto-choosing: ${autoDefault}`);
+            } else if (wizardStage === 'IDLE' && input && input.trim().split(/\s+/).length < 5) {
+                // CONFIDENCE CHECK: If in Standard Chat and prompt is very short/vague
+                return {
+                    statusCode: 200,
+                    headers,
+                    body: JSON.stringify({
+                        text: "I can try to write this, but your request is very broad. Would you like to **Refine** this into a specific spec first for better results?\n\n[OPTIONS: Just Chat, ⚡ Switch to Vibe Coding, 🏭 Refine in Factory]",
+                        msgType: 'meta_helper'
+                    })
+                };
             } else if (isClarificationRequest) {
                 // FALLBACK: User is stuck. Provide Chips based on Mode.
                 let options = "Brainstorm Ideas, Draft Content, Improve Text";

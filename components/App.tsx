@@ -33,6 +33,7 @@ const App: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [session, setSession] = useState<Session | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -93,10 +94,15 @@ const App: React.FC = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      setIsInitialLoading(false);
+    }).catch(() => {
+      setIsInitialLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      // Ensure we clear loading if auth state changes (e.g. login/logout)
+      setIsInitialLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -228,6 +234,17 @@ const App: React.FC = () => {
       });
     }
   };
+
+  if (isInitialLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-dark-950">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-400 font-medium">Bootstrapping Origin...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!session) {
     return <Auth onAuthSuccess={() => { }} />;

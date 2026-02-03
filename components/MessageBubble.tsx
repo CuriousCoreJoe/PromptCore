@@ -21,6 +21,8 @@ interface MessageBubbleProps {
   onRecoverStuck?: (messageId: string) => void;
   isRunning?: boolean;
   onOpenArtifact?: (content: string, title?: string) => void;
+  onEnhance?: () => void;
+  onSendToFactory?: () => void;
 }
 
 const ActionButton: React.FC<{ icon: React.ReactNode, title: string, onClick?: () => void }> = ({ icon, title, onClick }) => (
@@ -49,7 +51,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   onEdit,
   onRecoverStuck,
   isRunning = false,
-  onOpenArtifact
+  onOpenArtifact,
+  onEnhance,
+  onSendToFactory
 }) => {
   const isUser = message.role === 'user';
   const [copied, setCopied] = React.useState(false);
@@ -512,6 +516,33 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
               isRunning={isRunning}
               isFinalPrompt={isFinalPrompt}
             />
+            {isUser && onEnhance && (
+              <div className="absolute -right-12 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={onEnhance}
+                  className="p-2 bg-brand-500 hover:bg-brand-600 text-white rounded-full shadow-lg shadow-brand-500/30 animate-pulse-slow hover:animate-none scale-90 hover:scale-100 transition-transform"
+                  title="Enhance this prompt"
+                >
+                  <Sparkles size={16} fill="currentColor" />
+                </button>
+              </div>
+            )}
+            {/* Factory Fork Button (Right-Click Context or Action Bar?) 
+                 User asked for "right-click specific message" OR "Send to Factory". 
+                 Let's add it to the Action Bar area or just below it for now for visibility, 
+                 or extending MessageActionBar is cleaner. 
+                 Since MessageActionBar is separate, let's put it next to it if model message.
+             */}
+            {!isUser && onSendToFactory && (
+              <div className="flex justify-end mt-2">
+                <button
+                  onClick={onSendToFactory}
+                  className="text-xs text-gray-500 hover:text-brand-400 flex items-center gap-1 transition-colors"
+                >
+                  <Sparkles size={12} /> Send to Factory
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

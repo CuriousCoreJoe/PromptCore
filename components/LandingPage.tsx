@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async'; // <--- NEW IMPORT
 import { MessageSquare, Sparkles, Cpu, Code2, LayoutGrid, Hammer, FileSearch, ScanText, Check, ArrowRight, PlayCircle } from 'lucide-react';
@@ -15,7 +17,7 @@ const FeatureCard = ({ title, subtitle, desc, cost, icon: Icon, subIcon: SubIcon
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ delay, duration: 0.5 }}
         viewport={{ once: true }}
-        className={`relative rounded-xl p-8 border border-slate-800 bg-gradient-to-br from-slate-900 to-[#020617] overflow-hidden group hover:border-${color}-500/50 transition-colors duration-300`}
+        className={`relative rounded-xl p-8 border border-slate-800/50 bg-gradient-to-br from-slate-900 to-[#020617] overflow-hidden group hover:border-${color}-500/50 transition-colors duration-300`}
     >
         <div className={`absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity text-${color}-500`}>
             <Icon size={96} />
@@ -79,6 +81,16 @@ export default function LandingPage() {
     const [activeMode, setActiveMode] = useState('everyday');
     const [email, setEmail] = useState('');
     const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const navigate = useNavigate();
+
+    // Auto-redirect if already logged in
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                navigate('/app');
+            }
+        });
+    }, [navigate]);
 
     const handleWaitlistSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -161,7 +173,7 @@ export default function LandingPage() {
     ];
 
     return (
-        <div className="min-h-screen bg-[#020617] text-slate-200 font-sans overflow-x-hidden selection:bg-cyan-500/30">
+        <div className="dark min-h-screen bg-[#020617] text-slate-200 font-sans overflow-x-hidden selection:bg-cyan-500/30">
 
             {/* --- METADATA SECTION START --- */}
             <Helmet>
@@ -189,7 +201,7 @@ export default function LandingPage() {
             <div className="fixed inset-0 z-0 pointer-events-none opacity-15" style={{ backgroundImage: 'radial-gradient(#334155 1px, transparent 1px)', backgroundSize: '32px 32px' }}></div>
 
             {/* Navigation */}
-            <nav className="fixed w-full z-50 top-0 border-b border-white/5 bg-[#020617]/80 backdrop-blur-md">
+            <nav className="fixed w-full z-50 top-0 border-b border-white/[0.03] bg-[#020617]/80 backdrop-blur-md">
                 <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <LogoTypefaceWhite className="h-6 w-auto" />
@@ -199,7 +211,7 @@ export default function LandingPage() {
                         <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
                     </div>
                     <div className="flex gap-4">
-                        <a href={getAppUrl()} className="text-sm font-medium text-slate-300 hover:text-white pt-2">Login</a>
+                        <a href={getAppUrl()} className="text-sm font-medium text-slate-400 hover:text-white transition-colors">Login</a>
                         <a href={getAppUrl()} className="text-sm font-medium bg-white text-slate-950 px-4 py-2 rounded hover:bg-slate-200 transition-colors">Get Started</a>
                     </div>
                 </div>
@@ -236,7 +248,7 @@ export default function LandingPage() {
                             </div>
 
                             {/* Waitlist Form */}
-                            <div className="mt-8 pt-8 border-t border-slate-800">
+                            <div className="mt-8 pt-8 border-t border-slate-800/30">
                                 <p className="text-sm text-slate-400 mb-4">Join the waitlist for early access updates.</p>
                                 <form onSubmit={handleWaitlistSubmit} className="flex gap-2 max-w-md">
                                     <input
@@ -267,9 +279,9 @@ export default function LandingPage() {
                             <div className="absolute -top-20 -right-20 w-72 h-72 bg-cyan-500/20 rounded-full blur-[100px] pointer-events-none"></div>
                             <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-purple-500/20 rounded-full blur-[100px] pointer-events-none"></div>
 
-                            <div className={`glass-panel rounded-2xl w-full border border-white/10 bg-slate-900/50 backdrop-blur-xl overflow-hidden transition-all duration-500 border-${activeMode === 'vibe' ? 'purple-500/50' : 'white/10'}`}>
+                            <div className={`glass-panel rounded-2xl w-full border border-white/[0.1] bg-slate-900/50 backdrop-blur-xl overflow-hidden transition-all duration-500 border-${activeMode === 'vibe' ? 'purple-500/50' : 'white/10'}`}>
                                 {/* Mockup Header */}
-                                <div className="h-10 border-b border-white/5 flex items-center justify-between px-4 bg-slate-950/50">
+                                <div className="h-10 border-b border-white/[0.05] flex items-center justify-between px-4 bg-slate-950/50">
                                     <div className="flex gap-2">
                                         <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
                                         <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
@@ -278,8 +290,8 @@ export default function LandingPage() {
                                     <div className="text-[10px] text-slate-500 font-mono">promptorigin.app</div>
                                 </div>
                                 {/* Mode Toggles */}
-                                <div className="h-14 flex items-center justify-center border-b border-white/5 bg-slate-950">
-                                    <div className="flex bg-slate-900 rounded-full p-1 border border-white/5">
+                                <div className="h-14 flex items-center justify-center border-b border-white/[0.05] bg-slate-950">
+                                    <div className="flex bg-slate-900 rounded-full p-1 border border-white/[0.05]">
                                         {['everyday', 'vibe', 'factory', 'source'].map(mode => (
                                             <button
                                                 key={mode}
@@ -355,7 +367,7 @@ export default function LandingPage() {
                 </section>
 
                 {/* Pricing Section */}
-                <section id="pricing" className="py-24 px-6 bg-slate-900/50 border-t border-white/5">
+                <section id="pricing" className="py-24 px-6 bg-slate-900/50 border-t border-white/[0.05]">
                     <div className="max-w-7xl mx-auto">
                         <div className="text-center mb-16">
                             <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
@@ -372,7 +384,7 @@ export default function LandingPage() {
                 </section>
             </main>
 
-            <footer className="border-t border-white/5 bg-[#020617] py-12 text-center text-slate-600 text-sm">
+            <footer className="border-t border-white/[0.05] bg-[#020617] py-12 text-center text-slate-600 text-sm">
                 © 2026 Prompt Origin. Built by CuriousCore.
             </footer>
         </div>

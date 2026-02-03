@@ -227,7 +227,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => setIsFoldersCollapsed(!isFoldersCollapsed)}
                     className="flex items-center gap-1.5 hover:bg-white/5 rounded px-1 py-0.5 transition-colors"
                   >
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest flex items-center gap-1.5">
                       <FolderIcon size={12} /> Folders
                     </p>
                     <ChevronDown size={12} className={clsx("text-gray-600 transition-transform", isFoldersCollapsed && "-rotate-90")} />
@@ -275,7 +275,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => setIsRecentsCollapsed(!isRecentsCollapsed)}
                   className="w-full flex items-center justify-between px-2 mb-3 hover:bg-white/5 rounded-lg transition-colors py-1"
                 >
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">
                     Library
                   </p>
                   <ChevronDown size={12} className={clsx("text-gray-600 transition-transform", isRecentsCollapsed && "-rotate-90")} />
@@ -450,12 +450,12 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, active, onClick, isColla
       "w-full flex items-center px-4 py-2.5 rounded-full transition-all group relative",
       active
         ? "bg-brand-600 text-white font-bold shadow-lg shadow-brand-600/20"
-        : "text-gray-500 hover:bg-black/5 dark:hover:bg-white/5 hover:text-brand-600 dark:hover:text-white",
+        : "text-gray-300 hover:bg-black/5 dark:hover:bg-white/5 hover:text-brand-600 dark:hover:text-white",
       isCollapsed ? "justify-center px-0" : "justify-start"
     )}
   >
     <span className={clsx("transition-transform", active ? "scale-110" : "group-hover:scale-110")}>{icon}</span>
-    {!isCollapsed && <span className="ml-3 text-[15px]">{label}</span>}
+    {!isCollapsed && <span className="ml-3 text-[15px] font-medium">{label}</span>}
   </button>
 );
 
@@ -532,10 +532,10 @@ const HistoryItem: React.FC<{
         <button
           onClick={onLoad}
           className={clsx(
-            "w-full text-left px-4 py-2.5 text-[13px] rounded-full truncate transition-all pr-10",
+            "w-full text-left px-4 py-2.5 text-[14px] rounded-full truncate transition-all pr-10",
             isActive
               ? "text-white bg-brand-600 font-bold shadow-lg shadow-brand-600/20"
-              : "text-gray-500 hover:text-brand-600 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 border border-transparent"
+              : "text-gray-300 hover:text-brand-600 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 border border-transparent"
           )}
         >
           {chat.title || 'Untitled'}

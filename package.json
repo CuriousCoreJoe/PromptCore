@@ -17,6 +17,7 @@
     "framer-motion": "^12.26.2",
     "inngest": "^3.48.1",
     "lucide-react": "^0.560.0",
+    "netlify-cli": "^23.14.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-helmet-async": "^2.0.5",

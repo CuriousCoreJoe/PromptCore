@@ -24,11 +24,11 @@ html {
   --text-app: #e5e5e5;
   --bg-sidebar: #0a0a0a;
   --bg-sidebar-alt: #131314;
-  --border-sidebar: rgba(255, 255, 255, 0.05);
-  --text-sidebar: #9ca3af;
+  --border-sidebar: rgba(255, 255, 255, 0.08);
+  --text-sidebar: #e5e5e5;
+  /* gray-200 */
+  --text-sidebar-dim: #9ca3af;
   /* gray-400 */
-  --text-sidebar-dim: #4b5563;
-  /* gray-600 */
 
   --bg-search-palette: #0a090a;
   --border-search-palette: #1f2937;
