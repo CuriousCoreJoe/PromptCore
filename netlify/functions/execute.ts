@@ -216,31 +216,31 @@ async function generateImageWithFallback(prompt: string, options: {
 }): Promise<ImageGenerationResult> {
     const { openRouterKey, geminiKey, togetherKey, requestedModel } = options;
 
-    console.log(`[ImageGen] Starting fallback chain for prompt: "${prompt.substring(0, 100)}..."`);
+    console.log(`[VisualFactory] Starting fallback chain for prompt: "${prompt.substring(0, 100)}..."`);
 
     // 1. Try Gemini Native (Primary - High Quality)
     if (geminiKey) {
-        console.log(`[ImageGen] Trying Gemini native`);
+        console.log(`[VisualFactory] Trying Gemini native`);
         const geminiResult = await generateImageWithGemini(prompt, geminiKey);
         if (geminiResult.success) {
             return geminiResult;
         }
-        console.warn(`[ImageGen] Gemini failed: ${geminiResult.error}`);
+        console.warn(`[VisualFactory] Gemini failed: ${geminiResult.error}`);
     }
 
     // 2. Try Together.ai
     if (togetherKey) {
-        console.log(`[ImageGen] Trying Together.ai`);
+        console.log(`[VisualFactory] Trying Together.ai`);
         const togetherResult = await generateImageWithTogether(prompt, togetherKey);
         if (togetherResult.success) {
             return togetherResult;
         }
-        console.warn(`[ImageGen] Together.ai failed: ${togetherResult.error}`);
+        console.warn(`[VisualFactory] Together.ai failed: ${togetherResult.error}`);
     }
 
     // 3. Try OpenRouter (Nano Banana - default model)
     if (openRouterKey) {
-        console.log(`[ImageGen] Trying OpenRouter with model: google/gemini-3-pro-image-preview`);
+        console.log(`[VisualFactory] Trying OpenRouter with model: google/gemini-3-pro-image-preview`);
         try {
             const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
@@ -262,7 +262,7 @@ async function generateImageWithFallback(prompt: string, options: {
 
             if (response.ok) {
                 const data = await response.json();
-                console.log(`[ImageGen] OpenRouter response:`, JSON.stringify(data).substring(0, 500));
+                console.log(`[VisualFactory] OpenRouter response:`, JSON.stringify(data).substring(0, 500));
 
                 const messageContent = data.choices?.[0]?.message?.content;
 
@@ -270,7 +270,7 @@ async function generateImageWithFallback(prompt: string, options: {
                 if (Array.isArray(messageContent)) {
                     for (const part of messageContent) {
                         if ((part.type === 'image_url' || part.image_url?.url) && part.image_url?.url) {
-                            console.log(`[ImageGen] OpenRouter image generation successful`);
+                            console.log(`[VisualFactory] OpenRouter image generation successful`);
                             return {
                                 success: true,
                                 imageUrl: part.image_url.url,
@@ -282,7 +282,7 @@ async function generateImageWithFallback(prompt: string, options: {
                     // Check for base64 image in string response
                     const base64Match = messageContent.match(/data:image\/[^;]+;base64,([^\s"]+)/);
                     if (base64Match) {
-                        console.log(`[ImageGen] OpenRouter image generation successful (base64)`);
+                        console.log(`[VisualFactory] OpenRouter image generation successful (base64)`);
                         return {
                             success: true,
                             imageUrl: base64Match[0],
@@ -291,22 +291,22 @@ async function generateImageWithFallback(prompt: string, options: {
                     }
                 }
             }
-            console.warn(`[ImageGen] OpenRouter failed: ${response.status}`);
+            console.warn(`[VisualFactory] OpenRouter failed: ${response.status}`);
         } catch (err: any) {
-            console.error(`[ImageGen] OpenRouter error:`, err.message);
+            console.error(`[VisualFactory] OpenRouter error:`, err.message);
         }
     }
 
     // 4. Try Pollinations.ai (free fallback - last resort)
-    console.log(`[ImageGen] Trying Pollinations.ai (free fallback)`);
+    console.log(`[VisualFactory] Trying Pollinations.ai (free fallback)`);
     const pollinationsResult = await generateImageWithPollinations(prompt);
     if (pollinationsResult.success) {
         return pollinationsResult;
     }
-    console.warn(`[ImageGen] Pollinations.ai failed: ${pollinationsResult.error}`);
+    console.warn(`[VisualFactory] Pollinations.ai failed: ${pollinationsResult.error}`);
 
     // All services failed
-    console.error(`[ImageGen] All image generation services failed`);
+    console.error(`[VisualFactory] All image generation services failed`);
     return {
         success: false,
         error: 'All image generation services failed'
@@ -429,19 +429,21 @@ const handler: Handler = async (event, context) => {
             // For Media Gen mode, always use the image preview model (nano banana)
             const modelMapping: Record<string, string> = {
                 'gpt-5': 'openai/gpt-5',
+                'chatgpt-5': 'openai/gpt-5-image',
                 'google/gemini-3-pro-preview': 'google/gemini-3-pro-preview',
                 'claude-sonnet-4.5': 'anthropic/claude-sonnet-4.5',
                 'gemini-3-flash': 'google/gemini-3-flash-preview',
                 'nano-banana': 'google/gemini-3-pro-image-preview',
+                'flux-2': 'black-forest-labs/flux.2-pro',
                 'dalle-3': 'openai/dall-e-3',
                 'midjourney-v6': 'midjourney/mj-v6',
                 'stable-diffusion-xl': 'stabilityai/stable-diffusion-xl-base-1.0'
             };
 
-            // Force image preview model for Media Gen mode
+            // Use requested image model if valid, else fallback to nano banana for Media Gen
             const modelId = isMediaGenMode
-                ? 'google/gemini-3-pro-image-preview'
-                : (modelMapping[requestedModelLower] || 'anthropic/claude-sonnet-4.5');
+                ? (modelMapping[requestedModelLower] || 'google/gemini-3-pro-image-preview')
+                : (modelMapping[requestedModelLower] || 'google/gemini-3-pro-preview');
 
             console.log(`OpenRouter: selected "${requestedModel}", mode="${mode}", mapping to "${modelId}"`);
 
@@ -591,16 +593,16 @@ const handler: Handler = async (event, context) => {
 
         // For Media Gen mode, use image-capable model
         const geminiModelMapping: Record<string, string> = {
-            'google/gemini-3-pro-preview': 'gemini-3-pro-preview',
-            'gemini-3-flash': 'gemini-3-flash-preview',
-            'gpt-5': 'gemini-3-pro-preview',
-            'claude-sonnet-4.5': 'gemini-3-pro-preview'
+            'google/gemini-3-pro-preview': 'google/gemini-3-pro-preview',
+            'gemini-3-flash': 'google/gemini-3-flash-preview',
+            'gpt-5': 'google/gemini-3-pro-preview',
+            'claude-sonnet-4.5': 'google/gemini-3-pro-preview'
         };
 
         // Use image preview model for Media Gen mode
         const geminiModel = isMediaGenMode
-            ? 'gemini-3-pro-image-preview'
-            : (geminiModelMapping[requestedModelLower] || 'gemini-3-pro-preview');
+            ? 'google/gemini-3-pro-image-preview'
+            : (geminiModelMapping[requestedModelLower] || 'google/gemini-3-pro-preview');
 
         console.log(`Gemini Fallback: selected "${requestedModel}", mode="${mode}", mapping to "${geminiModel}"`);
 

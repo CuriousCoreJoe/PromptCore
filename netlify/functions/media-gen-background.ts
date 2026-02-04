@@ -129,13 +129,13 @@ async function generateImageWithGemini(prompt: string, geminiKey: string): Promi
         const genAI = new GoogleGenerativeAI(geminiKey);
 
         const model = genAI.getGenerativeModel({
-            model: "imagen-4.0-generate-001",
+            model: "imagen-3.0-generate-001",
             generationConfig: {
                 responseModalities: ["image", "text"],
             }
         });
 
-        console.log(`[Gemini] Calling model: imagen-4.0-generate-001`);
+        console.log(`[Gemini] Calling model: imagen-3.0-generate-001`);
         const result = await model.generateContent(`Generate an image: ${prompt}`);
 
         const response = result.response;
@@ -174,6 +174,35 @@ async function generateImageWithGemini(prompt: string, geminiKey: string): Promi
         };
     } catch (err: any) {
         console.error(`[Gemini] Error:`, err.message);
+
+        // Try fast model if the standard one failed
+        if (err.message?.includes('not found') || err.message?.includes('not supported')) {
+            console.log(`[Gemini] Trying fallback model: imagen-3.0-fast-generate-001`);
+            try {
+                const { GoogleGenerativeAI } = require("@google/generative-ai");
+                const genAI = new GoogleGenerativeAI(geminiKey);
+                const fastModel = genAI.getGenerativeModel({
+                    model: "imagen-3.0-fast-generate-001",
+                    generationConfig: { responseModalities: ["image", "text"] }
+                });
+                const fastResult = await fastModel.generateContent(`Generate an image: ${prompt}`);
+                const fastResponse = fastResult.response;
+                if (fastResponse.candidates?.[0]?.content?.parts) {
+                    for (const part of fastResponse.candidates[0].content.parts) {
+                        if (part.inlineData?.mimeType?.startsWith('image/')) {
+                            return {
+                                success: true,
+                                imageUrl: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
+                                service: 'gemini'
+                            };
+                        }
+                    }
+                }
+            } catch (fastErr: any) {
+                console.error(`[Gemini Fallback] Error:`, fastErr.message);
+            }
+        }
+
         return {
             success: false,
             service: 'gemini',
@@ -191,30 +220,26 @@ async function generateImageWithFallback(prompt: string, options: {
 }): Promise<ImageGenerationResult> {
     const { openRouterKey, geminiKey, togetherKey, requestedModel } = options;
 
-    console.log(`[ImageGen] Starting fallback chain for prompt: "${prompt.substring(0, 100)}..."`);
-    console.log(`[ImageGen] Requested model: ${requestedModel}`);
+    console.log(`[VisualFactory] Starting fallback chain for prompt: "${prompt.substring(0, 100)}..."`);
+    console.log(`[VisualFactory] Requested model: ${requestedModel}`);
 
-    // Priority Execution based on requested model
-    if (requestedModel === 'flux' && togetherKey) {
-        console.log(`[ImageGen] Priority: Together.ai`);
-        const result = await generateImageWithTogether(prompt, togetherKey);
-        if (result.success) return result;
-        console.warn(`[ImageGen] Priority Together.ai failed, falling back...`);
-    } else if (requestedModel === 'gemini' && geminiKey) {
-        console.log(`[ImageGen] Priority: Gemini`);
-        const result = await generateImageWithGemini(prompt, geminiKey);
-        if (result.success) return result;
-        console.warn(`[ImageGen] Priority Gemini failed, falling back...`);
-    } else if (requestedModel === 'pollinations') {
-        console.log(`[ImageGen] Priority: Pollinations`);
-        const result = await generateImageWithPollinations(prompt);
-        if (result.success) return result;
-        console.warn(`[ImageGen] Priority Pollinations failed, falling back...`);
-    }
-
-    // Try OpenRouter first (Nano Banana) - Default
+    // Try OpenRouter first for EVERYTHING (Consolidated path as requested)
     if (openRouterKey) {
-        console.log(`[ImageGen] Trying OpenRouter with model: google/gemini-3-pro-image-preview`);
+        const orModelMapping: Record<string, string> = {
+            'nano-banana': 'google/gemini-3-pro-image-preview',
+            'flux-2': 'black-forest-labs/flux.2-pro',
+            'chatgpt-5': 'openai/gpt-4o-mini', // Fallback for GPT-5 naming
+            'gemini': 'google/gemini-3-pro-image-preview',
+            'flux': 'black-forest-labs/flux.1-schnell',
+            'midjourney-v6': 'midjourney/mj-v6',
+            'dalle-3': 'openai/dall-e-3'
+        };
+
+        const reqModelLower = requestedModel?.toLowerCase() || '';
+        const modelId = orModelMapping[reqModelLower] || orModelMapping['nano-banana'];
+
+        console.log(`[VisualFactory] Trying OpenRouter with model: ${modelId}`);
+
         try {
             const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
@@ -225,9 +250,9 @@ async function generateImageWithFallback(prompt: string, options: {
                     'X-Title': 'PromptOrigin'
                 },
                 body: JSON.stringify({
-                    model: 'google/gemini-3-pro-image-preview',
+                    model: modelId,
                     messages: [
-                        { role: 'user', content: `Generate an image: ${prompt}` }
+                        { role: 'user', content: `Generate an image based on this description: ${prompt}` }
                     ],
                     max_tokens: 8192,
                     temperature: 0.1
@@ -236,12 +261,16 @@ async function generateImageWithFallback(prompt: string, options: {
 
             if (response.ok) {
                 const data = await response.json();
-                const messageContent = data.choices?.[0]?.message?.content;
+                const message = data.choices?.[0]?.message;
+                const messageContent = message?.content;
 
+                console.log(`[VisualFactory] OpenRouter status 200. Parsing response...`);
+
+                // 1. Check for image_url in content parts (standard for multimodal models on OR)
                 if (Array.isArray(messageContent)) {
                     for (const part of messageContent) {
-                        if ((part.type === 'image_url' || part.image_url?.url) && part.image_url?.url) {
-                            console.log(`[ImageGen] OpenRouter image generation successful`);
+                        if (part.type === 'image_url' && part.image_url?.url) {
+                            console.log(`[VisualFactory] Success: Found image_url in parts array`);
                             return {
                                 success: true,
                                 imageUrl: part.image_url.url,
@@ -249,54 +278,94 @@ async function generateImageWithFallback(prompt: string, options: {
                             };
                         }
                     }
-                } else if (typeof messageContent === 'string') {
+                }
+
+                // 2. Check for data URL in string content (fallback for some models)
+                if (typeof messageContent === 'string') {
                     const base64Match = messageContent.match(/data:image\/[^;]+;base64,([^\s"]+)/);
                     if (base64Match) {
-                        console.log(`[ImageGen] OpenRouter image generation successful (base64)`);
+                        console.log(`[VisualFactory] Success: Found base64 data URL in string content`);
                         return {
                             success: true,
                             imageUrl: base64Match[0],
                             service: 'openrouter'
                         };
                     }
+
+                    // Some models return just the URL in the text
+                    const urlMatch = messageContent.match(/https?:\/\/[^\s"]+\.(?:png|jpg|jpeg|webp)/i);
+                    if (urlMatch) {
+                        console.log(`[VisualFactory] Success: Found image URL in string content`);
+                        return {
+                            success: true,
+                            imageUrl: urlMatch[0],
+                            service: 'openrouter'
+                        };
+                    }
                 }
+
+                // 3. Check for non-standard 'images' array (e.g. Flux on OpenRouter)
+                // @ts-ignore - 'images' is not in standard type
+                // @ts-ignore
+                if (data.choices?.[0]?.message?.images && Array.isArray(data.choices[0].message.images) && data.choices[0].message.images.length > 0) {
+                    // @ts-ignore
+                    const img = data.choices[0].message.images[0];
+                    if (img.image_url?.url) {
+                        console.log(`[VisualFactory] Success: Found image in non-standard 'images' array`);
+                        return {
+                            success: true,
+                            imageUrl: img.image_url.url,
+                            service: 'openrouter'
+                        };
+                    }
+                    if (img.url) {
+                         console.log(`[VisualFactory] Success: Found image url in non-standard 'images' array`);
+                        return {
+                            success: true,
+                            imageUrl: img.url,
+                            service: 'openrouter'
+                        };
+                    }
+                }
+
+                console.warn(`[VisualFactory] OpenRouter response did not contain recognizable image data. Raw content:`, JSON.stringify(messageContent).substring(0, 500));
+                console.warn(`[VisualFactory] Full OpenRouter Response:`, JSON.stringify(data, null, 2));
+            } else {
+                const errorText = await response.text();
+                console.warn(`[VisualFactory] OpenRouter API error ${response.status}: ${errorText}`);
             }
-            console.warn(`[ImageGen] OpenRouter failed: ${response.status}`);
         } catch (err: any) {
-            console.error(`[ImageGen] OpenRouter error:`, err.message);
+            console.error(`[VisualFactory] OpenRouter request exception:`, err.message);
         }
     }
 
-    // Try Pollinations.ai (free fallback - always available)
-    console.log(`[ImageGen] Trying Pollinations.ai (free fallback)`);
+    // --- FALLBACK CHAIN (only if OpenRouter failed) ---
+
+    // 1. Together.ai (Flux specialized)
+    if (requestedModel?.includes('flux') && togetherKey) {
+        console.log(`[VisualFactory] Falling back to direct Together.ai for Flux`);
+        const result = await generateImageWithTogether(prompt, togetherKey);
+        if (result.success) return result;
+    }
+
+    // 2. Pollinations.ai (FREE, absolute fallback)
+    console.log(`[VisualFactory] Falling back to Pollinations.ai (Free fallback)`);
     const pollinationsResult = await generateImageWithPollinations(prompt);
     if (pollinationsResult.success) {
         return pollinationsResult;
     }
-    console.warn(`[ImageGen] Pollinations.ai failed: ${pollinationsResult.error}`);
 
-    // Try Together.ai
-    if (togetherKey) {
-        console.log(`[ImageGen] Trying Together.ai`);
-        const togetherResult = await generateImageWithTogether(prompt, togetherKey);
-        if (togetherResult.success) {
-            return togetherResult;
-        }
-        console.warn(`[ImageGen] Together.ai failed: ${togetherResult.error}`);
-    }
-
-    // Try Gemini native (last fallback)
+    // 3. Gemini Native (Final attempt)
     if (geminiKey) {
-        console.log(`[ImageGen] Trying Gemini native`);
+        console.log(`[VisualFactory] Final fallback to Gemini Native`);
         const geminiResult = await generateImageWithGemini(prompt, geminiKey);
         if (geminiResult.success) {
             return geminiResult;
         }
-        console.warn(`[ImageGen] Gemini failed: ${geminiResult.error}`);
     }
 
     // All services failed
-    console.error(`[ImageGen] All image generation services failed`);
+    console.error(`[VisualFactory] All image generation services failed`);
     return {
         success: false,
         error: 'All image generation services failed'
@@ -318,6 +387,8 @@ const handler: Handler = async (event, context) => {
         }
 
         console.log(`[Media Gen Background] Starting job for chat ${chatId}`);
+
+        const startTime = Date.now();
 
         // Initialize Supabase Admin Client
         const supabaseUrl = process.env.VITE_SUPABASE_URL!;
@@ -429,7 +500,7 @@ const handler: Handler = async (event, context) => {
                 .replace(/[{}[\]"']/g, '') // Remove JSON-like characters
                 .replace(/\s+/g, ' ')      // Normalize whitespace
                 .trim()
-                .substring(0, 500);
+                .substring(0, 1000);
 
             console.log(`[Media Gen Background] Clean prompt: "${cleanPrompt.substring(0, 100)}..."`);
 
@@ -481,7 +552,7 @@ const handler: Handler = async (event, context) => {
                     status: imageResult.success ? 'completed' : 'failed',
                     execution_model: displayModel,
                     metadata: {
-                        duration: Date.now() - Date.now(),
+                        duration: Date.now() - (payload.startTime || startTime),
                         service: imageResult.service,
                         model: modelId
                     }

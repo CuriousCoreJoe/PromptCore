@@ -463,6 +463,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         }
     };
 
+    const handleEnhanceClick = () => {
+        if (!input.trim()) return;
+        setDraftPrompt(input);
+        setWizardStage('GOAL_SELECTION');
+    };
+
     const handleGoalSelect = async (goal: GoalOption) => {
         setWizardStage('CLARIFYING');
         const isIterative = wizardMode === 'iterative';
@@ -1357,7 +1363,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                 placeholder={
                                     currentMode === AppMode.TALK_TO_SOURCE && wizardStage === 'IDLE'
                                         ? "Paste content or describe what you uploaded..."
-                                        : wizardStage === 'IDLE' ? "Enter a prompt here" :
+                                        : wizardStage === 'IDLE' ? "Enter a prompt..." :
                                             wizardStage === 'CLARIFYING' ? "Answer the questions..." :
                                                 "Reply to Gemini..."
                                 }
@@ -1401,6 +1407,19 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                     </button>
                                 )}
                             </div>
+
+                            {/* Enhance Button (Separate from Send) */}
+                            {wizardStage === 'IDLE' && input.trim() && !isLoading && !isRunningExecution && (
+                                <div className="flex-shrink-0 ml-1">
+                                    <button
+                                        onClick={handleEnhanceClick}
+                                        className="p-2.5 rounded-full bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300 transition-all duration-200"
+                                        title="Enhance with Wizard"
+                                    >
+                                        <Sparkles size={18} />
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         <div className="text-center mt-3 text-xs font-medium" style={{ color: 'var(--text-sidebar-dim)' }}>
@@ -1436,11 +1455,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                     </div>
                 </div>
             )}
+
             {/* Fuel Tank Modal */}
             <FuelTankModal
                 isOpen={showFuelModal}
                 onClose={() => setShowFuelModal(false)}
-                onRefill={refillCredits}
+                onRefill={async (data) => { await refillCredits(data); }}
                 isRefilling={isRefilling}
             />
         </div>

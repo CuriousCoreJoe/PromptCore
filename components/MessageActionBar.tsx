@@ -1,6 +1,6 @@
 import React from 'react';
 import { Message } from '../types';
-import { Play, Copy, RotateCcw, ThumbsUp, ThumbsDown, MoreVertical, Loader2 } from 'lucide-react';
+import { Play, Copy, RotateCcw, ThumbsUp, ThumbsDown, MoreVertical, Loader2, Telescope } from 'lucide-react';
 
 interface MessageActionBarProps {
     message: Message;
@@ -11,6 +11,7 @@ interface MessageActionBarProps {
     onEdit?: (messageId: string) => void;
     isRunning?: boolean;
     isFinalPrompt?: boolean;
+    onSendToFactory?: (content: string) => void;
 }
 
 const IconButton: React.FC<{
@@ -18,12 +19,13 @@ const IconButton: React.FC<{
     onClick: () => void;
     disabled?: boolean;
     title?: string;
-}> = ({ icon, onClick, disabled = false, title }) => (
+    className?: string;
+}> = ({ icon, onClick, disabled = false, title, className }) => (
     <button
         onClick={disabled ? undefined : onClick}
         disabled={disabled}
         title={title}
-        className={`p-1.5 transition-colors ${disabled ? 'text-gray-600 cursor-not-allowed' : 'text-gray-500 hover:text-gray-300'}`}
+        className={`p-1.5 transition-colors ${disabled ? 'text-gray-600 cursor-not-allowed' : 'text-gray-500 hover:text-gray-300'} ${className || ''}`}
     >
         {icon}
     </button>
@@ -37,7 +39,8 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
     onRate,
     onEdit,
     isRunning = false,
-    isFinalPrompt = false
+    isFinalPrompt = false,
+    onSendToFactory
 }) => {
     const isExecutionResult = message.msgType === 'execution_result';
 
@@ -60,6 +63,7 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
                         {isRunning ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
                         <span>{isRunning ? "Running..." : (message.mode === 'Vibe Code' ? "🚀 Build App" : "Run This Prompt")}</span>
                     </button>
+
                     <span className="text-xs text-gray-500 ml-2">
                         {isRunning ? "Please wait..." : "Execute with external LLM"}
                     </span>
@@ -99,6 +103,16 @@ export const MessageActionBar: React.FC<MessageActionBarProps> = ({
                         title="Copy"
                     />
                 )}
+
+                {onSendToFactory && isFinalPrompt && (
+                    <IconButton
+                        icon={<Telescope size={18} />}
+                        onClick={() => onSendToFactory(message.content)}
+                        title="Send to Factory"
+                        className="text-indigo-400 hover:text-indigo-300"
+                    />
+                )}
+
                 <IconButton
                     icon={<MoreVertical size={18} />}
                     onClick={() => { }}

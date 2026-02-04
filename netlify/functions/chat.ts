@@ -261,7 +261,7 @@ const handler: Handler = async (event, context) => {
 
         // 1. Model Selection - Map user's selected model to actual API model
         const modelName = defaultModel?.includes('flash')
-            ? "google/gemini-flash-3-preview"
+            ? "google/gemini-3-flash-preview"
             : (defaultModel === 'gemini-3-pro' ? "google/gemini-3-pro-preview" : (defaultModel || "google/gemini-3-pro-preview"));
 
         // 2. Check Credits & Handle Monthly Usage Reset

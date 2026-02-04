@@ -31,6 +31,7 @@ interface SettingsPageProps {
     onToggleDefaultExpandBatches: () => void;
     isDev?: boolean;
     onBack: () => void;
+    credits?: number; // Added credits prop
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
@@ -41,7 +42,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     defaultExpandBatches,
     onToggleDefaultExpandBatches,
     isDev = false,
-    onBack
+    onBack,
+    credits = 0 // Default to 0
 }) => {
     const { settings, updateSettings } = useTheme();
     const modelDisplayNames: Record<AIModel, string> = {
@@ -72,6 +74,27 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
                 {/* Categories */}
                 <div className="space-y-12">
+
+                    {/* Usage & Credits */}
+                    <section className="space-y-4">
+                        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                            <Zap size={14} className="text-yellow-500" /> Usage & Credits
+                        </h2>
+                        <div className="bg-dark-900 border border-dark-800 rounded-2xl p-6">
+                            <div className="flex items-center justify-between">
+                                <div className="space-y-1">
+                                    <p className="text-sm text-gray-400">Current Balance</p>
+                                    <p className="text-3xl font-black text-white flex items-center gap-2">
+                                        {credits.toLocaleString()}
+                                        <span className="text-xs font-bold text-brand-500 bg-brand-500/10 px-2 py-0.5 rounded uppercase tracking-widest">Credits</span>
+                                    </p>
+                                </div>
+                                <div className="p-4 bg-brand-500/10 rounded-2xl border border-brand-500/20">
+                                    <Zap size={24} className="text-brand-500 animate-pulse-slow" />
+                                </div>
+                            </div>
+                        </div>
+                    </section>
 
                     {/* AI Experience */}
                     <section className="space-y-4">

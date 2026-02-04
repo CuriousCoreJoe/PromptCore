@@ -21,6 +21,8 @@ const handler: Handler = async (event, context) => {
 
         console.log(`[Background Builder] Starting job for chat ${chatId}`);
 
+        const startTime = Date.now();
+
         // Initialize Supabase Admin Client
         const supabaseUrl = process.env.VITE_SUPABASE_URL!;
         const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -179,7 +181,7 @@ IF THE USER ASKS TO "GET INSTRUCTIONS":
                     content: generatedText,
                     status: 'completed',
                     metadata: {
-                        duration: Date.now() - (payload.startTime || Date.now()),
+                        duration: Date.now() - (payload.startTime || startTime),
                         tokens: data.usage?.total_tokens
                     }
                 })

@@ -159,6 +159,8 @@ const handler: Handler = async (event, context) => {
 
         console.log(`[Chat Background] Starting job for chat ${chatId}, mode=${mode}`);
 
+        const startTime = Date.now();
+
         // Initialize Supabase Admin Client
         const supabaseUrl = process.env.VITE_SUPABASE_URL!;
         const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -296,7 +298,7 @@ const handler: Handler = async (event, context) => {
                     content: generatedText,
                     status: 'completed',
                     metadata: {
-                        duration: Date.now() - (payload.startTime || Date.now()),
+                        duration: Date.now() - (payload.startTime || startTime),
                         tokens: data.usage?.total_tokens,
                         model: modelId
                     }

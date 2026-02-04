@@ -210,7 +210,7 @@ export default function LandingPage() {
                         <a href="#features" className="hover:text-white transition-colors">Features</a>
                         <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex items-center gap-4">
                         <a href={getAppUrl()} className="text-sm font-medium text-slate-400 hover:text-white transition-colors">Login</a>
                         <a href={getAppUrl()} className="text-sm font-medium bg-white text-slate-950 px-4 py-2 rounded hover:bg-slate-200 transition-colors">Get Started</a>
                     </div>

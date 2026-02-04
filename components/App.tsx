@@ -283,6 +283,7 @@ const App: React.FC = () => {
             onToggleDefaultExpandBatches={() => setDefaultExpandBatches(!defaultExpandBatches)}
             isDev={isDev}
             onBack={() => handleSidebarNavigate('workspace')}
+            credits={credits}
           />
         } />
         <Route path="/upgrade" element={

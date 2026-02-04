@@ -119,7 +119,7 @@ async function generateImageWithFallback(prompt: string, options: any): Promise<
                     'X-Title': 'PromptOrigin'
                 },
                 body: JSON.stringify({
-                    model: 'google/gemini-3-pro-image-preview',
+                    model: 'google/google/gemini-3-pro-image-preview',
                     messages: [{ role: 'user', content: `Generate an image: ${prompt}` }],
                     max_tokens: 8192,
                     temperature: 0.1
@@ -234,16 +234,17 @@ const handler: Handler = async (event, context) => {
                 if (openRouterKey) {
                     const modelMapping: Record<string, string> = {
                         'gpt-5': 'openai/gpt-5', // Fallback
-                        'chatgpt-5': 'openai/gpt-5', // New mapping
+                        'chatgpt-5': 'openai/gpt-5-image', // New mapping
                         'google/gemini-3-pro-preview': 'google/gemini-3-pro-preview',
                         'claude-sonnet-4.5': 'anthropic/claude-sonnet-4.5',
                         'gemini-3-flash': 'google/gemini-3-flash-preview',
                         'nano-banana': 'google/gemini-3-pro-image-preview',
+                        'flux-2': 'black-forest-labs/flux.2-pro',
                     };
 
                     const modelId = isMediaGenMode
-                        ? (requestedModel === 'chatgpt-5' ? 'openai/dall-e-3' : 'google/gemini-3-pro-image-preview')
-                        : (modelMapping[requestedModel?.toLowerCase()] || 'anthropic/claude-sonnet-4.5');
+                        ? (modelMapping[requestedModel?.toLowerCase() || ''] || 'google/gemini-3-pro-image-preview')
+                        : (modelMapping[requestedModel?.toLowerCase() || ''] || 'anthropic/claude-sonnet-4.5');
 
                     // If Flux 2 requested and together key exists, prioritize it (Image Gen)
                     if (isMediaGenMode && (requestedModel === 'flux' || requestedModel === 'Flux 2') && togetherKey) {
@@ -338,14 +339,27 @@ const handler: Handler = async (event, context) => {
                 if (geminiKey) {
                     const { GoogleGenerativeAI } = require("@google/generative-ai");
                     const genAI = new GoogleGenerativeAI(geminiKey);
-                    const model = genAI.getGenerativeModel({ model: "gemini-3-pro-preview" });
+                    const model = genAI.getGenerativeModel({ model: "google/gemini-3-pro-preview" });
                     const result = await model.generateContent(prompt);
                     const responseText = result.response.text();
 
                     await supabase.from('messages').update({
                         content: responseText,
-                        status: 'completed'
+                        status: 'completed',
+                        metadata: { duration: Date.now() - (payload.startTime || startTime), model: 'gemini-3-pro' }
                     }).eq('id', messageId);
+
+                    // Deduct Credits for fallback path
+                    if (!isDev) {
+                        const updateData: any = {
+                            credits: Math.max(0, currentCredits - finalCost),
+                            monthly_usage: monthlyUsage + finalCost
+                        };
+                        if (isFree && isMediaGenMode) {
+                            updateData.media_gen_uses_monthly = (profile?.media_gen_uses_monthly || 0) + 1;
+                        }
+                        await supabase.from('profiles').update(updateData).eq('id', userId);
+                    }
                 } else {
                     throw new Error("No available providers");
                 }
@@ -359,8 +373,9 @@ const handler: Handler = async (event, context) => {
             }
         };
 
-        // Trigger execution without awaiting
-        performExecution();
+        // Trigger execution and AWAIT it so Netlify doesn't kill the process
+        const startTime = Date.now();
+        await performExecution();
 
     } catch (err) {
         console.error("Handler Error:", err);

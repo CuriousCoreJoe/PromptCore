@@ -60,20 +60,20 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
 
   // Parse Options - More flexible to handle whitespace and newlines
   const optionsRegex = /\[OPTIONS:\s*(.*?)\]\s*$/s;
-  const match = message.content.match(optionsRegex);
+  const match = message.content ? message.content.match(optionsRegex) : null;
   const options = match ? match[1].split(',').map(o => o.trim()).filter(o => o.length > 0) : [];
 
   // Extract embedded image data (custom block)
   // Use [\s\S] to match across newlines, and trim whitespace
   const imageDataRegex = /<!-- IMAGE_DATA_START -->\s*([\s\S]+?)\s*<!-- IMAGE_DATA_END -->/;
-  const imageMatch = message.content.match(imageDataRegex);
+  const imageMatch = message.content ? message.content.match(imageDataRegex) : null;
   const embeddedImageData = imageMatch ? imageMatch[1].trim() : null;
 
   // Extract HTML content for Vibe Code Preview
   let artifactContent: string | null = null;
   const isVibeCodeResult = message.mode === 'Vibe Code' && message.msgType === 'execution_result';
 
-  if (isVibeCodeResult) {
+  if (isVibeCodeResult && message.content) {
     // Try to find HTML code block
     const codeBlockMatch = message.content.match(/```html\n([\s\S]*?)```/);
     if (codeBlockMatch) {
@@ -101,7 +101,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   }, [artifactContent, isVibeCodeResult, onOpenArtifact, message.status]);
 
   // Remove both options and image data markers from display content
-  const displayContent = message.content
+  const displayContent = (message.content || '')
     .replace(optionsRegex, '')
     .replace(imageDataRegex, '')
     .trim();
@@ -307,18 +307,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
           <div className="text-base whitespace-pre-wrap" style={{ color: 'var(--text-app)' }}>{message.content}</div>
         )}
 
-        {/* Floating COPY Button (for Final Prompts and User Messages) moved below content */}
-        {(isFinalPrompt || isUser) && (
+        {/* Floating COPY Button (only for user messages now) */}
+        {isUser && (
           <button
             onClick={handleCopy}
             className={clsx(
               "mt-2 flex items-center justify-center w-8 h-8 rounded-lg shadow-lg transition-all hover:scale-110 active:scale-95 z-10",
-              isUser
-                ? "text-gray-400 hover:text-brand-600 border"
-                : "bg-brand-600 text-white"
+              "text-gray-400 hover:text-brand-600 border"
             )}
-            style={isUser ? { backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' } : {}}
-            title={isUser ? "Copy your prompt" : "Copy generated prompt"}
+            style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}
+            title="Copy your prompt"
           >
             {copied ? <Check size={14} /> : <Copy size={14} />}
           </button>
@@ -436,11 +434,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                       </div>
                       {processingLabel}
                     </div>
-                    <div className="text-sm text-gray-400/80 italic">
-                      {processingSubtext}
-                    </div>
-                    <div className="mt-2 h-1 w-full bg-dark-800 rounded-full overflow-hidden">
-                      <div className={`h-full bg-gradient-to-r ${gradientClass} w-1/3 animate-[shimmer_2s_infinite]`}></div>
+                    <div className="flex flex-col gap-1">
+                      <div className="text-sm text-gray-400/80 italic">
+                        {processingSubtext}
+                      </div>
+                      {message.executionModel && (
+                        <div className="text-xs text-gray-500 font-mono mt-1 opacity-70">
+                          Model: {message.executionModel}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -515,6 +517,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
               onEdit={onEdit}
               isRunning={isRunning}
               isFinalPrompt={isFinalPrompt}
+              onSendToFactory={onSendToFactory ? (content) => onSendToFactory() : undefined}
             />
             {isUser && onEnhance && (
               <div className="absolute -right-12 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -524,22 +527,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                   title="Enhance this prompt"
                 >
                   <Sparkles size={16} fill="currentColor" />
-                </button>
-              </div>
-            )}
-            {/* Factory Fork Button (Right-Click Context or Action Bar?) 
-                 User asked for "right-click specific message" OR "Send to Factory". 
-                 Let's add it to the Action Bar area or just below it for now for visibility, 
-                 or extending MessageActionBar is cleaner. 
-                 Since MessageActionBar is separate, let's put it next to it if model message.
-             */}
-            {!isUser && onSendToFactory && (
-              <div className="flex justify-end mt-2">
-                <button
-                  onClick={onSendToFactory}
-                  className="text-xs text-gray-500 hover:text-brand-400 flex items-center gap-1 transition-colors"
-                >
-                  <Sparkles size={12} /> Send to Factory
                 </button>
               </div>
             )}

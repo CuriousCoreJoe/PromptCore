@@ -390,22 +390,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* User / Settings Footer */}
         <div className="p-4 border-t" style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}>
-          <div
-            onClick={() => onNavigate('settings')}
-            className="flex items-center p-2 rounded-xl hover:bg-white/5 cursor-pointer group mb-4 transition-all"
-          >
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-600 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-lg overflow-hidden border border-white/10 group-hover:scale-105 transition-transform">
-              {profile?.avatar_url ? <img src={profile.avatar_url} className="w-full h-full object-cover" /> : profile?.full_name?.charAt(0) || 'U'}
-            </div>
-            {!isCollapsed && (
-              <div className="ml-3 flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-app)' }}>{profile?.full_name || 'User'}</p>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-brand-500 uppercase tracking-wider">{profile?.subscription_status || 'Free'}</span>
-                </div>
+          <div className="flex items-center gap-2 mb-4">
+            <div
+              onClick={() => onNavigate('dashboard')}
+              className="flex-1 flex items-center p-2 rounded-xl hover:bg-white/5 cursor-pointer group transition-all min-w-0"
+            >
+              <div className="w-9 h-9 flex-shrink-0 rounded-full bg-gradient-to-br from-brand-600 to-purple-600 flex items-center justify-center text-sm font-bold text-white shadow-lg overflow-hidden border border-white/10 group-hover:scale-105 transition-transform">
+                {profile?.avatar_url ? <img src={profile.avatar_url} className="w-full h-full object-cover" /> : profile?.full_name?.charAt(0) || 'U'}
               </div>
-            )}
-            {!isCollapsed && <Settings size={16} className="text-gray-600 group-hover:text-white transition-colors" />}
+              {!isCollapsed && (
+                <div className="ml-3 flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-app)' }}>{profile?.full_name || 'User'}</p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold text-brand-500 uppercase tracking-wider">{profile?.subscription_status || 'Free'}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => onNavigate('settings')}
+              className={clsx(
+                "p-2 rounded-xl transition-all flex-shrink-0",
+                currentView === 'settings'
+                  ? "bg-brand-500 text-white shadow-lg"
+                  : "text-gray-500 hover:text-brand-600 hover:bg-white/5"
+              )}
+              title="Settings"
+            >
+              <Settings size={20} />
+            </button>
           </div>
 
           {
