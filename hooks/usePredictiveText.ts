@@ -44,14 +44,7 @@ export function usePredictiveText(mode: AppMode, input: string) {
         const normalizedInput = input.toLowerCase().trim();
 
         if (!input) {
-            // Empty state: Rotate through starters or just pick first for now
-            // Simpler: Just show the first starter
-            const starter = modeSuggestions.find(s => s.type === 'starter');
-            if (starter) {
-                setSuggestion({ text: starter.text, remainder: starter.text, isEnhancement: false });
-            } else {
-                setSuggestion(null);
-            }
+            setSuggestion(null);
             return;
         }
 

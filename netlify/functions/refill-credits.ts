@@ -11,24 +11,27 @@ export const handler: Handler = async (event) => {
     }
 
     try {
-        const { userId, feedback } = JSON.parse(event.body || '{}');
+        const { userId, feedback, submissionType, email } = JSON.parse(event.body || '{}');
 
         if (!userId) {
             return { statusCode: 400, body: JSON.stringify({ error: 'Missing userId' }) };
         }
 
-        // 1. Log Feedback (You might want to save this to a 'feedback' table)
-        // For simplicity, we'll just log it here or rely on the analytics.
-        // We can add a simple insert if a feedback table exists.
+        // 1. Handle Submission (Waitlist or Feedback)
         try {
-            await supabase.from('feedback').insert({
-                user_id: userId,
-                type: 'fuel_tank_refill',
-                content: JSON.stringify(feedback),
-                status: 'open'
-            });
+            if (submissionType === 'waitlist' && email) {
+                await supabase.from('waitlist_emails').insert([{ email, source: 'fuel_tank' }]);
+            } else if (feedback) {
+                // Use feedback_items table if feedback table doesn't exist
+                await supabase.from('feedback_items').insert({
+                    user_id: userId,
+                    type: 'fuel_tank_refill',
+                    content: JSON.stringify(feedback),
+                    status: 'open'
+                });
+            }
         } catch (err) {
-            console.warn("Failed to save feedback stats:", err);
+            console.warn("Failed to save submission stats:", err);
             // Don't block the refill though
         }
 

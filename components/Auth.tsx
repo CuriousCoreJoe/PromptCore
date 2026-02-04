@@ -9,6 +9,10 @@ interface AuthProps {
 export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
     const [showLegal, setShowLegal] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [isSignUp, setIsSignUp] = useState(false);
 
     const handleGoogleLogin = async () => {
         const { error } = await supabase.auth.signInWithOAuth({
@@ -18,6 +22,33 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
             }
         });
         if (error) console.error('Error logging in:', error.message);
+    };
+
+    const handleEmailAuth = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setErrorMsg(null);
+
+        try {
+            if (isSignUp) {
+                const { error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                });
+                if (error) throw error;
+                setErrorMsg('Check your email for the confirmation link!');
+            } else {
+                const { error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+                if (error) throw error;
+            }
+        } catch (error: any) {
+            setErrorMsg(error.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (showLegal) {
@@ -51,75 +82,62 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
 
                     <div className="flex items-center gap-4 text-gray-600 my-2">
                         <div className="h-px bg-dark-800 flex-1"></div>
-                        <span className="text-xs font-semibold uppercase tracking-wider">Secure Access</span>
+                        <span className="text-xs font-semibold uppercase tracking-wider">Or with Email</span>
                         <div className="h-px bg-dark-800 flex-1"></div>
                     </div>
 
-
-                    {/* Error Display */}
-                    {errorMsg && (
-                        <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 text-xs text-red-200 text-left">
-                            <strong>Error:</strong> {errorMsg}
+                    <form onSubmit={handleEmailAuth} className="space-y-4 text-left">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-400 mb-1">Email</label>
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full bg-dark-950 border border-dark-800 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition-all"
+                                placeholder="name@example.com"
+                                required
+                            />
                         </div>
-                    )}
+                        <div>
+                            <label className="block text-xs font-medium text-gray-400 mb-1">Password</label>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full bg-dark-950 border border-dark-800 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition-all"
+                                placeholder="••••••••"
+                                required
+                            />
+                        </div>
 
-                    <button
-                        onClick={async () => {
-                            setErrorMsg(null);
-                            const email = 'dev@promptcore.com';
-                            const password = 'dev-password-123';
+                        {errorMsg && (
+                            <div className={`rounded-lg p-3 text-xs text-left ${errorMsg.includes('Check your email') ? 'bg-green-500/10 border border-green-500/50 text-green-200' : 'bg-red-500/10 border border-red-500/50 text-red-200'}`}>
+                                {errorMsg}
+                            </div>
+                        )}
 
-                            // 1. Try Login
-                            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-                                email,
-                                password
-                            });
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full py-3 px-4 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
+                        </button>
+                    </form>
 
-                            if (!signInError) return; // Success, App.tsx will redirect
-
-                            // 2. If User Not Found, Sign Up
-                            if (signInError.message.includes('Invalid login credentials')) {
-                                console.log('Dev user not found, creating...');
-                                const { error: signUpError } = await supabase.auth.signUp({
-                                    email,
-                                    password,
-                                    options: {
-                                        data: {
-                                            full_name: 'Dev User',
-                                            avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=dev'
-                                        }
-                                    }
-                                });
-
-                                if (signUpError) {
-                                    // Handle "User already registered" edge case or other errors
-                                    setErrorMsg(`Sign-up failed: ${signUpError.message}`);
-                                } else {
-                                    // Retry Login immediately
-                                    const { error: retryError } = await supabase.auth.signInWithPassword({
-                                        email,
-                                        password
-                                    });
-
-                                    if (retryError) {
-                                        if (retryError.message.includes('Email not confirmed')) {
-                                            setErrorMsg('User created but email not confirmed. Go to Supabase Auth -> Users -> Confirm this email.');
-                                        } else {
-                                            setErrorMsg(`Login retry failed: ${retryError.message}`);
-                                        }
-                                    } else {
-                                        window.location.reload();
-                                    }
-                                }
-                            } else {
-                                // Other Login Errors (e.g. Email not confirmed)
-                                setErrorMsg(`Login failed: ${signInError.message}`);
-                            }
-                        }}
-                        className="w-full py-2 text-xs text-brand-500 hover:text-brand-400 font-medium transition-colors border border-dark-800 hover:border-brand-500/30 rounded-lg"
-                    >
-                        Developer Quick Login (Bypass)
-                    </button>
+                    <div className="text-sm text-gray-400">
+                        {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setIsSignUp(!isSignUp);
+                                setErrorMsg(null);
+                            }}
+                            className="ml-2 text-brand-500 hover:text-brand-400 font-medium hover:underline"
+                        >
+                            {isSignUp ? 'Sign In' : 'Sign Up'}
+                        </button>
+                    </div>
 
                     <p className="text-xs text-gray-500 max-w-xs mx-auto leading-relaxed">
                         By signing in, you agree to our <button onClick={() => setShowLegal(true)} className="text-brand-500 hover:underline">Terms of Service</button> and <button onClick={() => setShowLegal(true)} className="text-brand-500 hover:underline">Privacy Policy</button>.
