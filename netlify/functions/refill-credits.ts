@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const ghlWebhookUrl = process.env.GHL_WEBHOOK_URL;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export const handler: Handler = async (event) => {
@@ -19,6 +20,31 @@ export const handler: Handler = async (event) => {
 
         // 1. Handle Submission (Waitlist or Feedback)
         try {
+            // --- Send to GHL Webhook (if configured) ---
+            if (ghlWebhookUrl) {
+                try {
+                    const payload: any = {
+                        userId,
+                        type: submissionType === 'waitlist' ? 'fuel_tank_waitlist' : 'fuel_tank_feedback',
+                        timestamp: new Date().toISOString(),
+                        source: 'fuel_tank'
+                    };
+
+                    if (email) payload.email = email;
+                    if (feedback) payload.feedback = feedback;
+
+                    // Fire and forget (don't await to speed up response, or await if we want to ensure delivery)
+                    // Since this is a serverless function, we should await it or it might be killed.
+                    await fetch(ghlWebhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } catch (webhookError) {
+                    console.error("Failed to send to GHL webhook:", webhookError);
+                }
+            }
+
             if (submissionType === 'waitlist' && email) {
                 await supabase.from('waitlist_emails').insert([{ email, source: 'fuel_tank' }]);
             } else if (feedback) {

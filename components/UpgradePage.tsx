@@ -1,19 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, Zap, Coins, Shield, Star, Rocket, Loader2 } from 'lucide-react';
+import { Check, Zap, Coins, Shield, Star, Rocket, Loader2, Gift } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { FuelTankModal } from './FuelTankModal';
+import { useCredits } from '../hooks/useCredits';
+import { UserProfile } from '../types';
 
 interface UpgradePageProps {
   initialFocus?: 'subscriptions' | 'credits';
   onBack?: () => void;
   userId?: string;
   credits?: number;
+  userProfile?: UserProfile | null;
+  onUpdateProfile?: () => void;
 }
 
-export const UpgradePage: React.FC<UpgradePageProps> = ({ initialFocus, onBack, userId, credits }) => {
+export const UpgradePage: React.FC<UpgradePageProps> = ({ initialFocus, onBack, userId, credits, userProfile, onUpdateProfile }) => {
   const subsRef = useRef<HTMLDivElement>(null);
   const creditsRef = useRef<HTMLDivElement>(null);
   const [highlightCredits, setHighlightCredits] = useState(false);
   const [loadingPriceId, setLoadingPriceId] = useState<string | null>(null);
+  const [showFuelTankModal, setShowFuelTankModal] = useState(false);
+
+  const { refillCredits, isRefilling } = useCredits(userProfile || null, onUpdateProfile || (() => { }));
 
   useEffect(() => {
     const scrollTimer = setTimeout(() => {
@@ -90,10 +98,9 @@ export const UpgradePage: React.FC<UpgradePageProps> = ({ initialFocus, onBack, 
               </div>
               <p className="mt-4 text-gray-400 text-sm">Get started with core features. Perfect for trying out PromptOrigin.</p>
               <ul className="mt-8 space-y-4 flex-1">
-                <FeatureItem text="50 Monthly Credits (Renews)" />
+                <FeatureItem text="400 Monthly Credits (100/week)" />
                 <FeatureItem text="Unlimited Prompt Factory Access" highlighted />
                 <FeatureItem text="Everyday & Media Gen Modes" />
-                <FeatureItem text="⚠️ Standard Rate: 3x cost after 100 credits/month" />
                 <FeatureItem text="Community Support" />
               </ul>
               <button className="mt-8 w-full py-3 px-4 bg-dark-800 text-gray-400 font-semibold rounded-lg cursor-default border border-dark-700">
@@ -169,7 +176,6 @@ export const UpgradePage: React.FC<UpgradePageProps> = ({ initialFocus, onBack, 
             <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><Coins className="text-yellow-500" /> Credit Top-Up Packs</h2>
             <p className="text-gray-400 mb-6 max-w-3xl">
               Need more credits? Top-up packs never expire and work with any subscription tier.
-              <strong className="text-brand-400"> Note:</strong> Free users pay Standard Rate (3x) after 100 credits/month.
               Subscribe to Creator to get Preferred Rates and make your credits last longer!
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -179,7 +185,37 @@ export const UpgradePage: React.FC<UpgradePageProps> = ({ initialFocus, onBack, 
             </div>
           </div>
         </div>
+
+        {/* Earn Credits Section */}
+        <div className="pt-8 border-t border-dark-800">
+          <div className="rounded-2xl p-6 bg-gradient-to-br from-brand-900/20 to-purple-900/20 border border-brand-500/30">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                  <Gift className="text-brand-400" /> Earn Free Credits
+                </h2>
+                <p className="text-gray-300 max-w-xl">
+                  Help us improve Prompt Origin and earn credits in return. Get <strong className="text-white">+100 credits</strong> for joining our waitlist and confirming your email. Then earn another <strong className="text-white">+100 credits</strong> for providing feedback.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowFuelTankModal(true)}
+                className="px-6 py-3 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl shadow-lg shadow-brand-900/20 transition-all flex items-center gap-2 whitespace-nowrap"
+              >
+                <Zap size={18} className="fill-current" />
+                Earn Free Credits
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <FuelTankModal
+        isOpen={showFuelTankModal}
+        onClose={() => setShowFuelTankModal(false)}
+        onRefill={async (data) => { await refillCredits(data); }}
+        isRefilling={isRefilling}
+      />
     </div>
   );
 };

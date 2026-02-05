@@ -45,7 +45,7 @@ export const SUBSCRIPTION_TIERS: Record<string, SubscriptionTier> = {
     name: 'free',
     displayName: 'Standard',
     price: 0,
-    monthlyCredits: 100, // FUEL TANK: Start with 100 (Weekly drip)
+    monthlyCredits: 400, // FUEL TANK: 100/week
     overageMultiplier: 1.0, // DISABLED: We now lock instead of tax
     usageThreshold: null,
     features: {

@@ -108,6 +108,27 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Initial Credit Notification
+  useEffect(() => {
+    if (session?.user && !localStorage.getItem('hasSeenWelcomeToast')) {
+      // Small delay to ensure UI is ready
+      const timer = setTimeout(() => {
+        setToast({
+          visible: true,
+          message: "Welcome! You've been gifted 100 free credits to get started.",
+          actionLabel: "View Credits",
+          action: () => {
+            handleSidebarNavigate('dashboard');
+            // Optionally trigger the credit modal in dashboard via query param or context if needed
+            // For now, just going to dashboard is good enough as the stats are there.
+          }
+        });
+        localStorage.setItem('hasSeenWelcomeToast', 'true');
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [session]);
+
   useEffect(() => {
     if (session?.user) {
       fetchProfile();
@@ -290,6 +311,8 @@ const App: React.FC = () => {
           <UpgradePage
             userId={session.user.id}
             credits={credits}
+            userProfile={profile}
+            onUpdateProfile={fetchProfile}
             onBack={() => handleSidebarNavigate('workspace')}
             initialFocus={upgradeFocus}
           />

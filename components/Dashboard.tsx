@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Package, FileText, Clock, TrendingUp, Shield, Trash2, ExternalLink, Plus, X, Upload, Youtube, FileType, File, MessageSquare } from 'lucide-react';
+import { CreditCard, Package, FileText, Clock, TrendingUp, Shield, Trash2, ExternalLink, Plus, X, Upload, Youtube, FileType, File, MessageSquare, HelpCircle } from 'lucide-react';
 import { UserProfile, Document, AppView } from '../types';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { supabase } from '../lib/supabase';
 import { Helmet } from 'react-helmet-async';
 import { FeedbackBoard } from './FeedbackBoard';
+import { CreditExplanationModal } from './CreditExplanationModal';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
     return twMerge(clsx(inputs));
@@ -43,6 +44,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [statMode, setStatMode] = useState<'generations' | 'credits'>('generations');
     const [activeTab, setActiveTab] = useState<'overview' | 'feedback'>('overview');
+    const [showCreditModal, setShowCreditModal] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -248,6 +250,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                 </div>
             ) : (
                 <>
+                    <CreditExplanationModal
+                        isOpen={showCreditModal}
+                        onClose={() => setShowCreditModal(false)}
+                        onUpgrade={() => { setShowCreditModal(false); onNavigate('upgrade'); }}
+                    />
+
                     {/* Stats Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <StatCard
@@ -255,6 +263,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                             label="Credits Available"
                             value={isDev ? 'Unlimited' : credits}
                             subtext={isDev ? 'Developer Account' : 'Top up to generate more'}
+                            onInfo={() => setShowCreditModal(true)}
                         />
                         <StatCard
                             icon={<Shield className="text-purple-500" />}
@@ -481,8 +490,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
     );
 };
 
-const StatCard: React.FC<{ icon: React.ReactNode, label: string, value: string | number, subtext: string }> = ({ icon, label, value, subtext }) => (
-    <div className="bg-dark-900 border border-dark-800 p-6 rounded-xl shadow-lg flex items-center gap-4">
+const StatCard: React.FC<{ icon: React.ReactNode, label: string, value: string | number, subtext: string, onInfo?: () => void }> = ({ icon, label, value, subtext, onInfo }) => (
+    <div className="bg-dark-900 border border-dark-800 p-6 rounded-xl shadow-lg flex items-center gap-4 relative group">
+        {onInfo && (
+            <button
+                onClick={onInfo}
+                className="absolute top-3 right-3 text-gray-600 hover:text-brand-400 transition-colors"
+            >
+                <HelpCircle size={16} />
+            </button>
+        )}
         <div className="w-12 h-12 bg-dark-950 rounded-full flex items-center justify-center border border-dark-800 shadow-sm">
             {icon}
         </div>

@@ -10,6 +10,7 @@ import {
 import { AppView, ChatSession, AppMode, Folder } from '../types';
 import { supabase } from '../lib/supabase';
 import { FolderModal } from './FolderModal';
+import { CreditExplanationModal } from './CreditExplanationModal';
 import { createPortal } from 'react-dom';
 import { LogoTypefaceWhite } from './icons/LogoTypefaceWhite';
 import { BrandIcon } from './icons/BrandIcon';
@@ -49,6 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [folders, setFolders] = useState<Folder[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [showFolderModal, setShowFolderModal] = useState(false);
+  const [showCreditModal, setShowCreditModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
   const [isRecentsCollapsed, setIsRecentsCollapsed] = useState(false);
   const [isFoldersCollapsed, setIsFoldersCollapsed] = useState(false);
@@ -388,6 +390,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           existingFolder={editingFolder}
         />
 
+        <CreditExplanationModal
+          isOpen={showCreditModal}
+          onClose={() => setShowCreditModal(false)}
+          onUpgrade={() => { setShowCreditModal(false); onNavigate('upgrade'); }}
+        />
+
         {/* User / Settings Footer */}
         <div className="p-4 border-t" style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}>
           <div className="flex items-center gap-2 mb-4">
@@ -401,8 +409,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {!isCollapsed && (
                 <div className="ml-3 flex-1 min-w-0">
                   <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-app)' }}>{profile?.full_name || 'User'}</p>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold text-brand-500 uppercase tracking-wider">{profile?.subscription_status || 'Free'}</span>
+                    <div className="w-1 h-1 rounded-full bg-gray-600" />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setShowCreditModal(true); }}
+                      className="text-[10px] font-medium text-gray-400 hover:text-white flex items-center gap-1 transition-colors"
+                    >
+                      <Zap size={10} className={profile?.credits > 0 ? "text-yellow-500" : "text-gray-500"} />
+                      {profile?.credits || 0} cr
+                    </button>
                   </div>
                 </div>
               )}

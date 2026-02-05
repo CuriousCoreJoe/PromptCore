@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ghlWebhookUrl = process.env.GHL_WEBHOOK_URL;
 
 export const handler: Handler = async (event, context) => {
     if (event.httpMethod !== "POST") {
@@ -28,6 +29,25 @@ export const handler: Handler = async (event, context) => {
                 statusCode: 400,
                 body: JSON.stringify({ error: "Invalid email address" }),
             };
+        }
+
+        // --- Send to GHL Webhook (if configured) ---
+        if (ghlWebhookUrl) {
+            try {
+                await fetch(ghlWebhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email,
+                        source: source || "landing_page",
+                        type: 'waitlist_signup',
+                        timestamp: new Date().toISOString()
+                    })
+                });
+            } catch (webhookError) {
+                console.error("Failed to send to GHL webhook:", webhookError);
+                // Continue execution - don't fail the user request just because webhook failed
+            }
         }
 
         const supabase = createClient(supabaseUrl, supabaseServiceKey);

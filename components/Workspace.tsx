@@ -979,8 +979,22 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (file.type !== 'application/pdf') {
-            onShowToast('Please upload a PDF file');
+        const allowedTypes = [
+            'application/pdf',
+            'text/plain',
+            'text/markdown',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/rtf',
+            'text/rtf'
+        ];
+
+        // Check extension as fallback for some mobile browsers/OS that might not report MIME type correctly
+        const allowedExtensions = ['.pdf', '.txt', '.md', '.doc', '.docx', '.rtf'];
+        const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+
+        if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+            onShowToast('Invalid file type. Allowed: PDF, DOC, DOCX, MD, TXT, RTF');
             return;
         }
 
@@ -1014,20 +1028,24 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             return;
         }
 
-        onShowToast('Processing PDF...');
+        onShowToast('Processing file...');
 
         try {
             // Read file as text (basic extraction)
             const reader = new FileReader();
             reader.onload = async (event) => {
-                const text = event.target?.result as string;
+                let text = event.target?.result as string;
+
+                // Basic sanitization to prevent script injection
+                text = text.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gm, "")
+                           .replace(/javascript:/gi, "");
 
                 // Track upload in database and update profile count (simulated update here)
                 if (activeChatId) {
                     await supabase.from('documents').insert({
                         user_id: session.user.id,
                         title: file.name,
-                        source_type: 'pdf',
+                        source_type: 'pdf', // Keeping 'pdf' as generic type for now or update DB enum
                         content: text.substring(0, 10000) // Truncate for now
                     });
 
@@ -1037,20 +1055,20 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                     }).eq('id', session.user.id);
                 }
 
-                setUploadedSource(`PDF: ${file.name}`);
-                setInput(`I've uploaded a PDF document: "${file.name}". `);
-                onShowToast(`✓ PDF "${file.name}" ready for analysis`);
+                setUploadedSource(`File: ${file.name}`);
+                setInput(`I've uploaded a document: "${file.name}". `);
+                onShowToast(`✓ File "${file.name}" ready for analysis`);
 
                 // If in active chat, automatically submit this as a message
                 if (messages.length > 1) {
-                    const msg = `I've uploaded a new PDF document for analysis: "${file.name}"`;
+                    const msg = `I've uploaded a new document for analysis: "${file.name}"`;
                     await saveMessage({ id: '', role: 'user', content: msg, timestamp: Date.now(), mode: currentMode });
                     await processMessage(msg);
                 }
             };
             reader.readAsText(file);
         } catch (err) {
-            onShowToast('Failed to process PDF. Try again.');
+            onShowToast('Failed to process file. Try again.');
         }
     };
 
@@ -1275,56 +1293,21 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                                 <input
                                     ref={fileInputRef}
                                     type="file"
-                                    accept=".pdf"
+                                    accept=".doc,.docx,.pdf,.md,.txt,.rtf"
                                     onChange={handlePdfUpload}
                                     className="hidden"
                                 />
 
-                                {/* Upload PDF Button */}
+                                {/* Upload Source Button */}
                                 <button
                                     onClick={() => fileInputRef.current?.click()}
                                     className="flex items-center gap-2 px-4 py-2.5 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 hover:border-orange-500/50 rounded-xl text-orange-400 hover:text-orange-300 transition-all text-sm font-medium"
                                 >
                                     <Upload size={18} />
-                                    <span>Upload PDF</span>
+                                    <span>Upload Source</span>
                                 </button>
 
-                                {/* YouTube URL Button/Input */}
-                                {!showYouTubeInput ? (
-                                    <button
-                                        onClick={() => setShowYouTubeInput(true)}
-                                        className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50 rounded-xl text-red-400 hover:text-red-300 transition-all text-sm font-medium"
-                                    >
-                                        <Youtube size={18} />
-                                        <span>YouTube URL</span>
-                                    </button>
-                                ) : (
-                                    <div className="flex items-center gap-2 flex-1">
-                                        <input
-                                            type="text"
-                                            value={youtubeUrl}
-                                            onChange={(e) => setYoutubeUrl(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && handleYouTubeSubmit()}
-                                            placeholder="Paste YouTube URL..."
-                                            className="flex-1 px-4 py-2.5 border rounded-xl placeholder-gray-500 focus:outline-none focus:border-brand-500/50 text-sm"
-                                            style={{ backgroundColor: 'var(--bg-input)', borderColor: 'var(--border-sidebar)', color: 'var(--text-app)' }}
-                                            autoFocus
-                                        />
-                                        <button
-                                            onClick={handleYouTubeSubmit}
-                                            disabled={!youtubeUrl.trim()}
-                                            className="px-4 py-2.5 bg-red-500 hover:bg-red-400 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-xl text-white text-sm font-medium transition-all"
-                                        >
-                                            Add
-                                        </button>
-                                        <button
-                                            onClick={() => { setShowYouTubeInput(false); setYoutubeUrl(''); }}
-                                            className="p-2.5 text-gray-500 hover:text-gray-300 transition-colors"
-                                        >
-                                            ✕
-                                        </button>
-                                    </div>
-                                )}
+                                {/* YouTube URL Button/Input - REMOVED TEMPORARILY */}
 
                                 {/* Uploaded Source Indicator */}
                                 {uploadedSource && (

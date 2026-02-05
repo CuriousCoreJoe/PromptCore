@@ -134,9 +134,9 @@ export default function LandingPage() {
         {
             name: "Starter",
             price: "$0",
-            credits: "50 Credits/mo",
+            credits: "400 Credits/mo",
             description: "Perfect for your first Spec.",
-            features: ["Basic Prompt Refinement", "50 Credits Monthly", "Community Support"],
+            features: ["Basic Prompt Refinement", "100 Credits Weekly", "Community Support"],
             cta: "Get Started",
             borderColor: "border-slate-700",
             accentColor: "text-slate-200",

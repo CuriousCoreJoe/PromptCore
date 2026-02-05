@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Legal } from './Legal';
+import logoUrl from '../assets/PromptOrigin-PO-lightBlu-32px-svg.svg';
 
 interface AuthProps {
     onAuthSuccess?: () => void;
@@ -59,10 +60,11 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
         <div className="min-h-screen flex items-center justify-center bg-dark-950 p-4">
             <div className="max-w-md w-full bg-dark-900 border border-dark-800 rounded-2xl p-8 shadow-2xl text-center space-y-8">
                 <div className="space-y-4">
-                    <div className="w-16 h-16 bg-brand-600 rounded-2xl flex items-center justify-center text-white font-bold text-3xl mx-auto shadow-lg shadow-brand-900/40">
-                        P
-                    </div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight">PromptOrigin</h1>
+                    <img
+                        src={logoUrl}
+                        alt="PromptOrigin Logo"
+                        className="w-32 h-auto mx-auto mb-6"
+                    />
                     <p className="text-gray-400">Secure entry to the world's best AI curriculum designer.</p>
                 </div>
 
