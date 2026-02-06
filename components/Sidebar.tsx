@@ -196,7 +196,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           <button
             onClick={onToggleCollapse}
-            className="hidden md:block p-1.5 text-gray-500 hover:text-white hover:bg-white/5 rounded-md transition-all ml-1"
+            className="hidden md:block p-1.5 text-gray-500 hover:text-gray-100 hover:bg-white/5 rounded-md transition-all ml-1"
           >
             {isCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>
@@ -480,7 +480,7 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, active, onClick, isColla
       "w-full flex items-center px-4 py-2.5 rounded-full transition-all group relative",
       active
         ? "bg-brand-600 text-white font-bold shadow-lg shadow-brand-600/20"
-        : "text-gray-300 hover:bg-black/5 dark:hover:bg-white/5 hover:text-brand-600 dark:hover:text-white",
+        : "text-gray-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-brand-600 dark:hover:text-white",
       isCollapsed ? "justify-center px-0" : "justify-start"
     )}
   >
@@ -565,7 +565,7 @@ const HistoryItem: React.FC<{
             "w-full text-left px-4 py-2.5 text-[14px] rounded-full truncate transition-all pr-10",
             isActive
               ? "text-white bg-brand-600 font-bold shadow-lg shadow-brand-600/20"
-              : "text-gray-300 hover:text-brand-600 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 border border-transparent"
+              : "text-gray-400 hover:text-brand-600 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 border border-transparent"
           )}
         >
           {chat.title || 'Untitled'}
@@ -587,7 +587,7 @@ const HistoryItem: React.FC<{
           setShowMenu(!showMenu);
         }}
         className={clsx(
-          "absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-gray-500 hover:text-white transition-all rounded-md",
+          "absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-gray-500 hover:text-gray-100 transition-all rounded-md",
           showMenu ? "opacity-100 bg-white/10" : "opacity-0 group-hover:opacity-100"
         )}
       >
@@ -764,14 +764,14 @@ const FolderItem: React.FC<FolderItemProps> = ({
                   "flex-1 text-left px-3 py-2 text-[12px] rounded-full truncate transition-all",
                   activeChatId === chat.id
                     ? "text-white bg-brand-500 font-bold"
-                    : "text-gray-300 hover:text-white hover:bg-white/5"
+                    : "text-gray-400 hover:text-gray-100 hover:bg-white/5"
                 )}
               >
                 {chat.title || 'Untitled'}
               </button>
               <button
                 onClick={() => onMoveToRecents(chat.id)}
-                className="opacity-0 group-hover/chat:opacity-100 p-1 text-gray-600 hover:text-white transition-all"
+                className="opacity-0 group-hover/chat:opacity-100 p-1 text-gray-600 hover:text-gray-100 transition-all"
                 title="Move to Recents"
               >
                 <X size={12} />

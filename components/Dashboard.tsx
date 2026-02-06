@@ -208,10 +208,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
             {/* Header */}
             <div className="mb-8 flex justify-between items-end">
                 <div>
-                    <h1 className="text-3xl font-bold text-white mb-2">
+                    <h1 className="text-3xl font-bold text-gray-100 mb-2">
                         {activeTab === 'overview' ? 'Dashboard' : 'Feedback Board'}
                     </h1>
-                    <p className="text-gray-300">
+                    <p className="text-gray-400">
                         {activeTab === 'overview'
                             ? 'Manage your credits, generated assets, and knowledge sources.'
                             : 'Help us improve Prompt Origin by sharing your thoughts, feature requests or reporting bugs.'
@@ -282,7 +282,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                                 <p className="text-sm text-gray-400 font-medium group-hover:text-brand-400 transition-colors">
                                     {statMode === 'generations' ? 'Total Generations' : 'Total Credits Spent'}
                                 </p>
-                                <p className="text-2xl font-bold text-white">
+                                <p className="text-2xl font-bold text-gray-100">
                                     {statMode === 'generations'
                                         ? (userProfile?.lifetime_prompts || 0)
                                         : (userProfile?.monthly_usage || 0) // Using monthly usage as proxy for now, ideally lifetime_usage
@@ -298,7 +298,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                         <div className="bg-dark-900 border border-dark-800 rounded-xl overflow-hidden shadow-lg flex flex-col">
                             <div className="p-4 border-b border-dark-800 flex justify-between items-center bg-dark-950/50">
                                 <div className="flex flex-col">
-                                    <h2 className="font-semibold text-white flex items-center gap-2">
+                                    <h2 className="font-semibold text-gray-100 flex items-center gap-2">
                                         <FileText size={18} className="text-orange-400" />
                                         PDF Library (Talk to Source)
                                     </h2>
@@ -356,7 +356,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credits, isDev, onNavigate
                         <div className="bg-dark-900 border border-dark-800 rounded-xl overflow-hidden shadow-lg flex flex-col">
                             <div className="p-4 border-b border-dark-800 flex justify-between items-center bg-dark-950/50">
                                 <div className="flex flex-col">
-                                    <h2 className="font-semibold text-white flex items-center gap-2">
+                                    <h2 className="font-semibold text-gray-100 flex items-center gap-2">
                                         <Shield size={18} className="text-brand-400" />
                                         Knowledge Base
                                     </h2>
@@ -505,7 +505,7 @@ const StatCard: React.FC<{ icon: React.ReactNode, label: string, value: string |
         </div>
         <div>
             <p className="text-sm text-gray-400 font-medium">{label}</p>
-            <p className="text-2xl font-bold text-white">{value}</p>
+            <p className="text-2xl font-bold text-gray-100">{value}</p>
             <p className="text-xs text-gray-500 mt-1">{subtext}</p>
         </div>
     </div>

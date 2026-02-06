@@ -18,10 +18,8 @@ export const FuelTankModal: React.FC<FuelTankModalProps> = ({ isOpen, onClose, o
         friction: ''
     });
 
-    if (!isOpen) return null;
-
     useEffect(() => {
-        if (step === 'waitlist') {
+        if (isOpen && step === 'waitlist') {
             const script = document.createElement('script');
             script.src = "https://link.msgsndr.com/js/form_embed.js";
             script.async = true;
@@ -33,7 +31,9 @@ export const FuelTankModal: React.FC<FuelTankModalProps> = ({ isOpen, onClose, o
                 }
             };
         }
-    }, [step]);
+    }, [step, isOpen]);
+
+    if (!isOpen) return null;
 
     const handleWaitlistClaim = async () => {
         await onRefill({ submissionType: 'waitlist', email: '' });
