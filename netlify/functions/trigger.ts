@@ -13,13 +13,14 @@ const handler: Handler = async (event, context) => {
         const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
         const inngestKey = process.env.INNGEST_EVENT_KEY;
-        const geminiKey = (process.env.LOCAL_GEMINI_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY || "").trim();
+        const openRouterKey = process.env.OPENROUTER_API_KEY;
 
-        if (!supabaseUrl || !supabaseKey || !inngestKey) {
+        if (!supabaseUrl || !supabaseKey || !inngestKey || !openRouterKey) {
             console.error("Missing Env Vars in trigger.ts:", {
                 supabaseUrl: !!supabaseUrl,
                 supabaseKey: !!supabaseKey,
-                inngestKey: !!inngestKey
+                inngestKey: !!inngestKey,
+                openRouterKey: !!openRouterKey
             });
             return {
                 statusCode: 500,
@@ -28,14 +29,15 @@ const handler: Handler = async (event, context) => {
                     missing: [
                         !supabaseUrl && "SUPABASE_URL/VITE_SUPABASE_URL",
                         !supabaseKey && "SUPABASE_SERVICE_ROLE_KEY",
-                        !inngestKey && "INNGEST_EVENT_KEY"
+                        !inngestKey && "INNGEST_EVENT_KEY",
+                        !openRouterKey && "OPENROUTER_API_KEY"
                     ].filter(Boolean)
                 })
             };
         }
 
         const supabase = createClient(supabaseUrl, supabaseKey);
-        const inngest = new Inngest({ id: "promptorigin-app", eventKey: inngestKey });
+        const inngest = new Inngest({ id: "promptorigin-app-http", eventKey: inngestKey });
 
         // 1. Check Credits & Calculate Cost
         const { data: profiles, error: profileError } = await supabase

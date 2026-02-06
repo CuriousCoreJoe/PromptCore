@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Zap, MessageSquare, CheckCircle2 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -12,7 +12,6 @@ interface FuelTankModalProps {
 
 export const FuelTankModal: React.FC<FuelTankModalProps> = ({ isOpen, onClose, onRefill, isRefilling }) => {
     const [step, setStep] = useState<'intro' | 'waitlist' | 'feedback' | 'success'>('intro');
-    const [email, setEmail] = useState('');
     const [feedback, setFeedback] = useState({
         role: '',
         goal: '',
@@ -21,9 +20,23 @@ export const FuelTankModal: React.FC<FuelTankModalProps> = ({ isOpen, onClose, o
 
     if (!isOpen) return null;
 
-    const handleWaitlistSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        await onRefill({ submissionType: 'waitlist', email });
+    useEffect(() => {
+        if (step === 'waitlist') {
+            const script = document.createElement('script');
+            script.src = "https://link.msgsndr.com/js/form_embed.js";
+            script.async = true;
+            document.body.appendChild(script);
+
+            return () => {
+                if (document.body.contains(script)) {
+                    document.body.removeChild(script);
+                }
+            };
+        }
+    }, [step]);
+
+    const handleWaitlistClaim = async () => {
+        await onRefill({ submissionType: 'waitlist', email: '' });
         setStep('success');
         setTimeout(() => {
             onClose();
@@ -96,22 +109,30 @@ export const FuelTankModal: React.FC<FuelTankModalProps> = ({ isOpen, onClose, o
                     )}
 
                     {step === 'waitlist' && (
-                        <form onSubmit={handleWaitlistSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-medium text-gray-400 mb-1">Enter your email to join the waitlist</label>
-                                <input
-                                    type="email"
-                                    required
-                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder:text-gray-600 focus:border-brand-500 outline-none transition-colors"
-                                    placeholder="you@example.com"
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
+                        <div className="space-y-4">
+                            <div className="w-full h-[402px] bg-white rounded-lg overflow-hidden">
+                                <iframe
+                                    src="https://api.leadconnectorhq.com/widget/form/TamJgoupQcBpzDJrqBrk"
+                                    style={{ width: '100%', height: '100%', border: 'none', borderRadius: '3px' }}
+                                    id="inline-TamJgoupQcBpzDJrqBrk"
+                                    data-layout="{'id':'INLINE'}"
+                                    data-trigger-type="alwaysShow"
+                                    data-trigger-value=""
+                                    data-activation-type="alwaysActivated"
+                                    data-activation-value=""
+                                    data-deactivation-type="neverDeactivate"
+                                    data-deactivation-value=""
+                                    data-form-name="Waitlist-2"
+                                    data-height="402"
+                                    data-layout-iframe-id="inline-TamJgoupQcBpzDJrqBrk"
+                                    data-form-id="TamJgoupQcBpzDJrqBrk"
+                                    title="Waitlist-2"
                                 />
                             </div>
 
                             <button
-                                type="submit"
-                                disabled={isRefilling || !email}
+                                onClick={handleWaitlistClaim}
+                                disabled={isRefilling}
                                 className="w-full py-3 bg-brand-600 hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all mt-2 flex items-center justify-center gap-2"
                             >
                                 {isRefilling ? (
@@ -119,7 +140,7 @@ export const FuelTankModal: React.FC<FuelTankModalProps> = ({ isOpen, onClose, o
                                 ) : (
                                     <>
                                         <Zap size={18} className="fill-current" />
-                                        Refill 100 Credits
+                                        I've Joined! (Claim Credits)
                                     </>
                                 )}
                             </button>
@@ -130,7 +151,7 @@ export const FuelTankModal: React.FC<FuelTankModalProps> = ({ isOpen, onClose, o
                             >
                                 Back
                             </button>
-                        </form>
+                        </div>
                     )}
 
                     {step === 'feedback' && (

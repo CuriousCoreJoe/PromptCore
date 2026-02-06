@@ -79,9 +79,20 @@ const PricingCard = ({ tier, index }) => {
 
 export default function LandingPage() {
     const [activeMode, setActiveMode] = useState('everyday');
-    const [email, setEmail] = useState('');
-    const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const script = document.createElement('script');
+        script.src = "https://link.msgsndr.com/js/form_embed.js";
+        script.async = true;
+        document.body.appendChild(script);
+
+        return () => {
+            if (document.body.contains(script)) {
+                document.body.removeChild(script);
+            }
+        };
+    }, []);
 
     // Auto-redirect if already logged in
     useEffect(() => {
@@ -92,24 +103,6 @@ export default function LandingPage() {
         });
     }, [navigate]);
 
-    const handleWaitlistSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setWaitlistStatus('loading');
-        try {
-            const res = await fetch('/.netlify/functions/handle-waitlist', {
-                method: 'POST',
-                body: JSON.stringify({ email, source: 'landing_hero' }),
-            });
-            if (res.ok) {
-                setWaitlistStatus('success');
-                setEmail('');
-            } else {
-                throw new Error('Failed');
-            }
-        } catch (err) {
-            setWaitlistStatus('error');
-        }
-    };
 
     const getAppUrl = () => {
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -248,29 +241,26 @@ export default function LandingPage() {
                             </div>
 
                             {/* Waitlist Form */}
-                            <div className="mt-8 pt-8 border-t border-slate-800/30">
-                                <p className="text-sm text-slate-400 mb-4">Join the waitlist for early access updates.</p>
-                                <form onSubmit={handleWaitlistSubmit} className="flex gap-2 max-w-md">
-                                    <input
-                                        type="email"
-                                        placeholder="Enter your email"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        required
-                                        className="flex-1 bg-slate-900 border border-slate-700 rounded px-4 py-2 text-slate-200 focus:outline-none focus:border-cyan-500 transition-colors"
+                            <div className="mt-4 pt-4 border-t border-slate-800/30">
+                                <div className="w-full max-w-md -mb-12">
+                                    <iframe
+                                        src="https://api.leadconnectorhq.com/widget/form/TamJgoupQcBpzDJrqBrk"
+                                        style={{ width: '100%', minHeight: '300px', border: 'none', borderRadius: '3px' }}
+                                        id="inline-TamJgoupQcBpzDJrqBrk"
+                                        data-layout="{'id':'INLINE'}"
+                                        data-trigger-type="alwaysShow"
+                                        data-trigger-value=""
+                                        data-activation-type="alwaysActivated"
+                                        data-activation-value=""
+                                        data-deactivation-type="neverDeactivate"
+                                        data-deactivation-value=""
+                                        data-form-name="Waitlist-2"
+                                        data-height="402"
+                                        data-layout-iframe-id="inline-TamJgoupQcBpzDJrqBrk"
+                                        data-form-id="TamJgoupQcBpzDJrqBrk"
+                                        title="Waitlist-2"
                                     />
-                                    <button
-                                        type="submit"
-                                        disabled={waitlistStatus === 'loading' || waitlistStatus === 'success'}
-                                        className={`px-6 py-2 rounded font-medium transition-all ${waitlistStatus === 'success'
-                                            ? 'bg-green-500 text-white cursor-default'
-                                            : 'bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white'
-                                            }`}
-                                    >
-                                        {waitlistStatus === 'loading' ? 'Joining...' : waitlistStatus === 'success' ? 'Joined!' : 'Join'}
-                                    </button>
-                                </form>
-                                {waitlistStatus === 'error' && <p className="text-red-400 text-xs mt-2">Something went wrong. Please try again.</p>}
+                                </div>
                             </div>
                         </motion.div>
 
