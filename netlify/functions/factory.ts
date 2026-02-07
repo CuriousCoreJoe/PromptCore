@@ -159,31 +159,22 @@ export const handler: Handler = async (event, context) => {
             });
         }
 
-        // 4. Send event to Inngest via HTTP
-        const inngestUrl = `https://inn.gs/e/${inngestKey}`;
-        console.log(`[Factory] Sending event to Inngest: ${inngestUrl}`);
-        
-        const inngestResponse = await fetch(inngestUrl, {
+        // 4. Trigger Background Function (Replaces Inngest)
+        const siteUrl = process.env.URL || "http://localhost:8888";
+        const backgroundUrl = `${siteUrl}/.netlify/functions/factory-background`;
+        console.log(`[Factory] Triggering background function: ${backgroundUrl}`);
+
+        // Fire and forget (don't await response strictly, but good to check if it started)
+        fetch(backgroundUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                name: "app/pack.requested",
-                data: {
-                    packId: pack.id,
-                    niche,
-                    count,
-                    userId
-                },
-                user: { id: userId }
+                packId: pack.id,
+                niche,
+                count,
+                userId
             })
-        });
-
-        if (!inngestResponse.ok) {
-            const errText = await inngestResponse.text();
-            console.error(`Inngest API Error: ${inngestResponse.status} ${errText}`);
-        } else {
-            console.log("Inngest event sent successfully");
-        }
+        }).catch(err => console.error("Failed to trigger background function:", err));
 
         return {
             statusCode: 200,
