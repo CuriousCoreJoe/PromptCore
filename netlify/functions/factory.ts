@@ -1,5 +1,4 @@
 import { Handler } from "@netlify/functions";
-import { createClient } from "@supabase/supabase-js";
 
 export const handler: Handler = async (event, context) => {
     console.log(`[Factory] Request received: ${event.httpMethod} ${event.path}`);
@@ -20,6 +19,9 @@ export const handler: Handler = async (event, context) => {
     }
 
     try {
+        // Dynamic import to avoid build-time issues
+        const { createClient } = await import("@supabase/supabase-js");
+
         const { niche, count, userId } = JSON.parse(event.body || "{}");
         console.log(`[Factory] Processing request for user: ${userId}, niche: ${niche}`);
 
