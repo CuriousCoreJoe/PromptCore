@@ -74,6 +74,7 @@ export const handler: Handler = async (event, context) => {
                     const diff = DIFFICULTY_LEVELS[Math.floor(Math.random() * DIFFICULTY_LEVELS.length)];
                     const style = STYLES[Math.floor(Math.random() * STYLES.length)];
 
+                    // Use Gemini 2.0 Flash via OpenRouter for speed and cost
                     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                         method: "POST",
                         headers: {
@@ -104,7 +105,11 @@ export const handler: Handler = async (event, context) => {
 
                     const json = await response.json();
                     const content = json.choices[0]?.message?.content || "{}";
-                    const data = JSON.parse(content);
+                    
+                    // Clean content if it has markdown code blocks
+                    const cleanContent = content.replace(/```json\n?|\n?```/g, '');
+                    
+                    const data = JSON.parse(cleanContent);
                     item = { ...data, style_var: style };
                 }
 

@@ -34,7 +34,8 @@ export const handler: Handler = async (event, context) => {
         // --- Send to GHL Webhook (if configured) ---
         if (ghlWebhookUrl) {
             try {
-                await fetch(ghlWebhookUrl, {
+                console.log(`Sending webhook to GHL: ${ghlWebhookUrl}`);
+                const webhookResponse = await fetch(ghlWebhookUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -44,10 +45,20 @@ export const handler: Handler = async (event, context) => {
                         timestamp: new Date().toISOString()
                     })
                 });
+                
+                if (!webhookResponse.ok) {
+                    console.error(`GHL Webhook failed: ${webhookResponse.status} ${webhookResponse.statusText}`);
+                    const text = await webhookResponse.text();
+                    console.error(`GHL Response: ${text}`);
+                } else {
+                    console.log("GHL Webhook sent successfully");
+                }
             } catch (webhookError) {
                 console.error("Failed to send to GHL webhook:", webhookError);
                 // Continue execution - don't fail the user request just because webhook failed
             }
+        } else {
+            console.warn("GHL_WEBHOOK_URL is not set");
         }
 
         const supabase = createClient(supabaseUrl, supabaseServiceKey);

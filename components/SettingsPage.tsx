@@ -17,6 +17,7 @@ import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { AIModel } from '../types';
 import { useTheme, THEME_PACKS, FontSize } from '../context/ThemeContext';
+import { supabase } from '../lib/supabase';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
     return twMerge(clsx(inputs));
@@ -331,6 +332,44 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-[10px] bg-brand-500/20 text-brand-400 px-2 py-1 rounded border border-brand-500/20 font-bold uppercase tracking-tighter">CMD + K</span>
+                                </div>
+                            </div>
+
+                            <div className="p-6 flex items-center justify-between hover:bg-dark-900/50 transition-colors">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <Zap size={16} className="text-gray-400" />
+                                        <p className="font-semibold text-gray-100">Test GHL Webhook</p>
+                                    </div>
+                                    <p className="text-sm text-gray-500">Manually trigger the signup webhook for testing.</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={async () => {
+                                            const { data: { session } } = await supabase.auth.getSession();
+                                            if (!session) return;
+
+                                            try {
+                                                const response = await fetch('/.netlify/functions/trigger-ghl-webhook', {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Authorization': `Bearer ${session.access_token}`
+                                                    }
+                                                });
+                                                if (response.ok) {
+                                                    alert("Webhook triggered successfully!");
+                                                } else {
+                                                    const text = await response.text();
+                                                    alert(`Failed: ${text}`);
+                                                }
+                                            } catch (e) {
+                                                alert(`Error: ${e}`);
+                                            }
+                                        }}
+                                        className="px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold rounded-lg transition-all"
+                                    >
+                                        Trigger
+                                    </button>
                                 </div>
                             </div>
                         </div>

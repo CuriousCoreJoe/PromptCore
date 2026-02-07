@@ -24,12 +24,11 @@ export const handler: Handler = async (event, context) => {
 
         const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-        const inngestKey = process.env.INNGEST_EVENT_KEY;
         const openRouterKey = process.env.OPENROUTER_API_KEY;
 
         console.log(`[Factory] Config: URL=${supabaseUrl}, KeyLength=${supabaseKey?.length}`);
 
-        if (!supabaseUrl || !supabaseKey || !inngestKey || !openRouterKey) {
+        if (!supabaseUrl || !supabaseKey || !openRouterKey) {
             console.error("Missing Env Vars in factory.ts");
             return {
                 statusCode: 500,
@@ -160,35 +159,32 @@ export const handler: Handler = async (event, context) => {
         }
 
         // 4. Trigger Background Function (Replaces Inngest)
-        const siteUrl = process.env.URL || "http://localhost:8888";
+        // Use relative URL for internal Netlify function calls to avoid DNS issues
+        // Or use process.env.URL which is the deploy URL
+        const host = event.headers.host || event.headers.Host;
+        const protocol = event.headers['x-forwarded-proto'] || 'https';
+        const siteUrl = host ? `${protocol}://${host}` : (process.env.URL || process.env.DEPLOY_URL || "http://localhost:8888");
         const backgroundUrl = `${siteUrl}/.netlify/functions/factory-background`;
         console.log(`[Factory] Triggering background function: ${backgroundUrl}`);
 
-        // Trigger Background Function
-        const bgResponse = await fetch(backgroundUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                packId: pack.id,
-                niche,
-                count,
-                userId
-            })
-        });
-
-        console.log(`[Factory] Background trigger response: ${bgResponse.status} ${bgResponse.statusText}`);
-
-        if (!bgResponse.ok) {
-            const errText = await bgResponse.text();
-            console.error(`Failed to trigger background function: ${errText}`);
-            // We return success to the frontend because the pack is created,
-            // but we log the error. Ideally, we should return error if background fails.
-            // Let's return error to help debugging.
-            return {
-                statusCode: 500,
-                headers,
-                body: JSON.stringify({ error: `Failed to start generation: ${bgResponse.status} ${errText}` })
-            };
+        // Trigger Background Function - Fire and Forget (don't await response body)
+        // But we do await the fetch call itself to ensure it's sent
+        try {
+            await fetch(backgroundUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    packId: pack.id,
+                    niche,
+                    count,
+                    userId
+                })
+            });
+            
+            console.log(`[Factory] Background function triggered (awaited)`);
+        } catch (e) {
+            console.error(`[Factory] Failed to trigger background function:`, e);
+            // Even if trigger fails, we return success for the pack creation so user sees "Queued"
         }
 
         return {

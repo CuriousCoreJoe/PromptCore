@@ -168,7 +168,11 @@ const App: React.FC = () => {
       setDefaultModel(data[0].default_model || 'google/gemini-3-pro-preview');
 
       // Check for webhook trigger
-      if (data[0].signup_webhook_sent === false) {
+      console.log("Profile loaded. Webhook sent status:", data[0].signup_webhook_sent);
+      
+      // Check for !== true to handle false, null, or undefined (if column missing/new)
+      if (data[0].signup_webhook_sent !== true) {
+        console.log("Triggering signup webhook for user:", session.user.email);
         triggerSignupWebhook(session.access_token);
       }
     }
@@ -176,12 +180,20 @@ const App: React.FC = () => {
 
   const triggerSignupWebhook = async (token: string) => {
     try {
-      await fetch('/.netlify/functions/trigger-ghl-webhook', {
+      const response = await fetch('/.netlify/functions/trigger-ghl-webhook', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
+      
+      if (response.ok) {
+        console.log("Signup webhook triggered successfully");
+      } else {
+        console.error("Signup webhook failed with status:", response.status);
+        const text = await response.text();
+        console.error("Webhook error response:", text);
+      }
     } catch (e) {
       console.error("Failed to trigger signup webhook", e);
     }

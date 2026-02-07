@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Layers, Play, CheckCircle, Loader2, Copy, Download, Star, Info, AlertCircle,
   History, FileText, FileSpreadsheet, ChevronDown, ChevronUp, HelpCircle, Plus, Minus, X,
-  Check
+  Check, MessageSquare
 } from 'lucide-react';
 import clsx from 'clsx';
 import { FactoryBatch, BatchItem } from '../types';
 import { supabase } from '../lib/supabase';
 import { CREDIT_COSTS } from '../config/pricing';
 import { BatchList } from './BatchList';
+import { useNavigate } from 'react-router-dom';
 
 interface PromptFactoryProps {
   credits?: number;
@@ -33,6 +34,7 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
 
   const promptRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const navigate = useNavigate();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -216,6 +218,12 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
     document.body.removeChild(link);
   };
 
+  const handleRunPrompt = (promptContent: string) => {
+    // Navigate to the main chat interface with the prompt pre-filled
+    // We'll use state to pass the prompt
+    navigate('/app', { state: { initialPrompt: promptContent } });
+  };
+
   // Cost Calculation
   const estimatedCost = Math.ceil(count / 5) * CREDIT_COSTS.promptFactoryBatch;
 
@@ -247,19 +255,31 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
             </span>
           </div>
         </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleCopySingle(item.prompt_content, item.id);
-          }}
-          className={`p-2 rounded transition-colors ${copiedId === item.id
-            ? 'text-green-400 bg-green-900/20'
-            : 'text-gray-500 hover:text-brand-600 dark:hover:text-white hover:bg-black/5 dark:hover:bg-dark-800'
-            }`}
-          title="Copy Prompt"
-        >
-          {copiedId === item.id ? <Check size={16} /> : <Copy size={16} />}
-        </button>
+        <div className="flex items-center gap-2">
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    handleRunPrompt(item.prompt_content);
+                }}
+                className="p-2 rounded transition-colors text-gray-500 hover:text-brand-600 dark:hover:text-white hover:bg-black/5 dark:hover:bg-dark-800"
+                title="Run Prompt in Chat"
+            >
+                <MessageSquare size={16} />
+            </button>
+            <button
+            onClick={(e) => {
+                e.stopPropagation();
+                handleCopySingle(item.prompt_content, item.id);
+            }}
+            className={`p-2 rounded transition-colors ${copiedId === item.id
+                ? 'text-green-400 bg-green-900/20'
+                : 'text-gray-500 hover:text-brand-600 dark:hover:text-white hover:bg-black/5 dark:hover:bg-dark-800'
+                }`}
+            title="Copy Prompt"
+            >
+            {copiedId === item.id ? <Check size={16} /> : <Copy size={16} />}
+            </button>
+        </div>
       </div>
 
       <div className="p-5 space-y-4">
@@ -366,7 +386,7 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
                         <div className="flex-1">
                           <div className="flex justify-between text-[11px] mb-0.5">
                             <span className="text-green-400 font-bold">Beginner (Foundation)</span>
-                            <span className="text-gray-500">&lt; 100 words</span>
+                            <span className="text-gray-500">{"<"} 100 words</span>
                           </div>
                           <p className="text-[10px] text-gray-400 mb-1 leading-tight italic">Focus: Goal + Context. Best for simple one-off tasks.</p>
                           <div className="h-1 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-sidebar)' }}>
