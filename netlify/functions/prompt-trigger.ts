@@ -1,5 +1,4 @@
 import { Handler } from "@netlify/functions";
-import { Inngest } from "inngest";
 import { createClient } from "@supabase/supabase-js";
 
 export const handler: Handler = async (event, context) => {
@@ -49,7 +48,6 @@ export const handler: Handler = async (event, context) => {
         }
 
         const supabase = createClient(supabaseUrl, supabaseKey);
-        const inngest = new Inngest({ id: "promptorigin-app-http", eventKey: inngestKey });
 
         // 1. Check Credits & Calculate Cost
         const { data: profiles, error: profileError } = await supabase
@@ -143,16 +141,31 @@ export const handler: Handler = async (event, context) => {
             }
         }
 
-        // 4. Send event to Inngest
-        await inngest.send({
-            name: "app/pack.requested",
-            data: {
-                packId: pack.id,
-                niche,
-                count,
-                userId
-            },
+        // 4. Send event to Inngest via HTTP (No SDK dependency)
+        const inngestUrl = `https://inn.gs/e/${inngestKey}`;
+        const inngestResponse = await fetch(inngestUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: "app/pack.requested",
+                data: {
+                    packId: pack.id,
+                    niche,
+                    count,
+                    userId
+                },
+                user: { id: userId }
+            })
         });
+
+        if (!inngestResponse.ok) {
+            const errText = await inngestResponse.text();
+            console.error(`Inngest API Error: ${inngestResponse.status} ${errText}`);
+            // We don't fail the request because the pack is created, but we log it.
+            // Ideally we should retry or alert.
+        } else {
+            console.log("Inngest event sent successfully");
+        }
 
         return {
             statusCode: 200,
