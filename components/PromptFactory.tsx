@@ -27,6 +27,7 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
   const [showHistory, setShowHistory] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [pingStatus, setPingStatus] = useState<string | null>(null);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
@@ -139,10 +140,18 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
       });
 
       if (!response.ok) {
-        const errData = await response.json();
-        const errorMessage = errData.missing
-          ? `Configuration Error: Missing ${errData.missing.join(", ")}`
-          : (errData.error || 'Trigger error');
+        const contentType = response.headers.get("content-type");
+        let errorMessage;
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            const errData = await response.json();
+            errorMessage = errData.missing
+              ? `Configuration Error: Missing ${errData.missing.join(", ")}`
+              : (errData.error || 'Trigger error');
+        } else {
+            const text = await response.text();
+            console.error("Factory Error Response:", text);
+            errorMessage = `Server Error (${response.status}): ${text.substring(0, 100)}`;
+        }
         throw new Error(errorMessage);
       }
 
@@ -302,13 +311,40 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
             <div className="border p-6 rounded-xl shadow-lg" style={{ backgroundColor: 'var(--bg-sidebar-alt)', borderColor: 'var(--border-sidebar)' }}>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold" style={{ color: 'var(--text-app)' }}>Factory Setup</h2>
-                <button
-                  onClick={() => setShowHelp(!showHelp)}
-                  className="text-gray-500 hover:text-brand-400 transition-colors"
-                >
-                  <HelpCircle size={18} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={async () => {
+                      setPingStatus('Testing...');
+                      try {
+                        const res = await fetch('/.netlify/functions/ping');
+                        if (res.ok) {
+                            const data = await res.json();
+                            setPingStatus(`✅ Connected: ${data.message}`);
+                        } else {
+                            setPingStatus(`❌ Error: ${res.status}`);
+                        }
+                      } catch (e: any) {
+                        setPingStatus(`❌ Network: ${e.message}`);
+                      }
+                    }}
+                    className="text-xs px-2 py-1 rounded border hover:bg-gray-100 dark:hover:bg-dark-700 transition-colors"
+                    style={{ borderColor: 'var(--border-sidebar)', color: 'var(--text-sidebar)' }}
+                  >
+                    Test Connection
+                  </button>
+                  <button
+                    onClick={() => setShowHelp(!showHelp)}
+                    className="text-gray-500 hover:text-brand-400 transition-colors"
+                  >
+                    <HelpCircle size={18} />
+                  </button>
+                </div>
               </div>
+              {pingStatus && (
+                <div className={`mb-4 text-xs px-3 py-2 rounded ${pingStatus.startsWith('✅') ? 'bg-green-900/20 text-green-400' : 'bg-red-900/20 text-red-400'}`}>
+                    {pingStatus}
+                </div>
+              )}
 
               {showHelp && (
                 <div className="mb-6 border rounded-lg p-4 text-sm space-y-2 animate-in fade-in slide-in-from-top-2" style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-sidebar)', color: 'var(--text-sidebar)' }}>
