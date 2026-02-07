@@ -164,8 +164,8 @@ export const handler: Handler = async (event, context) => {
         const backgroundUrl = `${siteUrl}/.netlify/functions/factory-background`;
         console.log(`[Factory] Triggering background function: ${backgroundUrl}`);
 
-        // Fire and forget (don't await response strictly, but good to check if it started)
-        fetch(backgroundUrl, {
+        // Trigger Background Function
+        const bgResponse = await fetch(backgroundUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -174,7 +174,22 @@ export const handler: Handler = async (event, context) => {
                 count,
                 userId
             })
-        }).catch(err => console.error("Failed to trigger background function:", err));
+        });
+
+        console.log(`[Factory] Background trigger response: ${bgResponse.status} ${bgResponse.statusText}`);
+
+        if (!bgResponse.ok) {
+            const errText = await bgResponse.text();
+            console.error(`Failed to trigger background function: ${errText}`);
+            // We return success to the frontend because the pack is created,
+            // but we log the error. Ideally, we should return error if background fails.
+            // Let's return error to help debugging.
+            return {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({ error: `Failed to start generation: ${bgResponse.status} ${errText}` })
+            };
+        }
 
         return {
             statusCode: 200,
