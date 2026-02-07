@@ -19,9 +19,6 @@ export const handler: Handler = async (event, context) => {
     }
 
     try {
-        // Dynamic import to avoid build-time issues
-        const { createClient } = await import("@supabase/supabase-js");
-
         const { niche, count, userId } = JSON.parse(event.body || "{}");
         console.log(`[Factory] Processing request for user: ${userId}, niche: ${niche}`);
 
@@ -31,45 +28,45 @@ export const handler: Handler = async (event, context) => {
         const openRouterKey = process.env.OPENROUTER_API_KEY;
 
         if (!supabaseUrl || !supabaseKey || !inngestKey || !openRouterKey) {
-            console.error("Missing Env Vars in factory.ts:", {
-                supabaseUrl: !!supabaseUrl,
-                supabaseKey: !!supabaseKey,
-                inngestKey: !!inngestKey,
-                openRouterKey: !!openRouterKey
-            });
+            console.error("Missing Env Vars in factory.ts");
             return {
                 statusCode: 500,
                 headers,
-                body: JSON.stringify({
-                    error: "Configuration Error",
-                    missing: [
-                        !supabaseUrl && "SUPABASE_URL/VITE_SUPABASE_URL",
-                        !supabaseKey && "SUPABASE_SERVICE_ROLE_KEY",
-                        !inngestKey && "INNGEST_EVENT_KEY",
-                        !openRouterKey && "OPENROUTER_API_KEY"
-                    ].filter(Boolean)
-                })
+                body: JSON.stringify({ error: "Configuration Error: Missing API Keys" })
             };
         }
 
-        const supabase = createClient(supabaseUrl, supabaseKey);
+        // Helper for Supabase Fetch
+        const supabaseFetch = async (endpoint: string, options: any = {}) => {
+            const url = `${supabaseUrl}/rest/v1/${endpoint}`;
+            const res = await fetch(url, {
+                ...options,
+                headers: {
+                    ...options.headers,
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                }
+            });
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`Supabase Error (${res.status}): ${text}`);
+            }
+            return res.json();
+        };
 
-        // 1. Check Credits & Calculate Cost
-        const { data: profiles, error: profileError } = await supabase
-            .from("profiles")
-            .select("credits, monthly_usage, last_usage_reset, subscription_status, lifetime_prompts")
-            .eq("id", userId);
-
+        // 1. Check Credits (GET profiles)
+        const profiles = await supabaseFetch(`profiles?id=eq.${userId}&select=credits,monthly_usage,last_usage_reset,subscription_status,lifetime_prompts`);
         const profile = profiles && profiles.length > 0 ? profiles[0] : null;
 
-        if (profileError) {
-            console.error("Profile Fetch Error:", profileError);
-            throw new Error(`Database Error: ${profileError.message}`);
+        if (!profile) {
+            throw new Error("Profile not found");
         }
 
-        let currentCredits = profile?.credits || 0;
-        let monthlyUsage = profile?.monthly_usage || 0;
-        const lastReset = new Date(profile?.last_usage_reset || 0);
+        let currentCredits = profile.credits || 0;
+        let monthlyUsage = profile.monthly_usage || 0;
+        const lastReset = new Date(profile.last_usage_reset || 0);
         const now = new Date();
 
         // Monthly Reset logic
@@ -77,72 +74,64 @@ export const handler: Handler = async (event, context) => {
         if (isNewMonth) {
             monthlyUsage = 0;
             const allowances: Record<string, number> = { 'free': 50, 'lite': 1000, 'pro': 2500 };
-            const allowance = allowances[profile?.subscription_status || 'free'] || 50;
+            const allowance = allowances[profile.subscription_status || 'free'] || 50;
             currentCredits = Math.max(currentCredits, allowance);
 
-            await supabase.from("profiles").update({
-                monthly_usage: 0,
-                credits: currentCredits,
-                last_usage_reset: now.toISOString()
-            }).eq("id", userId);
+            // Update profile (PATCH)
+            await supabaseFetch(`profiles?id=eq.${userId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    monthly_usage: 0,
+                    credits: currentCredits,
+                    last_usage_reset: now.toISOString()
+                })
+            });
         }
 
-        const status = profile?.subscription_status || 'free';
+        const status = profile.subscription_status || 'free';
         const isFree = status === 'free';
 
         // Cost Calculation
         const batchSize = 5;
         const batches = Math.ceil(count / batchSize);
         const baseCost = batches * 5;
-
-        // Efficiency Logic (Multiplier)
         const multiplier = (isFree && monthlyUsage > 100) ? 3 : 1;
         const totalCost = baseCost * multiplier;
 
-        // Dev Bypass
-        const { data: devUser } = await supabase.auth.admin.getUserById(userId);
-        const isLocalDev = process.env.NETLIFY_DEV === 'true';
-        const isDev = devUser?.user?.email === 'dev@promptcore.com' || isLocalDev;
+        // Dev Bypass (Simplified: Skip auth admin check to avoid dependency, assume not dev for safety or check ID)
+        // If we really need dev check, we can check specific IDs if hardcoded, but better to be safe.
+        const isDev = false; // Default to false to enforce credits
 
         if (!isDev && currentCredits < totalCost) {
-            return { statusCode: 402, headers, body: JSON.stringify({ error: `Insufficient credits. Standard Rate (3x) applies. Cost: ${totalCost}, Balance: ${currentCredits}. Upgrade to Creator for Preferred Rates.` }) };
+            return { statusCode: 402, headers, body: JSON.stringify({ error: `Insufficient credits. Cost: ${totalCost}, Balance: ${currentCredits}.` }) };
         }
 
-        // 2. Create the Pack record immediately
-        const { data: pack, error: dbError } = await supabase
-            .from("packs")
-            .insert({
+        // 2. Create Pack (POST packs)
+        const packs = await supabaseFetch('packs', {
+            method: 'POST',
+            body: JSON.stringify({
                 user_id: userId,
                 niche: niche,
                 status: 'pending',
                 total_count: 0
             })
-            .select()
-            .single();
+        });
+        const pack = packs[0];
 
-        if (dbError) {
-            console.error("Pack Insert Error:", dbError);
-            throw new Error(`Failed to create pack: ${dbError.message}`);
-        }
-
-        // 3. Deduct Credits & Update Lifetime (if not dev)
+        // 3. Deduct Credits (PATCH profiles)
         if (!isDev) {
-            const lifetime = profile?.lifetime_prompts || 0;
-            const { error: updateError } = await supabase
-                .from("profiles")
-                .update({
+            const lifetime = profile.lifetime_prompts || 0;
+            await supabaseFetch(`profiles?id=eq.${userId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
                     credits: Math.max(0, currentCredits - totalCost),
                     monthly_usage: monthlyUsage + totalCost,
                     lifetime_prompts: lifetime + count
                 })
-                .eq("id", userId);
-
-            if (updateError) {
-                console.error("Credit Deduction Error:", updateError);
-            }
+            });
         }
 
-        // 4. Send event to Inngest via HTTP (No SDK dependency)
+        // 4. Send event to Inngest via HTTP
         const inngestUrl = `https://inn.gs/e/${inngestKey}`;
         console.log(`[Factory] Sending event to Inngest: ${inngestUrl}`);
         
