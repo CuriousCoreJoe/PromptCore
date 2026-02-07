@@ -2,6 +2,7 @@ import { Handler } from "@netlify/functions";
 import { createClient } from "@supabase/supabase-js";
 
 export const handler: Handler = async (event, context) => {
+    console.log(`[Factory] Request received: ${event.httpMethod} ${event.path}`);
     const headers = {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Headers": "Content-Type, Authorization",

@@ -166,6 +166,24 @@ const App: React.FC = () => {
       setCredits(data[0].credits);
       setWizardMode(data[0].wizard_mode || 'iterative');
       setDefaultModel(data[0].default_model || 'google/gemini-3-pro-preview');
+
+      // Check for webhook trigger
+      if (data[0].signup_webhook_sent === false) {
+        triggerSignupWebhook(session.access_token);
+      }
+    }
+  };
+
+  const triggerSignupWebhook = async (token: string) => {
+    try {
+      await fetch('/.netlify/functions/trigger-ghl-webhook', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    } catch (e) {
+      console.error("Failed to trigger signup webhook", e);
     }
   };
 

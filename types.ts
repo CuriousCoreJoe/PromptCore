@@ -68,6 +68,7 @@ export interface UserProfile {
   is_demo_locked?: boolean;
   last_refill_date?: string;
   refill_count?: number;
+  signup_webhook_sent?: boolean;
 }
 
 // Added Document interface to resolve "Module '"../types"' has no exported member 'Document'" error in Dashboard.tsx
