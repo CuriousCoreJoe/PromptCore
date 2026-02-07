@@ -178,7 +178,7 @@ const App: React.FC = () => {
     }
   };
 
-  const triggerSignupWebhook = async (token: string) => {
+  const triggerSignupWebhook = async (token: string, retryCount = 0) => {
     try {
       const response = await fetch('/.netlify/functions/trigger-ghl-webhook', {
         method: 'POST',
@@ -189,13 +189,30 @@ const App: React.FC = () => {
       
       if (response.ok) {
         console.log("Signup webhook triggered successfully");
+        // Optimistically update profile to prevent re-triggering
+        if (profile) {
+            setProfile(prev => prev ? { ...prev, signup_webhook_sent: true } : null);
+        }
       } else {
         console.error("Signup webhook failed with status:", response.status);
         const text = await response.text();
         console.error("Webhook error response:", text);
+        
+        // Retry logic with backoff
+        if (retryCount < 3) {
+            const delay = 2000 * Math.pow(2, retryCount);
+            console.log(`Retrying webhook trigger in ${delay}ms (attempt ${retryCount + 1})...`);
+            setTimeout(() => triggerSignupWebhook(token, retryCount + 1), delay);
+        }
       }
     } catch (e) {
       console.error("Failed to trigger signup webhook", e);
+      // Retry logic with backoff
+      if (retryCount < 3) {
+          const delay = 2000 * Math.pow(2, retryCount);
+          console.log(`Retrying webhook trigger in ${delay}ms (attempt ${retryCount + 1})...`);
+          setTimeout(() => triggerSignupWebhook(token, retryCount + 1), delay);
+      }
     }
   };
 
