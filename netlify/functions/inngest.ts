@@ -1,7 +1,11 @@
-import { Inngest } from "inngest";
-import { serve } from "inngest/lambda";
-import { createClient } from "@supabase/supabase-js";
-// import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+// @ts-nocheck
+// import { Inngest } from "inngest";
+// import { serve } from "inngest/lambda";
+// import { createClient } from "@supabase/supabase-js";
+
+// Use require to avoid build-time bundling issues
+const { Inngest } = require("inngest");
+const { serve } = require("inngest/lambda");
 
 // Force production mode for Inngest SDK only if not in local dev
 if (!process.env.NETLIFY_DEV) {
@@ -20,7 +24,6 @@ if (!process.env.INNGEST_SIGNING_KEY) {
     console.warn("INNGEST_SIGNING_KEY is missing from environment. Sync will fail.");
 }
 
-
 if (process.env.NETLIFY_DEV) {
     // Force HTTP for local dev to avoid "server gave HTTP response to HTTPS client"
     process.env.URL = "http://127.0.0.1:8888";
@@ -31,7 +34,6 @@ const inngest = new Inngest({
     id: "promptorigin-app-http",
     signingKey: process.env.INNGEST_SIGNING_KEY
 });
-
 
 // 2. Constants
 const DIFFICULTY_LEVELS = ["Beginner", "Intermediate", "Advanced"];
@@ -81,8 +83,9 @@ const generatePack = inngest.createFunction(
             ].filter(Boolean).join(", ")}`);
         }
 
+        // Dynamic import for Supabase
+        const { createClient } = require("@supabase/supabase-js");
         const supabase = createClient(supabaseUrl, supabaseKey);
-        // const ai = new GoogleGenerativeAI(geminiKey);
 
         // Initial update to 'processing'
         await step.run("start-pack", async () => {
@@ -93,7 +96,7 @@ const generatePack = inngest.createFunction(
             if (error) throw error;
         });
 
-        const results: any[] = [];
+        const results = [];
         const totalToGenerate = count;
 
         for (let i = 0; i < totalToGenerate; i++) {
@@ -181,7 +184,7 @@ const generatePack = inngest.createFunction(
 );
 
 // 4. Export Handler
-const serveOptions: any = {
+const serveOptions = {
     client: inngest,
     functions: [generatePack],
     signingKey: process.env.INNGEST_SIGNING_KEY,
@@ -193,7 +196,7 @@ if (process.env.NETLIFY_DEV) {
 
 const inngestHandler = serve(serveOptions);
 
-export const handler = async (event: any, context: any) => {
+export const handler = async (event, context) => {
     if (process.env.NETLIFY_DEV) {
         // Force headers to look like HTTP to trick Inngest SDK
         event.headers = event.headers || {};
