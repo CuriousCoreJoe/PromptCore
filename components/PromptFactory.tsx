@@ -127,7 +127,7 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
         return;
       }
 
-      const response = await fetch('/api/trigger', {
+      const response = await fetch('/api/prompt-trigger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
