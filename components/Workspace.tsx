@@ -558,12 +558,15 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 // 2. Route to background function for heavy processing
                 const response = await fetch('/api/chat-background', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`
+                    },
                     signal: abortControllerRef.current?.signal,
                     body: JSON.stringify({
                         input: content,
                         chatId: targetChatId,
-                        userId: session.user.id,
+                        // userId: session.user.id, // REMOVED: Now inferred from token on backend
                         messageId: placeholderMsg.id,
                         conversationHistory: chatMessages.filter(m => m.role !== 'system').map(m => ({
                             role: m.role,
@@ -590,13 +593,16 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 // Fallback for when no chat ID exists (shouldn't happen in current flow as we create chat ID first)
                 const response = await fetch('/api/chat', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`
+                    },
                     signal: abortControllerRef.current?.signal,
                     body: JSON.stringify({
                         messages: chatMessages,
                         input: isHiddenInstruction ? content : content,
                         mode: currentMode,
-                        userId: session.user.id,
+                        // userId: session.user.id, // REMOVED: Now inferred from token on backend
                         chatId: targetChatId,
                         wizardMode,
                         wizardStage,
@@ -822,11 +828,11 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
 
             // Optimistic UI for Media Gen (to fix reload issue)
             let newMessageId: string | undefined;
-            
+
             if (useBackgroundMediaGen && activeChatId) {
                 newMessageId = crypto.randomUUID();
                 const optimisticContent = '🎨 **Generating Media...**\n\nI am creating your visual content based on your optimized prompt. This may take a moment for high-quality results.\n\n*Please wait while I generate your media...*';
-                
+
                 // 1. Add to local state immediately
                 const optimisticMsg: Message = {
                     id: newMessageId,
@@ -839,9 +845,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                     executionModel: selectedModel || defaultModel || 'google/gemini-3-pro-image-preview',
                     metadata: { startTime: Date.now() }
                 };
-                
+
                 setMessages(prev => [...prev, optimisticMsg]);
-                
+
                 // 2. Insert into DB immediately (so background function can update it)
                 await supabase.from('messages').insert({
                     id: newMessageId,
@@ -1079,7 +1085,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
 
                 // Basic sanitization to prevent script injection
                 text = text.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gm, "")
-                           .replace(/javascript:/gi, "");
+                    .replace(/javascript:/gi, "");
 
                 // Track upload in database and update profile count (simulated update here)
                 if (activeChatId) {

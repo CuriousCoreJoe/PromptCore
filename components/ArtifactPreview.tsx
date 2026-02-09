@@ -139,7 +139,7 @@ export const ArtifactPreview: React.FC<ArtifactPreviewProps> = React.memo(({ con
                             srcDoc={content}
                             title="Preview"
                             className="w-full h-full border-0"
-                            sandbox="allow-scripts allow-same-origin allow-forms"
+                            sandbox="allow-scripts allow-forms"
                         />
                     </div>
                 ) : (

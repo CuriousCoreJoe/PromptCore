@@ -83,7 +83,7 @@ const App: React.FC = () => {
   const [showThemeSettings, setShowThemeSettings] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
 
-  const isDev = session?.user?.email === 'dev@promptcore.com';
+  const isDev = profile?.role === 'admin' || session?.user?.email === 'dev@promptcore.com'; // Fallback to email for now until DB migration is run everywhere
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleCloseToast = React.useCallback(() => {
@@ -171,7 +171,7 @@ const App: React.FC = () => {
       if (import.meta.env.DEV || localStorage.getItem('debug_mode') === 'true') {
         console.log("Profile loaded. Webhook sent status:", data[0].signup_webhook_sent);
       }
-      
+
       // Check for !== true to handle false, null, or undefined (if column missing/new)
       if (data[0].signup_webhook_sent !== true) {
         console.log("Triggering signup webhook for user:", session.user.email);
@@ -188,32 +188,32 @@ const App: React.FC = () => {
           'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (response.ok) {
         console.log("Signup webhook triggered successfully");
         // Optimistically update profile to prevent re-triggering
         if (profile) {
-            setProfile(prev => prev ? { ...prev, signup_webhook_sent: true } : null);
+          setProfile(prev => prev ? { ...prev, signup_webhook_sent: true } : null);
         }
       } else {
         console.error("Signup webhook failed with status:", response.status);
         const text = await response.text();
         console.error("Webhook error response:", text);
-        
+
         // Retry logic with backoff
         if (retryCount < 3) {
-            const delay = 2000 * Math.pow(2, retryCount);
-            console.log(`Retrying webhook trigger in ${delay}ms (attempt ${retryCount + 1})...`);
-            setTimeout(() => triggerSignupWebhook(token, retryCount + 1), delay);
+          const delay = 2000 * Math.pow(2, retryCount);
+          console.log(`Retrying webhook trigger in ${delay}ms (attempt ${retryCount + 1})...`);
+          setTimeout(() => triggerSignupWebhook(token, retryCount + 1), delay);
         }
       }
     } catch (e) {
       console.error("Failed to trigger signup webhook", e);
       // Retry logic with backoff
       if (retryCount < 3) {
-          const delay = 2000 * Math.pow(2, retryCount);
-          console.log(`Retrying webhook trigger in ${delay}ms (attempt ${retryCount + 1})...`);
-          setTimeout(() => triggerSignupWebhook(token, retryCount + 1), delay);
+        const delay = 2000 * Math.pow(2, retryCount);
+        console.log(`Retrying webhook trigger in ${delay}ms (attempt ${retryCount + 1})...`);
+        setTimeout(() => triggerSignupWebhook(token, retryCount + 1), delay);
       }
     }
   };

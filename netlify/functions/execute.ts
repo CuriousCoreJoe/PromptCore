@@ -342,7 +342,7 @@ const handler: Handler = async (event, context) => {
             };
         }
 
-        const { prompt, userId, conversationHistory = [], model: requestedModel, mode } = parsedBody;
+        const { prompt, conversationHistory = [], model: requestedModel, mode } = parsedBody;
 
         if (!prompt) {
             return {
@@ -351,6 +351,12 @@ const handler: Handler = async (event, context) => {
                 body: JSON.stringify({ error: "Prompt is required" })
             };
         }
+
+        const authHeader = event.headers.authorization || event.headers.Authorization;
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            return { statusCode: 401, headers, body: JSON.stringify({ error: "Missing or Invalid Authorization Header" }) };
+        }
+        const token = authHeader.split(" ")[1];
 
         const openRouterKey = (process.env.PROMPTCORE_NETLIFY_PROD || process.env.OPENROUTER_API_KEY || "").trim();
         const geminiKey = (process.env.LOCAL_GEMINI_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY || "").trim();
@@ -366,10 +372,22 @@ const handler: Handler = async (event, context) => {
         const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+        // 1. Verify Token & Get Real User ID
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+        if (authError || !user) {
+            console.error("Auth error:", authError);
+            return { statusCode: 401, headers, body: JSON.stringify({ error: "Invalid Token" }) };
+        }
+
+        const userId = user.id; // STRICT SOURCE OF TRUTH
+
         // Check Credits, Subscription & Trial Limits
-        const { data: profile } = await supabase.from('profiles').select('credits, monthly_usage, last_usage_reset, subscription_status, media_gen_uses_monthly').eq('id', userId).single();
+        const { data: profile } = await supabase.from('profiles').select('credits, monthly_usage, last_usage_reset, subscription_status, media_gen_uses_monthly, role').eq('id', userId).single();
         const { data: userData } = await supabase.auth.admin.getUserById(userId);
-        const isDev = userData?.user?.email === 'dev@promptcore.com';
+
+        // RBAC Check
+        const isDev = profile?.role === 'admin' || userData?.user?.email === 'dev@promptcore.com';
 
         const status = profile?.subscription_status || 'free';
         const isFree = status === 'free';

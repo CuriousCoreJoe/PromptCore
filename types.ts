@@ -69,6 +69,7 @@ export interface UserProfile {
   last_refill_date?: string;
   refill_count?: number;
   signup_webhook_sent?: boolean;
+  role?: string;
 }
 
 // Added Document interface to resolve "Module '"../types"' has no exported member 'Document'" error in Dashboard.tsx

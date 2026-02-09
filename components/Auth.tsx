@@ -32,17 +32,26 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
         setLoading(true);
         setErrorMsg(null);
 
+        let finalEmail = email;
+
+        // ALIAS SYSTEM
+        // If users type "cmd:admin" (or any other alias we define), we swap it.
+        if (email.trim() === 'cmd:admin') {
+            finalEmail = 'dev@promptcore.com'; // Hardcoded for now, or fetch from env if possible
+            // We could also auto-fill password if we wanted to go full "magic", but separate password is safer.
+        }
+
         try {
             if (isSignUp) {
                 const { error } = await supabase.auth.signUp({
-                    email,
+                    email: finalEmail,
                     password,
                 });
                 if (error) throw error;
                 setErrorMsg('Check your email for the confirmation link!');
             } else {
                 const { error } = await supabase.auth.signInWithPassword({
-                    email,
+                    email: finalEmail,
                     password,
                 });
                 if (error) throw error;
