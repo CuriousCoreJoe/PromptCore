@@ -28,7 +28,6 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
   const [showHistory, setShowHistory] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [pingStatus, setPingStatus] = useState<string | null>(null);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
@@ -333,26 +332,6 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
                 <h2 className="text-lg font-semibold" style={{ color: 'var(--text-app)' }}>Factory Setup</h2>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={async () => {
-                      setPingStatus('Testing...');
-                      try {
-                        const res = await fetch('/.netlify/functions/ping');
-                        if (res.ok) {
-                            const data = await res.json();
-                            setPingStatus(`✅ Connected: ${data.message}`);
-                        } else {
-                            setPingStatus(`❌ Error: ${res.status}`);
-                        }
-                      } catch (e: any) {
-                        setPingStatus(`❌ Network: ${e.message}`);
-                      }
-                    }}
-                    className="text-xs px-2 py-1 rounded border hover:bg-gray-100 dark:hover:bg-dark-700 transition-colors"
-                    style={{ borderColor: 'var(--border-sidebar)', color: 'var(--text-sidebar)' }}
-                  >
-                    Test Connection
-                  </button>
-                  <button
                     onClick={() => setShowHelp(!showHelp)}
                     className="text-gray-500 hover:text-brand-400 transition-colors"
                   >
@@ -360,11 +339,6 @@ export const PromptFactory: React.FC<PromptFactoryProps> = ({ credits, defaultEx
                   </button>
                 </div>
               </div>
-              {pingStatus && (
-                <div className={`mb-4 text-xs px-3 py-2 rounded ${pingStatus.startsWith('✅') ? 'bg-green-900/20 text-green-400' : 'bg-red-900/20 text-red-400'}`}>
-                    {pingStatus}
-                </div>
-              )}
 
               {showHelp && (
                 <div className="mb-6 border rounded-lg p-4 text-sm space-y-2 animate-in fade-in slide-in-from-top-2" style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-sidebar)', color: 'var(--text-sidebar)' }}>

@@ -379,7 +379,7 @@ const handler: Handler = async (event, context) => {
 
     try {
         const payload = JSON.parse(event.body || "{}");
-        const { prompt, chatId, userId, conversationHistory = [], model } = payload;
+        const { prompt, chatId, userId, conversationHistory = [], model, messageId: providedMessageId } = payload;
 
         if (!prompt || !chatId || !userId) {
             console.error("Missing required fields");
@@ -460,28 +460,51 @@ const handler: Handler = async (event, context) => {
         // Use Gemini 3 Pro Image Preview for Media Gen
         const modelId = 'google/gemini-3-pro-image-preview';
 
-        // 1. Insert Initial "Processing" Message
-        const messageId = crypto.randomUUID();
-        const { error: insertError } = await supabase.from('messages').insert({
-            id: messageId,
-            chat_id: chatId,
-            role: 'model',
-            content: '🎨 **Generating Media...**\n\nI am creating your visual content based on your optimized prompt. This may take a moment for high-quality results.\n\n*Please wait while I generate your media...*',
-            status: 'processing',
-            msg_type: 'execution_result',
-            execution_model: modelId,
-            metadata: {
-                startTime: Date.now(),
-                jobType: 'media-gen-background'
+        // 1. Insert or Update Initial "Processing" Message
+        const messageId = providedMessageId || crypto.randomUUID();
+        const initialContent = '🎨 **Generating Media...**\n\nI am creating your visual content based on your optimized prompt. This may take a moment for high-quality results.\n\n*Please wait while I generate your media...*';
+        
+        if (providedMessageId) {
+            // Update existing message (inserted by frontend)
+            const { error: updateError } = await supabase.from('messages').update({
+                content: initialContent,
+                status: 'processing',
+                msg_type: 'execution_result',
+                execution_model: modelId,
+                metadata: {
+                    startTime: Date.now(),
+                    jobType: 'media-gen-background'
+                }
+            }).eq('id', messageId);
+
+            if (updateError) {
+                console.error("Failed to update initial message:", updateError);
+                // Fallback to insert if update fails (e.g. race condition where frontend didn't insert yet)
+                // But usually we just log and continue, or try insert.
             }
-        });
+            console.log(`[Media Gen Background] Initial message updated: ${messageId}`);
+        } else {
+            // Insert new message
+            const { error: insertError } = await supabase.from('messages').insert({
+                id: messageId,
+                chat_id: chatId,
+                role: 'model',
+                content: initialContent,
+                status: 'processing',
+                msg_type: 'execution_result',
+                execution_model: modelId,
+                metadata: {
+                    startTime: Date.now(),
+                    jobType: 'media-gen-background'
+                }
+            });
 
-        if (insertError) {
-            console.error("Failed to insert initial message:", insertError);
-            return { statusCode: 500, body: "Database error" };
+            if (insertError) {
+                console.error("Failed to insert initial message:", insertError);
+                return { statusCode: 500, body: "Database error" };
+            }
+            console.log(`[Media Gen Background] Initial message inserted: ${messageId}`);
         }
-
-        console.log(`[Media Gen Background] Initial message inserted: ${messageId}`);
 
         // 2. Perform the Heavy AI Task
         try {

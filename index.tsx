@@ -43,7 +43,9 @@ import MainRouter from './components/MainRouter';
 import { HelmetProvider } from 'react-helmet-async';
 import { ThemeProvider } from './context/ThemeContext';
 
-console.log('[Entry] index.tsx starting...');
+const isDev = import.meta.env.DEV || localStorage.getItem('debug_mode') === 'true';
+
+if (isDev) console.log('[Entry] index.tsx starting...');
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -51,7 +53,7 @@ if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
 
-console.log('[Entry] Mounting React app...');
+if (isDev) console.log('[Entry] Mounting React app...');
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
@@ -62,4 +64,4 @@ root.render(
     </HelmetProvider>
   </React.StrictMode>
 );
-console.log('[Entry] Mount command issued.');
+if (isDev) console.log('[Entry] Mount command issued.');

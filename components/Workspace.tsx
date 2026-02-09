@@ -254,7 +254,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 }
             })
             .subscribe((status) => {
-                console.log(`[Realtime] Subscription status for chat ${activeChatId}:`, status);
+                if (import.meta.env.DEV || localStorage.getItem('debug_mode') === 'true') {
+                    console.log(`[Realtime] Subscription status for chat ${activeChatId}:`, status);
+                }
             });
 
         return () => {
@@ -818,6 +820,41 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                 useBackgroundMediaGen ? '/api/media-gen-background' :
                     '/api/execute-background';
 
+            // Optimistic UI for Media Gen (to fix reload issue)
+            let newMessageId: string | undefined;
+            
+            if (useBackgroundMediaGen && activeChatId) {
+                newMessageId = crypto.randomUUID();
+                const optimisticContent = '🎨 **Generating Media...**\n\nI am creating your visual content based on your optimized prompt. This may take a moment for high-quality results.\n\n*Please wait while I generate your media...*';
+                
+                // 1. Add to local state immediately
+                const optimisticMsg: Message = {
+                    id: newMessageId,
+                    role: 'model',
+                    content: optimisticContent,
+                    timestamp: Date.now(),
+                    mode: currentMode,
+                    status: 'processing',
+                    msgType: 'execution_result',
+                    executionModel: selectedModel || defaultModel || 'google/gemini-3-pro-image-preview',
+                    metadata: { startTime: Date.now() }
+                };
+                
+                setMessages(prev => [...prev, optimisticMsg]);
+                
+                // 2. Insert into DB immediately (so background function can update it)
+                await supabase.from('messages').insert({
+                    id: newMessageId,
+                    chat_id: activeChatId,
+                    role: 'model',
+                    content: optimisticContent,
+                    status: 'processing',
+                    msg_type: 'execution_result',
+                    execution_model: optimisticMsg.executionModel,
+                    metadata: optimisticMsg.metadata
+                });
+            }
+
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -828,7 +865,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
                     chatId: activeChatId, // Required for background processes
                     conversationHistory: executionHistory,
                     model: selectedModel || defaultModel,
-                    mode: currentMode
+                    mode: currentMode,
+                    messageId: newMessageId // Pass the ID if we generated one
                 })
             });
 
@@ -848,9 +886,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({ currentMode, session, cred
             onShowToast(toastMessage);
 
             // Force a refresh after a delay to ensure the "Processing" message is caught
-            setTimeout(() => {
-                loadHistory();
-            }, 1000);
+            // Only needed if we didn't do optimistic UI
+            if (!newMessageId) {
+                setTimeout(() => {
+                    loadHistory();
+                }, 1000);
+            }
 
         } catch (err: any) {
             console.error('Execution error:', err);

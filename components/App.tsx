@@ -168,7 +168,9 @@ const App: React.FC = () => {
       setDefaultModel(data[0].default_model || 'google/gemini-3-pro-preview');
 
       // Check for webhook trigger
-      console.log("Profile loaded. Webhook sent status:", data[0].signup_webhook_sent);
+      if (import.meta.env.DEV || localStorage.getItem('debug_mode') === 'true') {
+        console.log("Profile loaded. Webhook sent status:", data[0].signup_webhook_sent);
+      }
       
       // Check for !== true to handle false, null, or undefined (if column missing/new)
       if (data[0].signup_webhook_sent !== true) {

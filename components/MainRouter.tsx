@@ -8,7 +8,9 @@ const MainRouter: React.FC = () => {
     const pathname = window.location.pathname;
     const isAppSubdomain = hostname.startsWith('app.');
 
-    console.log('[MainRouter] Init - Host:', hostname, 'Path:', pathname, 'isAppSubdomain:', isAppSubdomain);
+    if (import.meta.env.DEV || localStorage.getItem('debug_mode') === 'true') {
+        console.log('[MainRouter] Init - Host:', hostname, 'Path:', pathname, 'isAppSubdomain:', isAppSubdomain);
+    }
 
     return (
         <BrowserRouter>

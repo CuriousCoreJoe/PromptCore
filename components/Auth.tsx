@@ -19,7 +19,9 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: `${window.location.origin}/app`
+                redirectTo: window.location.origin.includes('localhost')
+                    ? `${window.location.origin}/app`
+                    : 'https://app.usepromptorigin.com'
             }
         });
         if (error) console.error('Error logging in:', error.message);
